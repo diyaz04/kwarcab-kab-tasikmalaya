@@ -1,0 +1,604 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-heading: 'Space Grotesk', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+  
+  body {
+    font-family: var(--font-body);
+    background-color: #0F0A1A;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 10, 26, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(102, 57, 150, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 111, 196, 0.6);
+}
+
+/* Glassmorphism Inner Glow & Textured Border */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(10, 5, 20, 0.37);
+}
+
+.glass-panel-heavy {
+  background: rgba(20, 15, 35, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-panel-interactive {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-interactive:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(155, 111, 196, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(102, 57, 150, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Textured Noise Overlay */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* Premium Glow Elements */
+.glow-spot-primary {
+  position: absolute;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(102, 57, 150, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.glow-spot-gold {
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* ==========================================
+   LIGHT MODE OVERRIDES (Mode Terang - Warna Dasar Putih)
+   ========================================== */
+.light-mode {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Global body & html override */
+html.light-mode,
+html.light-mode body {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Ambient dots/stars under light mode */
+.light-mode div.fixed.inset-0.pointer-events-none {
+  opacity: 0.12 !important;
+  background-image: radial-gradient(#9333ea 0.8px, transparent 0.8px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Glow spots - hide or make incredibly subtle */
+.light-mode .glow-spot-primary,
+.light-mode .glow-spot-gold {
+  opacity: 0.01 !important;
+}
+
+/* Glass Panels: headers, cards, container blocks */
+.light-mode .glass-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(147, 51, 234, 0.16) !important;
+  box-shadow: 0 4px 20px -2px rgba(147, 51, 234, 0.06) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+}
+
+.light-mode .glass-panel-heavy {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(147, 51, 234, 0.25) !important;
+  box-shadow: 0 10px 30px -5px rgba(147, 51, 234, 0.1) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.light-mode .glass-panel-interactive:hover {
+  background: rgba(255, 255, 255, 0.99) !important;
+  border-color: rgba(147, 51, 234, 0.4) !important;
+  box-shadow: 0 10px 25px -5px rgba(147, 51, 234, 0.15) !important;
+}
+
+/* Typography elements & Tailwind light-text class overrides */
+.light-mode .text-white,
+.light-mode .text-slate-50,
+.light-mode .text-slate-100,
+.light-mode .text-purple-50,
+.light-mode [class*="text-slate-50"],
+.light-mode [class*="text-slate-100"],
+.light-mode [class*="text-purple-50"] {
+  color: #111827 !important; /* Deep charcoal */
+}
+
+.light-mode .text-purple-200,
+.light-mode .text-purple-100,
+.light-mode .text-slate-200,
+.light-mode [class*="text-purple-200"],
+.light-mode [class*="text-purple-100"],
+.light-mode [class*="text-slate-200"] {
+  color: #374151 !important; /* Elegant gray-700 */
+}
+
+.light-mode .text-purple-300,
+.light-mode .text-slate-300,
+.light-mode .text-slate-400,
+.light-mode .text-gray-400,
+.light-mode [class*="text-purple-300"],
+.light-mode [class*="text-slate-300"],
+.light-mode [class*="text-slate-400"],
+.light-mode [class*="text-gray-400"] {
+  color: #581c87 !important; /* Highly readable vibrant purple */
+}
+
+.light-mode h1, 
+.light-mode h2, 
+.light-mode h3, 
+.light-mode h4, 
+.light-mode h5, 
+.light-mode h6,
+.light-mode .font-heading,
+.light-mode [class*="font-heading"] {
+  color: #3b0764 !important; /* Elegant deep purple */
+}
+
+/* Cards / Bento boxes / Panels */
+.light-mode .bg-slate-900,
+.light-mode .bg-slate-950,
+.light-mode .bg-slate-800,
+.light-mode .bg-[#1E1530],
+.light-mode [class*="bg-slate-900"],
+.light-mode [class*="bg-slate-950"],
+.light-mode [class*="bg-slate-800"] {
+  background-color: #fcfbfe !important;
+  border: 1px solid rgba(147, 51, 234, 0.12) !important;
+  color: #111827 !important;
+}
+
+.light-mode [class*="bg-purple-950"],
+.light-mode [class*="bg-purple-900"] {
+  background-color: rgba(147, 51, 234, 0.05) !important;
+  color: #3b0764 !important;
+  border-color: rgba(147, 51, 234, 0.15) !important;
+}
+
+/* Background classes with opacity used for text input & blocks */
+.light-mode [class*="bg-black/"],
+.light-mode [class*="bg-white/5"],
+.light-mode [class*="bg-white/10"],
+.light-mode [class*="bg-white/20"] {
+  background-color: rgba(147, 51, 234, 0.04) !important;
+  border-color: rgba(147, 51, 234, 0.15) !important;
+  color: #111827 !important;
+}
+
+/* General form elements */
+.light-mode input,
+.light-mode select,
+.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1.5px solid rgba(147, 51, 234, 0.25) !important;
+}
+
+.light-mode input::placeholder,
+.light-mode select::placeholder,
+.light-mode textarea::placeholder,
+.light-mode [class*="placeholder-"]::placeholder {
+  color: #9ca3af !important;
+}
+
+.light-mode select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+.light-mode label {
+  color: #4b5563 !important;
+}
+
+/* Table Overrides in Admin Dashboard */
+.light-mode table {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+.light-mode th {
+  background-color: rgba(147, 51, 234, 0.05) !important;
+  color: #581c87 !important;
+  border-bottom: 2px solid rgba(147, 51, 234, 0.15) !important;
+}
+
+.light-mode td {
+  border-bottom: 1px solid rgba(147, 51, 234, 0.08) !important;
+  color: #374151 !important;
+}
+
+.light-mode tr:hover td {
+  background-color: rgba(147, 51, 234, 0.02) !important;
+}
+
+/* Status & Role Badges */
+.light-mode .text-\[\#D4AF37\] {
+  color: #b45309 !important; /* Elegant dark gold/amber */
+}
+
+.light-mode [class*="text-[#D4AF37]"] {
+  color: #b45309 !important;
+}
+
+.light-mode [class*="bg-emerald-950"],
+.light-mode [class*="bg-emerald-900"] {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+.light-mode [class*="text-emerald-"],
+.light-mode [class*="text-emerald-"] svg {
+  color: #047857 !important;
+}
+
+.light-mode [class*="bg-red-950"],
+.light-mode [class*="bg-red-900"] {
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+.light-mode [class*="text-red-"],
+.light-mode [class*="text-red-"] svg {
+  color: #b91c1c !important;
+}
+
+.light-mode [class*="bg-amber-950"] {
+  background-color: #fffbeb !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+}
+
+/* Primary Action Buttons: Maintain contrast & solid colors */
+.light-mode button.bg-purple-600,
+.light-mode button.bg-purple-700,
+.light-mode button.bg-emerald-600,
+.light-mode button.bg-emerald-700,
+.light-mode button.bg-red-600,
+.light-mode button.bg-blue-600,
+.light-mode button[class*="bg-purple-"],
+.light-mode button[class*="bg-emerald-"],
+.light-mode button[class*="bg-red-"],
+.light-mode button[class*="bg-gradient-to-r"],
+.light-mode button[class*="from-purple-"] {
+  color: #ffffff !important;
+}
+
+.light-mode button.bg-purple-600 svg,
+.light-mode button.bg-purple-700 svg,
+.light-mode button[class*="bg-gradient-to-r"] svg,
+.light-mode button.bg-emerald-600 svg,
+.light-mode button.bg-red-600 svg {
+  color: #ffffff !important;
+}
+
+/* Muted buttons / Secondary actions */
+.light-mode button[class*="bg-white/"],
+.light-mode button[class*="bg-purple-900/"] {
+  background-color: rgba(147, 51, 234, 0.08) !important;
+  color: #7e22ce !important;
+  border: 1px solid rgba(147, 51, 234, 0.2) !important;
+}
+
+.light-mode button[class*="bg-white/"]:hover,
+.light-mode button[class*="bg-purple-900/"]:hover {
+  background-color: rgba(147, 51, 234, 0.14) !important;
+  color: #581c87 !important;
+}
+
+/* Navbar Specific Light Mode Enhancements */
+.light-mode nav {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Mobile Menu Dropdown in Light Mode */
+.light-mode nav .lg\:hidden.bg-\[\#0F0A1A\]\/95 {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-top-color: rgba(147, 51, 234, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(147, 51, 234, 0.08) !important;
+}
+.light-mode nav .lg\:hidden.bg-\[\#0F0A1A\]\/95 .border-t {
+  border-color: rgba(147, 51, 234, 0.1) !important;
+}
+
+/* Brand Text & Logo */
+.light-mode nav .text-white {
+  color: #581c87 !important; /* Elegant signature deep purple */
+}
+.light-mode nav .text-purple-300 {
+  color: #7e22ce !important; /* Bright purple secondary text */
+}
+.light-mode nav .text-\[\#D4AF37\] {
+  color: #9333ea !important; /* Vibrant signature bright purple instead of gold */
+}
+
+/* Brand Logo Compass Icon & Container */
+.light-mode nav .relative.bg-purple-950\/80 {
+  background-color: rgba(147, 51, 234, 0.1) !important;
+  border-color: rgba(147, 51, 234, 0.25) !important;
+}
+.light-mode nav .relative.bg-purple-950\/80 svg.text-\[\#D4AF37\] {
+  color: #9333ea !important; /* Bright signature purple logo */
+}
+
+/* Navbar unselected tab buttons */
+.light-mode nav button.text-purple-200\/80 {
+  color: #6b7280 !important; /* Soft neutral gray for inactive tab text */
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.light-mode nav button.text-purple-200\/80:hover {
+  background-color: transparent !important;
+  color: #9333ea !important; /* Highlight purple on hover */
+}
+
+/* Navbar active tab button */
+.light-mode nav button.bg-purple-600\/30 {
+  background-color: transparent !important;
+  color: #9333ea !important; /* Active purple color */
+  border: none !important;
+  border-bottom: 2.5px solid #9333ea !important; /* Active bottom border underline */
+  box-shadow: none !important;
+  font-weight: 700 !important;
+  border-radius: 0px !important;
+}
+
+/* Navbar tab icons */
+.light-mode nav button svg.text-purple-300 {
+  color: #a855f7 !important; /* Soft bright purple for inactive icon */
+}
+.light-mode nav button svg.text-\[\#D4AF37\],
+.light-mode nav button .text-\[\#D4AF37\] {
+  color: #9333ea !important; /* Rich vibrant purple for active icon */
+}
+
+/* Theme Toggle button & Notification Bell */
+.light-mode nav button.bg-white\/5 {
+  background-color: rgba(126, 34, 206, 0.06) !important;
+  border-color: rgba(126, 34, 206, 0.15) !important;
+  color: #7e22ce !important;
+}
+.light-mode nav button.bg-white\/5:hover {
+  background-color: rgba(126, 34, 206, 0.12) !important;
+  color: #581c87 !important;
+}
+.light-mode nav button.text-purple-200 {
+  color: #7e22ce !important;
+}
+.light-mode nav button.text-purple-200:hover {
+  background-color: rgba(126, 34, 206, 0.06) !important;
+  color: #581c87 !important;
+}
+
+/* Profile area details */
+.light-mode nav .text-right .text-white {
+  color: #581c87 !important;
+}
+.light-mode nav .text-right .text-\[\#D4AF37\] {
+  color: #b45309 !important;
+}
+
+/* Portal Dashboard Button */
+.light-mode nav button.bg-purple-900\/40 {
+  background-color: rgba(126, 34, 206, 0.1) !important;
+  border-color: rgba(126, 34, 206, 0.25) !important;
+  color: #7e22ce !important;
+}
+.light-mode nav button.bg-purple-900\/40:hover {
+  background-color: rgba(126, 34, 206, 0.18) !important;
+  color: #581c87 !important;
+}
+
+/* "Masuk Portal" auth button in navbar */
+.light-mode nav button.bg-gradient-to-r {
+  background: linear-gradient(135deg, #9333ea, #6b21a8) !important;
+  color: #ffffff !important;
+}
+.light-mode nav button.bg-gradient-to-r:hover {
+  background: linear-gradient(135deg, #a855f7, #7e22ce) !important;
+}
+
+/* ==========================================
+   ADMIN PORTAL SIDEBAR & MENU SYSTEM (LIGHT MODE)
+   ========================================== */
+.light-mode [class*="lg:grid-cols-4"] .glass-panel {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(147, 51, 234, 0.15) !important;
+}
+
+/* Admin Sidebar Active Option */
+.light-mode button.bg-purple-600\/35,
+.light-mode button[class*="bg-purple-950"] {
+  background-color: rgba(180, 83, 9, 0.08) !important;
+  color: #b45309 !important;
+  border-left: 4px solid #b45309 !important;
+  border-color: rgba(180, 83, 9, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.05) !important;
+}
+.light-mode button.bg-purple-600\/35 svg,
+.light-mode button[class*="bg-purple-950"] svg {
+  color: #b45309 !important;
+}
+
+/* Admin Sidebar Inactive Option */
+.light-mode button.text-purple-200\/80 {
+  color: #7e22ce !important;
+}
+.light-mode button.text-purple-200\/80 svg {
+  color: #a855f7 !important;
+}
+.light-mode button.text-purple-200\/80:hover {
+  background-color: rgba(147, 51, 234, 0.06) !important;
+  color: #3b0764 !important;
+}
+
+/* Refresh / Control Bar icons and text */
+.light-mode [class*="lg:col-span-3"] .text-white {
+  color: #111827 !important;
+}
+.light-mode [class*="lg:col-span-3"] .text-purple-300 {
+  color: #7e22ce !important;
+}
+
+/* Hero section light mode styling */
+.light-mode .relative.min-h-\[85vh\],
+.light-mode .relative.min-h-\[90vh\] {
+  background-color: #ffffff !important;
+}
+
+/* Hero background image under light mode - keep image clearly visible but faded into white */
+.light-mode .relative.min-h-\[85vh\] img,
+.light-mode .relative.min-h-\[90vh\] img {
+  opacity: 0.96 !important;
+  filter: brightness(0.95) contrast(98%) saturate(105%) !important;
+}
+
+/* Overwrite dark gradient overlays inside Hero sections to elegant white gradients */
+.light-mode .relative.min-h-\[85vh\] .bg-gradient-to-t,
+.light-mode .relative.min-h-\[90vh\] .bg-gradient-to-t {
+  background-image: linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0.85) 100%) !important;
+}
+
+.light-mode .relative.min-h-\[85vh\] .bg-gradient-to-r,
+.light-mode .relative.min-h-\[90vh\] .bg-gradient-to-r {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.6) 40%, rgba(255, 255, 255, 0.15) 75%, rgba(255, 255, 255, 0.8) 100%) !important;
+}
+
+/* Hero badge (Welcome / Sorotan Berita) */
+.light-mode .relative.min-h-\[85vh\] .glass-panel,
+.light-mode .relative.min-h-\[90vh\] .bg-purple-900\/60 {
+  background-color: rgba(126, 34, 206, 0.08) !important;
+  border-color: rgba(126, 34, 206, 0.25) !important;
+}
+.light-mode .relative.min-h-\[85vh\] .glass-panel span,
+.light-mode .relative.min-h-\[90vh\] .bg-purple-900\/60 span {
+  color: #7e22ce !important; /* characteristic bright purple badge text */
+}
+
+/* Heading in Hero (Welcome to...) */
+.light-mode .relative.min-h-\[85vh\] h1.text-white,
+.light-mode .relative.min-h-\[90vh\] h2.text-white {
+  color: #111827 !important;
+}
+
+/* Dynamic gradient text inside h1 (Gerakan Pramuka) in light mode */
+.light-mode .relative.min-h-\[85vh\] h1 span.text-transparent {
+  background-image: linear-gradient(to right, #7e22ce, #9333ea, #b45309) !important;
+}
+
+/* Hero description text */
+.light-mode .relative.min-h-\[85vh\] p.text-purple-200,
+.light-mode .relative.min-h-\[90vh\] p.text-purple-200\/90 {
+  color: #4b5563 !important; /* readable charcoal dark text */
+}
+
+/* Carousel controls (chevron buttons) */
+.light-mode .relative.min-h-\[90vh\] button.glass-panel {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(126, 34, 206, 0.2) !important;
+  color: #7e22ce !important;
+}
+.light-mode .relative.min-h-\[90vh\] button.glass-panel:hover {
+  background-color: rgba(126, 34, 206, 0.1) !important;
+  color: #581c87 !important;
+}
+
+/* "Baca Selengkapnya" button in carousel in light mode */
+.light-mode .relative.min-h-\[90vh\] button.bg-gradient-to-r {
+  background: linear-gradient(135deg, #7e22ce, #581c87) !important;
+  color: #ffffff !important;
+}
+.light-mode .relative.min-h-\[90vh\] button.bg-gradient-to-r:hover {
+  background: linear-gradient(135deg, #9333ea, #6b21a8) !important;
+}
+
+/* Hover effects */
+.light-mode .hover:bg-white/5:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.light-mode .hover:text-white:hover {
+  color: #111827 !important;
+}
+
+/* Modal overlays */
+.light-mode .bg-slate-900/90 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* Developer & Evaluator Panel */
+.light-mode div.fixed.bottom-6.left-6 {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(180, 83, 9, 0.4) !important; /* amber-700 / gold */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
+}
+.light-mode div.fixed.bottom-6.left-6 span,
+.light-mode div.fixed.bottom-6.left-6 p {
+  color: #374151 !important;
+}
+.light-mode div.fixed.bottom-6.left-6 strong {
+  color: #111827 !important;
+}
+
+/* Quick Scrollbars under light mode */
+.light-mode ::-webkit-scrollbar-track {
+  background: #f9fafb !important;
+}
+.light-mode ::-webkit-scrollbar-thumb {
+  background: rgba(126, 34, 206, 0.15) !important;
+}
+.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(126, 34, 206, 0.3) !important;
+}
+
+

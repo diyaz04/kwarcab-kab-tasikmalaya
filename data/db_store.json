@@ -1,0 +1,430 @@
+{
+  "users": [
+    {
+      "id": "u_1",
+      "nama": "Admin Kwarcab Tasikmalaya",
+      "email": "admin@kwarcabtasik.id",
+      "password_hash": "$2a$10$tasikmalayasecretpasswordhashsimulation",
+      "role": "kwarcab",
+      "ref_id": null,
+      "created_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "u_2",
+      "nama": "Kak Maman (Cisayong)",
+      "email": "cisayong@kwarcabtasik.id",
+      "password_hash": "$2a$10$cisayongsecretpasswordhashsimulation",
+      "role": "kwarran",
+      "ref_id": "kwarran_1",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
+      "id": "u_3",
+      "nama": "Pembina SMAN 1 Cisayong",
+      "email": "gudep_sma1@kwarcabtasik.id",
+      "password_hash": "$2a$10$gudep1secretpasswordhashsimulation",
+      "role": "gudep",
+      "ref_id": "gudep_1",
+      "created_at": "2026-01-12T00:00:00Z"
+    },
+    {
+      "id": "u_4",
+      "nama": "Pamong Saka Bhayangkara",
+      "email": "bhayangkara@kwarcabtasik.id",
+      "password_hash": "$2a$10$bhayankarasecretpasswordhashsimulation",
+      "role": "saka",
+      "ref_id": "saka_1",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
+      "id": "u_5",
+      "nama": "Pamong Saka Bakti Husada",
+      "email": "husada@kwarcabtasik.id",
+      "password_hash": "$2a$10$husadasecretpasswordhashsimulation",
+      "role": "saka",
+      "ref_id": "saka_2",
+      "created_at": "2026-01-12T00:00:00Z"
+    }
+  ],
+  "kwartir_ranting": [
+    {
+      "id": "kwarran_1",
+      "nama_kecamatan": "Cisayong",
+      "ketua": "Kak H. Maman Budiman, M.Pd.",
+      "sekretaris": "Kak Ade Sukmana, S.Pd.",
+      "bendahara": "Kak Nenden Nurjanah, S.Pd.",
+      "foto_ketua": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
+      "id": "kwarran_2",
+      "nama_kecamatan": "Singaparna",
+      "ketua": "Kak Dr. H. Tatang, M.Si.",
+      "sekretaris": "Kak Dani Ramdani, S.Pd.",
+      "bendahara": "Kak Imas Masriah, S.Ag.",
+      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-15T00:00:00Z"
+    },
+    {
+      "id": "kwarran_3",
+      "nama_kecamatan": "Ciawi",
+      "ketua": "Kak Drs. Agus Junaedi",
+      "sekretaris": "Kak Hendra Wijaya, S.Pd.",
+      "bendahara": "Kak Siti Jubaedah",
+      "foto_ketua": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200",
+      "status": "transisi",
+      "created_at": "2026-02-01T00:00:00Z"
+    },
+    {
+      "id": "kwarran_4",
+      "nama_kecamatan": "Manonjaya",
+      "ketua": "Kak H. Endang, S.Pd.",
+      "sekretaris": "Kak Nanang, S.Pd.",
+      "bendahara": "Kak Erna, S.Pd.",
+      "foto_ketua": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-02-10T00:00:00Z"
+    }
+  ],
+  "gugus_depan": [
+    {
+      "id": "gudep_1",
+      "nama_pangkalan": "SMAN 1 Cisayong (Pangkalan Kian Santang - Dyah Pitaloka)",
+      "kwartir_ranting_id": "kwarran_1",
+      "created_at": "2026-01-12T00:00:00Z"
+    },
+    {
+      "id": "gudep_2",
+      "nama_pangkalan": "SMPN 1 Cisayong",
+      "kwartir_ranting_id": "kwarran_1",
+      "created_at": "2026-01-14T00:00:00Z"
+    },
+    {
+      "id": "gudep_3",
+      "nama_pangkalan": "SMAN 1 Singaparna",
+      "kwartir_ranting_id": "kwarran_2",
+      "created_at": "2026-01-20T00:00:00Z"
+    },
+    {
+      "id": "gudep_4",
+      "nama_pangkalan": "MAN 2 Tasikmalaya (Singaparna)",
+      "kwartir_ranting_id": "kwarran_2",
+      "created_at": "2026-01-22T00:00:00Z"
+    }
+  ],
+  "satuan_karya": [
+    {
+      "id": "saka_1",
+      "nama_saka": "Saka Bhayangkara",
+      "ketua": "Kak AKP H. Subarna (Polres Tasikmalaya)",
+      "sekretaris": "Kak Bripka Heri, S.H.",
+      "bendahara": "Kak Rina Marlina",
+      "foto_ketua": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
+      "id": "saka_2",
+      "nama_saka": "Saka Bakti Husada",
+      "ketua": "Kak Dr. H. Heru (Dinas Kesehatan)",
+      "sekretaris": "Kak Ns. Dian, S.Kep.",
+      "bendahara": "Kak Lilis Herawati, S.ST.",
+      "foto_ketua": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-12T00:00:00Z"
+    },
+    {
+      "id": "saka_3",
+      "nama_saka": "Saka Wira Kartika",
+      "ketua": "Kak Mayor Inf. Sugeng (Kodim 0612)",
+      "sekretaris": "Kak Serma Jajang",
+      "bendahara": "Kak Astri Rahayu",
+      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-15T00:00:00Z"
+    },
+    {
+      "id": "saka_4",
+      "nama_saka": "Saka Wanabakti",
+      "ketua": "Kak H. Wahyu (Perhutani Tasikmalaya)",
+      "sekretaris": "Kak Irwan, S.Hut.",
+      "bendahara": "Kak Linda, S.E.",
+      "foto_ketua": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
+      "status": "transisi",
+      "created_at": "2026-01-20T00:00:00Z"
+    }
+  ],
+  "anggota": [
+    {
+      "id": "ang_1",
+      "nama_lengkap": "Ahmad Fauzi",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2008-08-15",
+      "golongan": "penegak",
+      "tingkatan": "Bantara",
+      "alamat_asal": "Kp. Sindangsari RT 02 RW 05, Desa Cisayong, Kecamatan Cisayong",
+      "pangkalan": "SMAN 1 Cisayong",
+      "kwartir_ranting_id": "kwarran_1",
+      "gudep_id": "gudep_1",
+      "created_by": "u_2",
+      "created_at": "2026-02-15T08:00:00Z"
+    },
+    {
+      "id": "ang_2",
+      "nama_lengkap": "Siti Rahmawati",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2009-04-12",
+      "golongan": "penegak",
+      "tingkatan": "Laksana",
+      "alamat_asal": "Jl. Raya Singaparna No. 45, Singaparna",
+      "pangkalan": "SMAN 1 Singaparna",
+      "kwartir_ranting_id": "kwarran_2",
+      "gudep_id": "gudep_3",
+      "created_by": "u_1",
+      "created_at": "2026-02-20T10:00:00Z"
+    },
+    {
+      "id": "ang_3",
+      "nama_lengkap": "Dadan Wildan",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2007-11-22",
+      "golongan": "pandega",
+      "tingkatan": "Pandega",
+      "alamat_asal": "Kp. Cikiray RT 04 RW 01, Desa Singaparna",
+      "pangkalan": "Masyarakat Umum Singaparna",
+      "kwartir_ranting_id": "kwarran_2",
+      "gudep_id": null,
+      "created_by": "u_1",
+      "created_at": "2026-03-01T11:00:00Z"
+    },
+    {
+      "id": "ang_4",
+      "nama_lengkap": "Rizki Aditya",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2015-05-10",
+      "golongan": "siaga",
+      "tingkatan": "Bantu",
+      "alamat_asal": "Kp. Cantigi, Cisayong",
+      "pangkalan": "SDN 1 Cisayong",
+      "kwartir_ranting_id": "kwarran_1",
+      "gudep_id": null,
+      "created_by": "u_2",
+      "created_at": "2026-03-05T09:00:00Z"
+    },
+    {
+      "id": "ang_5",
+      "nama_lengkap": "Budi Santoso",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2008-01-20",
+      "golongan": "penegak",
+      "tingkatan": "Bantara",
+      "alamat_asal": "Desa Ciawi, Kecamatan Ciawi",
+      "pangkalan": "SMAN 1 Ciawi",
+      "kwartir_ranting_id": "kwarran_3",
+      "gudep_id": null,
+      "created_by": "u_1",
+      "created_at": "2026-03-10T14:00:00Z"
+    }
+  ],
+  "anggota_saka": [
+    {
+      "id": "as_1",
+      "anggota_id": "ang_1",
+      "saka_id": "saka_1",
+      "status": "approved",
+      "sumber": "diajukan",
+      "created_at": "2026-03-15T00:00:00Z"
+    },
+    {
+      "id": "as_2",
+      "anggota_id": "ang_2",
+      "saka_id": "saka_2",
+      "status": "pending",
+      "sumber": "diajukan",
+      "created_at": "2026-04-01T00:00:00Z"
+    }
+  ],
+  "berita": [
+    {
+      "id": "berita_1",
+      "judul": "Raimuna Cabang Kabupaten Tasikmalaya 2026 Berlangsung Semarak di Cisayong",
+      "konten": "Cisayong, Tasikmalaya — Ribuan Pramuka Penegak dan Pandega se-Kabupaten Tasikmalaya memadati Bumi Perkemahan Cisayong dalam rangka Raimuna Cabang (Raicab) 2026. Kegiatan ini dibuka langsung oleh Ketua Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya, Kak H. Cecep Nurul Yakin.\n\nDalam sambutannya, Kak Cecep menekankan pentingnya peran pramuka sebagai garda terdepan dalam menjaga keutuhan NKRI dan menjadi teladan moral yang mulia di tengah perkembangan era digital. \"Adik-adik sekalian adalah pemimpin masa depan. Gunakan momen Raimuna ini untuk mengasah keterampilan, memperluas persaudaraan, dan menanamkan nilai luhur Pancasila dalam sanubari,\" ujarnya.\n\nBerbagai kegiatan menarik dilaksanakan selama lima hari, mulai dari workshop teknologi digital, bakti sosial masyarakat, simulasi tanggap bencana oleh Saka Bhayangkara, hingga festival kebudayaan lokal Tasikmalaya yang sangat dinamis.",
+      "gambar_cover": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=800&auto=format&fit=crop",
+      "author_type": "kwarcab",
+      "author_id": "u_1",
+      "author_nama": "Admin Kwarcab",
+      "status": "approved",
+      "is_featured": true,
+      "created_at": "2026-06-28T09:00:00Z"
+    },
+    {
+      "id": "berita_2",
+      "judul": "Pelatihan Tanggap Darurat Bencana Saka Bhayangkara Bersama Polres Tasikmalaya",
+      "konten": "Singaparna — Satuan Karya Pramuka (Saka) Bhayangkara Kwarcab Tasikmalaya menyelenggarakan Pelatihan Krida Penanggulangan Bencana alam bersama jajaran Satbinmas Polres Tasikmalaya di Lapangan Hitam Mapolres.\n\nKegiatan ini diikuti oleh 60 anggota perwakilan dari berbagai Kwartir Ranting. Materi utama yang disampaikan meliputi evakuasi korban bencana air (SAR), pertolongan pertama pada kecelakaan (PPPK), dan manajemen posko pengungsian. Instruktur pelatih dari Polres Tasikmalaya mengapresiasi semangat juang dan kedisiplinan yang ditunjukkan oleh adik-adik Saka Bhayangkara.",
+      "gambar_cover": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800&auto=format&fit=crop",
+      "author_type": "saka",
+      "author_id": "saka_1",
+      "author_nama": "Saka Bhayangkara",
+      "status": "approved",
+      "is_featured": false,
+      "created_at": "2026-07-02T14:30:00Z"
+    },
+    {
+      "id": "berita_3",
+      "judul": "Gugus Depan SMAN 1 Cisayong Adakan Gelar Senopati dan Karya Pramuka",
+      "konten": "Cisayong — Pangkalan Kian Santang - Dyah Pitaloka Gugus Depan SMAN 1 Cisayong menyelenggarakan kegiatan tahunan Gelar Senopati. Kegiatan ini diisi dengan pameran hasta karya daur ulang sampah organik, lomba ketangkasan baris-berbaris (LKBB), serta bakti bersih lingkungan di sekitar Kecamatan Cisayong.\n\nKegiatan ini mendapat apresiasi penuh dari Kwartir Ranting Cisayong yang turut hadir memonitoring jalannya acara.",
+      "gambar_cover": "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=800&auto=format&fit=crop",
+      "author_type": "gudep",
+      "author_id": "gudep_1",
+      "author_nama": "SMAN 1 Cisayong",
+      "status": "approved",
+      "is_featured": false,
+      "created_at": "2026-07-04T08:00:00Z"
+    },
+    {
+      "id": "berita_4",
+      "judul": "Pengajuan Agenda Sehat Bersama Saka Bakti Husada Tasikmalaya",
+      "konten": "Saka Bakti Husada berencana menyelenggarakan sosialisasi pola hidup bersih dan sehat (PHBS) serta pembagian masker medis di lingkungan pasar tradisional Singaparna. Kegiatan ini diinisiasi untuk mengedukasi masyarakat pasar akan pentingnya kesehatan pasca-pandemi.",
+      "gambar_cover": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop",
+      "author_type": "saka",
+      "author_id": "saka_2",
+      "author_nama": "Saka Bakti Husada",
+      "status": "pending",
+      "is_featured": false,
+      "created_at": "2026-07-05T01:00:00Z"
+    }
+  ],
+  "agenda": [
+    {
+      "id": "agenda_1",
+      "judul": "Karya Bakti Lebaran & Pos Pengamanan Pramuka Kwarcab Tasikmalaya 2026",
+      "deskripsi": "Partisipasi seluruh anggota Pramuka Penegak, Pandega, Saka Bhayangkara, dan Saka Bakti Husada dalam membantu pengamanan lalu lintas dan posko kesehatan mudik lebaran di jalur lingkar Gentong dan Singaparna.",
+      "tanggal_mulai": "2026-04-12",
+      "tanggal_selesai": "2026-04-20",
+      "kategori": "mandiri",
+      "owner_type": "kwarcab",
+      "owner_id": "u_1",
+      "created_at": "2026-03-15T00:00:00Z"
+    },
+    {
+      "id": "agenda_2",
+      "judul": "Pengiriman Kontingen Kwarcab Tasikmalaya ke Raimuna Nasional XIII 2026",
+      "deskripsi": "Pelepasan resmi dan pemberangkatan kontingen cabang terbaik Kabupaten Tasikmalaya untuk mengikuti Raimuna Nasional XIII di Bumi Perkemahan Cibubur, Jakarta.",
+      "tanggal_mulai": "2026-08-14",
+      "tanggal_selesai": "2026-08-21",
+      "kategori": "partisipasi_nasional",
+      "owner_type": "kwarcab",
+      "owner_id": "u_1",
+      "created_at": "2026-05-10T00:00:00Z"
+    },
+    {
+      "id": "agenda_3",
+      "judul": "Lomba Tingkat III (LT-III) Penggalang Kwarcab Tasikmalaya",
+      "deskripsi": "Pertemuan dan perlombaan regu penggalang terbaik utusan tiap Kwartir Ranting se-Kabupaten Tasikmalaya untuk merebut tiket mewakili cabang ke LT-IV tingkat Daerah Jawa Barat.",
+      "tanggal_mulai": "2026-07-15",
+      "tanggal_selesai": "2026-07-19",
+      "kategori": "mandiri",
+      "owner_type": "kwarcab",
+      "owner_id": "u_1",
+      "created_at": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "notifikasi": [
+    {
+      "id": "notif_1",
+      "user_id": "u_1",
+      "tipe": "berita_pengajuan",
+      "pesan": "Saka Bakti Husada mengajukan berita baru: \"Pengajuan Agenda Sehat Bersama Saka Bakti Husada Tasikmalaya\"",
+      "referensi_id": "berita_4",
+      "is_read": false,
+      "created_at": "2026-07-05T01:00:00Z"
+    }
+  ],
+  "pimpinan_kwarcab": [
+    {
+      "id": "p_1",
+      "nama": "H. Cecep Nurul Yakin, S.Pd., M.A.P.",
+      "jabatan": "Ketua Kwartir Cabang",
+      "foto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop",
+      "urutan": 1
+    },
+    {
+      "id": "p_2",
+      "nama": "Drs. H. Ahmad Saefudin, M.Pd.",
+      "jabatan": "Ketua Harian",
+      "foto": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop",
+      "urutan": 2
+    },
+    {
+      "id": "p_3",
+      "nama": "Yayat Ruhiyat, S.Pd., M.Si.",
+      "jabatan": "Sekretaris Umum",
+      "foto": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop",
+      "urutan": 3
+    },
+    {
+      "id": "p_4",
+      "nama": "Hj. Endah Nurhayati, S.E.",
+      "jabatan": "Bendahara Umum",
+      "foto": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop",
+      "urutan": 4
+    }
+  ],
+  "profil_kwarcab": [
+    {
+      "id": "profil_1",
+      "visi": "Terwujudnya Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya yang Edukatif, Mandiri, Berkarakter, dan Unggul Menuju Kabupaten Tasikmalaya yang Religius Islami.",
+      "misi": "1. Meningkatkan kualitas pembinaan mental, spiritual, jasmani, dan moral anggota Gerakan Pramuka se-Kabupaten Tasikmalaya.\n2. Mengoptimalkan tata kelola organisasi kwartir secara modern, transparan, dan akuntabel.\n3. Meningkatkan kompetensi pembina, pelatih, dan pamong saka secara berkelanjutan.\n4. Menyelenggarakan kegiatan kepramukaan yang inovatif, menarik, menantang, dan berbasis kearifan lokal.\n5. Memperkuat kolaborasi dengan pemerintah daerah, masyarakat, dan mitra gerakan kepramukaan dalam pembangunan pemuda.",
+      "sejarah": "Gerakan Pramuka di Kabupaten Tasikmalaya memiliki sejarah panjang yang mengakar kuat sejak masa kepanduan sebelum kemerdekaan Indonesia. Melalui peleburan berbagai organisasi kepanduan pada tahun 1961 berdasarkan Keputusan Presiden No. 238 Tahun 1961, Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya resmi berdiri.\n\nSebagai salah satu kwartir cabang terbesar di wilayah Jawa Barat, Kwarcab Kabupaten Tasikmalaya secara konsisten melahirkan kader-kader pemimpin bangsa yang tangguh dan religius. Kantor Kwarcab Tasikmalaya yang saat ini berpusat di Singaparna terus menjadi episentrum pendidikan karakter non-formal bagi puluhan ribu peserta didik dari golongan Siaga, Penggalang, Penegak, hingga Pandega.",
+      "hero_mode": "dinamis",
+      "banner_statis_url": "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop"
+    }
+  ],
+  "kampung_pramuka": [
+    {
+      "id": "kp_1",
+      "nama": "Kampung Pramuka Cisayong",
+      "kecamatan": "Cisayong",
+      "latitude": -7.2858,
+      "longitude": 108.1472,
+      "foto": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=800,https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=800",
+      "sejarah": "Kampung Pramuka Cisayong dirintis sejak pertengahan tahun 2024 sebagai kolaborasi strategis antara Kwartir Cabang Tasikmalaya dan Pemerintah Desa Cisayong. Kawasan ini didedikasikan untuk membangun desa wisata yang mengintegrasikan nilai-nilai kepramukaan, kemandirian pemuda, serta pelestarian lingkungan hidup dan agrobisnis pedesaan.",
+      "keunggulan": "Bumi perkemahan mandiri bernuansa pinus, perkebunan organik terpadu yang dikelola pramuka penegak, pengolahan limbah organik berbasis maggot, dan kegiatan berkala edukasi konservasi air.",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
+      "id": "kp_2",
+      "nama": "Kampung Pramuka Singaparna",
+      "kecamatan": "Singaparna",
+      "latitude": -7.3508,
+      "longitude": 108.1122,
+      "foto": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800,https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800",
+      "sejarah": "Kampung Pramuka Singaparna didirikan pada tahun 2025 dengan fokus utama pada pemberdayaan ekonomi kreatif remaja dan penguasaan IPTEK kepramukaan. Lokasi ini menjadi inkubator bisnis anyaman bambu dan media kreatif bagi pramuka golongan penegak dan pandega se-Singaparna.",
+      "keunggulan": "Sentra pelatihan kerajinan anyaman bambu modern, ruang kreasi digital pemuda, kemitraan program gizi posyandu remaja, dan jaringan kewirausahaan mandiri.",
+      "created_at": "2026-02-15T00:00:00Z"
+    }
+  ],
+  "kta_config": {
+    "nama_ketua": "H. Agus Ridallah, S.H., M.H., M.Pd.",
+    "tanda_tangan_url": "",
+    "stempel_url": ""
+  }
+}
