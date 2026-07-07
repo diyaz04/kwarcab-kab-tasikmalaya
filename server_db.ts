@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { 
   User, KwartirRanting, GugusDepan, SatuanKarya, 
   Anggota, AnggotaSaka, Berita, Agenda, 
@@ -7,6 +8,18 @@ import {
 } from './src/types';
 
 const STORE_PATH = path.join(process.cwd(), 'data', 'db_store.json');
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
 
 export interface DbState {
   users: User[];
@@ -23,6 +36,38 @@ export interface DbState {
   kampung_pramuka: KampungPramuka[];
   kta_config: KtaConfig;
 }
+
+type ArrayTableName = Exclude<keyof DbState, 'kta_config'>;
+
+const ARRAY_TABLES: ArrayTableName[] = [
+  'users',
+  'kwartir_ranting',
+  'gugus_depan',
+  'satuan_karya',
+  'anggota',
+  'anggota_saka',
+  'berita',
+  'agenda',
+  'notifikasi',
+  'pimpinan_kwarcab',
+  'profil_kwarcab',
+  'kampung_pramuka'
+];
+
+const DELETE_ORDER: ArrayTableName[] = [
+  'notifikasi',
+  'anggota_saka',
+  'anggota',
+  'berita',
+  'agenda',
+  'gugus_depan',
+  'satuan_karya',
+  'kwartir_ranting',
+  'users',
+  'pimpinan_kwarcab',
+  'profil_kwarcab',
+  'kampung_pramuka'
+];
 
 const DEFAULT_KTA_CONFIG: KtaConfig = {
   nama_ketua: 'H. Agus Ridallah, S.H., M.H., M.Pd.',
@@ -463,11 +508,32 @@ const DEFAULT_KAMPUNG_PRAMUKA: KampungPramuka[] = [
   }
 ];
 
+function createDefaultState(): DbState {
+  return {
+    users: DEFAULT_USERS,
+    kwartir_ranting: DEFAULT_KWARRAN,
+    gugus_depan: DEFAULT_GUDEP,
+    satuan_karya: DEFAULT_SAKA,
+    anggota: DEFAULT_ANGGOTA,
+    anggota_saka: DEFAULT_ANGGOTA_SAKA,
+    berita: DEFAULT_BERITA,
+    agenda: DEFAULT_AGENDA,
+    notifikasi: DEFAULT_NOTIFIKASI,
+    pimpinan_kwarcab: DEFAULT_PIMPINAN,
+    profil_kwarcab: [DEFAULT_PROFIL],
+    kampung_pramuka: DEFAULT_KAMPUNG_PRAMUKA,
+    kta_config: DEFAULT_KTA_CONFIG
+  };
+}
+
 export class DatabaseSim {
   private state: DbState;
+  private syncTimer: NodeJS.Timeout | null = null;
+  public readonly ready: Promise<void>;
 
   constructor() {
     this.state = this.load();
+    this.ready = this.bootstrapSupabase();
   }
 
   private load(): DbState {
@@ -499,27 +565,55 @@ export class DatabaseSim {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    const defaultState: DbState = {
-      users: DEFAULT_USERS,
-      kwartir_ranting: DEFAULT_KWARRAN,
-      gugus_depan: DEFAULT_GUDEP,
-      satuan_karya: DEFAULT_SAKA,
-      anggota: DEFAULT_ANGGOTA,
-      anggota_saka: DEFAULT_ANGGOTA_SAKA,
-      berita: DEFAULT_BERITA,
-      agenda: DEFAULT_AGENDA,
-      notifikasi: DEFAULT_NOTIFIKASI,
-      pimpinan_kwarcab: DEFAULT_PIMPINAN,
-      profil_kwarcab: [DEFAULT_PROFIL],
-      kampung_pramuka: DEFAULT_KAMPUNG_PRAMUKA,
-      kta_config: DEFAULT_KTA_CONFIG
-    };
+    const defaultState: DbState = createDefaultState();
 
     fs.writeFileSync(STORE_PATH, JSON.stringify(defaultState, null, 2), 'utf-8');
     return defaultState;
   }
 
-  public save(): void {
+  private async bootstrapSupabase(): Promise<void> {
+    if (!supabase) {
+      console.log('[Database] Supabase env not configured; using local JSON store.');
+      return;
+    }
+
+    try {
+      await this.pullFromSupabase();
+      await this.flushToSupabase();
+      this.persistLocalOnly();
+      console.log('[Database] Supabase integration ready.');
+    } catch (e) {
+      console.error('[Database] Supabase bootstrap failed; continuing with local JSON store.', e);
+    }
+  }
+
+  private async pullFromSupabase(): Promise<void> {
+    if (!supabase) return;
+
+    for (const table of ARRAY_TABLES) {
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) throw new Error(`${table}: ${error.message}`);
+      if (data && data.length > 0) {
+        (this.state[table] as any[]) = data;
+      }
+    }
+
+    const { data: ktaRows, error: ktaError } = await supabase
+      .from('kta_config')
+      .select('nama_ketua,tanda_tangan_url,stempel_url')
+      .eq('id', 'kta_1')
+      .limit(1);
+    if (ktaError) throw new Error(`kta_config: ${ktaError.message}`);
+    if (ktaRows && ktaRows.length > 0) {
+      this.state.kta_config = {
+        nama_ketua: ktaRows[0].nama_ketua || DEFAULT_KTA_CONFIG.nama_ketua,
+        tanda_tangan_url: ktaRows[0].tanda_tangan_url || '',
+        stempel_url: ktaRows[0].stempel_url || ''
+      };
+    }
+  }
+
+  private persistLocalOnly(): void {
     try {
       const dir = path.dirname(STORE_PATH);
       if (!fs.existsSync(dir)) {
@@ -529,6 +623,57 @@ export class DatabaseSim {
     } catch (e) {
       console.error('Error saving database state', e);
     }
+  }
+
+  private queueSupabaseSync(): void {
+    if (!supabase) return;
+    if (this.syncTimer) clearTimeout(this.syncTimer);
+    this.syncTimer = setTimeout(() => {
+      this.syncTimer = null;
+      void this.flushToSupabase();
+    }, 150);
+  }
+
+  private async flushToSupabase(): Promise<void> {
+    if (!supabase) return;
+
+    try {
+      for (const table of ARRAY_TABLES) {
+        const rows = this.state[table] as any[];
+        if (rows.length > 0) {
+          const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+          if (error) throw new Error(`${table} upsert: ${error.message}`);
+        }
+      }
+
+      const { error: ktaError } = await supabase.from('kta_config').upsert({
+        id: 'kta_1',
+        ...this.state.kta_config,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+      if (ktaError) throw new Error(`kta_config upsert: ${ktaError.message}`);
+
+      for (const table of DELETE_ORDER) {
+        const localIds = new Set((this.state[table] as any[]).map(row => row.id));
+        const { data: remoteRows, error } = await supabase.from(table).select('id');
+        if (error) throw new Error(`${table} select ids: ${error.message}`);
+
+        const staleIds = (remoteRows || [])
+          .map((row: any) => row.id)
+          .filter((id: string) => !localIds.has(id));
+        if (staleIds.length > 0) {
+          const { error: deleteError } = await supabase.from(table).delete().in('id', staleIds);
+          if (deleteError) throw new Error(`${table} delete stale: ${deleteError.message}`);
+        }
+      }
+    } catch (e) {
+      console.error('[Database] Supabase sync failed.', e);
+    }
+  }
+
+  public save(): void {
+    this.persistLocalOnly();
+    this.queueSupabaseSync();
   }
 
   // Users CRUD
@@ -709,6 +854,24 @@ export class DatabaseSim {
       this.state.kampung_pramuka = [];
     }
     this.state.kampung_pramuka = this.state.kampung_pramuka.filter(kp => kp.id !== id);
+    this.save();
+  }
+
+  // KTA Config
+  public getKtaConfig(): KtaConfig {
+    if (!this.state.kta_config) {
+      this.state.kta_config = DEFAULT_KTA_CONFIG;
+      this.save();
+    }
+    return this.state.kta_config;
+  }
+
+  public setKtaConfig(config: KtaConfig): void {
+    this.state.kta_config = {
+      nama_ketua: config.nama_ketua || DEFAULT_KTA_CONFIG.nama_ketua,
+      tanda_tangan_url: config.tanda_tangan_url || '',
+      stempel_url: config.stempel_url || ''
+    };
     this.save();
   }
 }

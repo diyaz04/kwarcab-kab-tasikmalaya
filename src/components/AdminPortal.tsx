@@ -545,7 +545,7 @@ export default function AdminPortal({
         body: JSON.stringify({ ...a, is_kta_printed: true })
       });
       setAnggotaList(prev => prev.map(ang => ang.id === a.id ? { ...ang, is_kta_printed: true } : ang));
-      fetchData(); 
+      await loadDashboardData(); 
     } catch (err) {
       console.error('Gagal update status KTA', err);
     }
@@ -1251,84 +1251,113 @@ export default function AdminPortal({
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  const handleBase64Upload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
+  type CompressionOptions = {
+    maxDimension?: number;
+    quality?: number;
+    filenamePrefix?: string;
+    successMessage?: string;
+  };
+
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('File gambar tidak valid'));
+      img.src = src;
+    });
+  };
+
+  const compressImageFile = async (file: File, options: CompressionOptions = {}) => {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File harus berupa gambar');
+    }
+
+    const dataUrl = await readFileAsDataUrl(file);
+    const img = await loadImage(dataUrl);
+    const maxDimension = options.maxDimension ?? 1000;
+    const quality = options.quality ?? 0.48;
+    const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Browser tidak mendukung kompresi gambar');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    let contentType = 'image/webp';
+    let compressedDataUrl = canvas.toDataURL(contentType, quality);
+    if (!compressedDataUrl.startsWith('data:image/webp')) {
+      contentType = 'image/jpeg';
+      compressedDataUrl = canvas.toDataURL(contentType, quality);
+    }
+
+    const extension = contentType === 'image/webp' ? 'webp' : 'jpg';
+    const originalName = file.name.replace(/\.[^.]+$/, '');
+    return {
+      base64Data: compressedDataUrl.split(',')[1],
+      contentType,
+      filename: `${options.filenamePrefix || ''}${originalName}.${extension}`
+    };
+  };
+
+  const uploadCompressedImage = async (
+    file: File,
+    callback: (url: string) => void,
+    options: CompressionOptions = {}
+  ) => {
+    const compressed = await compressImageFile(file, options);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ ...compressed, compressed: true })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url) {
+      throw new Error(data.error || 'Unggah gagal');
+    }
+    callback(data.url);
+    showSuccess(options.successMessage || 'Gambar berhasil dikompresi maksimal dan diunggah!');
+  };
+
+  const handleBase64Upload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    callback: (url: string) => void,
+    options: CompressionOptions = {}
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = (reader.result as string).split(',')[1];
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            filename: file.name,
-            base64Data
-          })
-        });
-        const data = await res.json();
-        if (data.url) {
-          callback(data.url);
-          showSuccess('Gambar berhasil diunggah!');
-        } else {
-          setErrorMsg(data.error || 'Unggah gagal');
-        }
-      } catch (err: any) {
-        setErrorMsg('Error upload: ' + err.message);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      await uploadCompressedImage(file, callback, options);
+    } catch (err: any) {
+      setErrorMsg('Error upload: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleCompressedUpload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 300;
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Kompresi maksimal untuk KTA (0.6)
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-        
-        try {
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              filename: 'kta_' + file.name,
-              base64Data: compressedBase64
-            })
-          });
-          const data = await res.json();
-          if (data.url) {
-            callback(data.url);
-            showSuccess('Foto profil berhasil diunggah dan dikompresi!');
-          } else {
-            setErrorMsg(data.error || 'Unggah gagal');
-          }
-        } catch (err: any) {
-          setErrorMsg('Error upload: ' + err.message);
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    await handleBase64Upload(e, callback, {
+      maxDimension: 420,
+      quality: 0.42,
+      filenamePrefix: 'kta_',
+      successMessage: 'Foto profil berhasil dikompresi maksimal dan diunggah!'
+    });
   };
 
   // --- ACTIONS: ANGGOTA CRUD ---
@@ -2565,7 +2594,7 @@ export default function AdminPortal({
                             className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-900/40 file:text-purple-300 hover:file:bg-purple-900/60"
                           />
                           <p className="text-[10px] text-purple-300/60 font-light mt-1">
-                            Pilih gambar dari perangkat Anda. Gambar akan otomatis dikompresi sebelum diunggah (mendukung persiapan upload ke Supabase/Cloudinary).
+                            Pilih gambar dari perangkat Anda. Gambar akan otomatis dikompresi sebelum diunggah ke Cloudinary.
                           </p>
                         </div>
                       </div>
@@ -2786,22 +2815,32 @@ export default function AdminPortal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-purple-300">Tanda Tangan (PNG Transparan)</label>
+                    <label className="text-xs font-bold text-purple-300">Tanda Tangan (Transparan)</label>
                     <input
                       type="file"
                       accept="image/png"
                       className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900/50 file:text-[#D4AF37] hover:file:bg-purple-800/80 cursor-pointer"
-                      onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, tanda_tangan_url: url}))}
+                      onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, tanda_tangan_url: url}), {
+                        maxDimension: 700,
+                        quality: 0.42,
+                        filenamePrefix: 'ttd_',
+                        successMessage: 'Tanda tangan berhasil dikompresi maksimal dan diunggah!'
+                      })}
                     />
                     {ktaConfig.tanda_tangan_url && <img src={ktaConfig.tanda_tangan_url} alt="TTD" className="h-12 object-contain bg-white/5 border border-white/10 rounded-lg p-1" />}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-purple-300">Stempel Kwarcab (PNG Transparan)</label>
+                    <label className="text-xs font-bold text-purple-300">Stempel Kwarcab (Transparan)</label>
                     <input
                       type="file"
                       accept="image/png"
                       className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900/50 file:text-[#D4AF37] hover:file:bg-purple-800/80 cursor-pointer"
-                      onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, stempel_url: url}))}
+                      onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, stempel_url: url}), {
+                        maxDimension: 700,
+                        quality: 0.42,
+                        filenamePrefix: 'stempel_',
+                        successMessage: 'Stempel berhasil dikompresi maksimal dan diunggah!'
+                      })}
                     />
                     {ktaConfig.stempel_url && <img src={ktaConfig.stempel_url} alt="Stempel" className="h-12 object-contain bg-white/5 border border-white/10 rounded-lg p-1" />}
                   </div>
@@ -4054,7 +4093,12 @@ export default function AdminPortal({
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleBase64Upload(e, setBerCover)}
+                        onChange={(e) => handleBase64Upload(e, setBerCover, {
+                          maxDimension: 1200,
+                          quality: 0.46,
+                          filenamePrefix: 'cover_',
+                          successMessage: 'Cover berita berhasil dikompresi maksimal dan diunggah!'
+                        })}
                         className="w-full bg-black/40 text-xs text-white px-4 py-2 rounded-xl border border-white/10"
                       />
                       {berCover && (

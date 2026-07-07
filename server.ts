@@ -1,6 +1,8 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { DatabaseSim } from './server_db';
 import { User, UserRole, GolonganPramuka } from './src/types';
 
@@ -22,6 +24,87 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(uploadsDir));
+
+type CloudinaryUploadResult = {
+  secure_url?: string;
+  url?: string;
+  public_id?: string;
+  error?: { message?: string };
+};
+
+const getMimeType = (filename: string, contentType?: string): string => {
+  if (contentType) return contentType;
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+};
+
+const signCloudinaryParams = (params: Record<string, string>, apiSecret: string): string => {
+  const payload = Object.keys(params)
+    .filter(key => params[key] !== '')
+    .sort()
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
+  return crypto.createHash('sha1').update(payload + apiSecret).digest('hex');
+};
+
+const optimizeCloudinaryUrl = (url: string): string => {
+  return url.includes('/upload/') ? url.replace('/upload/', '/upload/f_auto,q_auto:eco/') : url;
+};
+
+const uploadToCloudinary = async (
+  filename: string,
+  base64Data: string,
+  contentType?: string
+): Promise<string | null> => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || (!uploadPreset && (!apiKey || !apiSecret))) {
+    return null;
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const publicId = `${Date.now()}-${filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const params: Record<string, string> = {
+    file: `data:${getMimeType(filename, contentType)};base64,${base64Data}`,
+    public_id: publicId,
+    folder: 'kwarcab'
+  };
+
+  if (uploadPreset) {
+    params.upload_preset = uploadPreset;
+  }
+
+  if (apiKey && apiSecret) {
+    params.api_key = apiKey;
+    params.timestamp = timestamp;
+    const signatureParams: Record<string, string> = {
+      folder: params.folder,
+      public_id: params.public_id,
+      timestamp
+    };
+    if (uploadPreset) signatureParams.upload_preset = uploadPreset;
+    params.signature = signCloudinaryParams(signatureParams, apiSecret);
+  }
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: 'POST',
+    body: new URLSearchParams(params)
+  });
+  const data = await response.json() as CloudinaryUploadResult;
+
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || 'Cloudinary upload failed');
+  }
+
+  const uploadedUrl = data.secure_url || data.url;
+  return uploadedUrl ? optimizeCloudinaryUrl(uploadedUrl) : null;
+};
 
 // --- SIMPLE JWT / SESSION TOKEN SYSTEM ---
 const TOKEN_SECRET = 'kwarcab-tasikmalaya-super-secret-key-2026';
@@ -183,22 +266,32 @@ app.get('/api/auth/me', authenticate, (req: AuthRequest, res: Response) => {
 });
 
 
-// --- UPLOAD ENDPOINT (R2 Simulation) ---
-app.post('/api/upload', authenticate, (req: Request, res: Response) => {
-  const { filename, base64Data } = req.body;
+// --- UPLOAD ENDPOINT (Cloudinary first, local fallback) ---
+app.post('/api/upload', authenticate, async (req: Request, res: Response) => {
+  const { filename, base64Data, contentType, compressed } = req.body;
   if (!filename || !base64Data) {
     res.status(400).json({ error: 'Filename and base64Data are required' });
     return;
   }
+  if (contentType?.startsWith('image/') && compressed !== true) {
+    res.status(400).json({ error: 'Image uploads must be compressed before upload' });
+    return;
+  }
 
   try {
+    const cloudinaryUrl = await uploadToCloudinary(filename, base64Data, contentType);
+    if (cloudinaryUrl) {
+      res.json({ url: cloudinaryUrl, provider: 'cloudinary' });
+      return;
+    }
+
     const fileBuffer = Buffer.from(base64Data, 'base64');
     const safeFilename = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const filePath = path.join(uploadsDir, safeFilename);
 
     fs.writeFileSync(filePath, fileBuffer);
     const url = `/uploads/${safeFilename}`;
-    res.json({ url });
+    res.json({ url, provider: 'local' });
   } catch (e: any) {
     res.status(500).json({ error: 'Upload failed: ' + e.message });
   }
@@ -1301,6 +1394,8 @@ app.put('/api/admin/kta-config', authenticate, authorize(['kwarcab']), (req: Aut
 // --- VITE MIDDLEWARE OR STATIC SERVER ---
 
 const initServer = async () => {
+  await db.ready;
+
   if (process.env.NODE_ENV === 'production' || process.env.DISABLE_HMR === 'true') {
     // Serve static files from 'dist'
     const distPath = path.join(process.cwd(), 'dist');
