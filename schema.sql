@@ -8,10 +8,15 @@ CREATE TABLE IF NOT EXISTS users (
   nama TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('kwarcab', 'kwarran', 'gudep', 'saka')),
+  role TEXT NOT NULL CHECK (role IN ('kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka')),
   ref_id TEXT,
+  permissions JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'));
 
 CREATE TABLE IF NOT EXISTS kwartir_ranting (
   id TEXT PRIMARY KEY,

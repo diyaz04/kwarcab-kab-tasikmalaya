@@ -5,7 +5,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase } from './server_db';
-import { User, UserRole, GolonganPramuka } from './src/types';
+import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 
 const app = express();
 const PORT = 3000;
@@ -15,6 +15,25 @@ const isServerlessRuntime = process.env.NETLIFY === 'true'
 
 // Initialize Database Sim
 const db = new DatabaseSim();
+
+const KWARCAB_MANAGEMENT_PERMISSIONS: AdminPermission[] = [
+  'anggota',
+  'kta',
+  'kwarran',
+  'gudep',
+  'saka',
+  'kampung_pramuka',
+  'berita',
+  'agenda',
+  'config'
+];
+
+const normalizePermissions = (permissions: unknown): AdminPermission[] => {
+  if (!Array.isArray(permissions)) return [];
+  return permissions.filter((permission): permission is AdminPermission =>
+    KWARCAB_MANAGEMENT_PERMISSIONS.includes(permission as AdminPermission)
+  );
+};
 
 // Body Parser with high limits for base64 uploads
 app.use(express.json({ limit: '50mb' }));
@@ -147,7 +166,8 @@ const syncSupabaseAuthUser = async (user: User, password?: string, lookupEmail =
     app_user_id: user.id,
     nama: user.nama,
     role: user.role,
-    ref_id: user.ref_id
+    ref_id: user.ref_id,
+    permissions: normalizePermissions(user.permissions)
   };
   const existingAuthUser = await findSupabaseAuthUserByEmail(lookupEmail);
 
@@ -208,6 +228,7 @@ function generateToken(user: User): string {
     email: user.email,
     role: user.role,
     ref_id: user.ref_id,
+    permissions: normalizePermissions(user.permissions),
     exp: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
   };
   const payloadStr = JSON.stringify(payload);
@@ -244,6 +265,7 @@ interface AuthRequest extends Request {
     email: string;
     role: UserRole;
     ref_id: string | null;
+    permissions?: AdminPermission[];
   };
 }
 
@@ -259,8 +281,34 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
     return;
   }
-  req.user = decoded;
+  const currentUser = db.getUsers().find(u => u.id === decoded.id);
+  req.user = currentUser ? {
+    id: currentUser.id,
+    nama: currentUser.nama,
+    email: currentUser.email,
+    role: currentUser.role,
+    ref_id: currentUser.ref_id,
+    permissions: normalizePermissions(currentUser.permissions)
+  } : {
+    ...decoded,
+    permissions: normalizePermissions(decoded.permissions)
+  };
   next();
+};
+
+const hasKwarcabPermission = (user: AuthRequest['user'], permission: AdminPermission): boolean => {
+  if (!user) return false;
+  if (user.role === 'kwarcab') return true;
+  return user.role === 'staff_kwarcab' && normalizePermissions(user.permissions).includes(permission);
+};
+
+const hasAnyKwarcabPermission = (user: AuthRequest['user']): boolean => {
+  if (!user) return false;
+  return user.role === 'kwarcab' || (user.role === 'staff_kwarcab' && normalizePermissions(user.permissions).length > 0);
+};
+
+const asKwarcabContentType = (user: AuthRequest['user'], permission: AdminPermission): 'kwarcab' | UserRole => {
+  return hasKwarcabPermission(user, permission) ? 'kwarcab' : user!.role;
 };
 
 // RBAC Middleware generator
@@ -275,6 +323,34 @@ const authorize = (allowedRoles: UserRole[]) => {
       return;
     }
     next();
+  };
+};
+
+const authorizeKwarcab = (permission: AdminPermission) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    if (!hasKwarcabPermission(req.user, permission)) {
+      res.status(403).json({ error: 'Forbidden: Akses staf Kwarcab tidak mencakup modul ini' });
+      return;
+    }
+    next();
+  };
+};
+
+const authorizeWithKwarcabPermission = (allowedRoles: UserRole[], permission: AdminPermission) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    if (allowedRoles.includes(req.user.role) || hasKwarcabPermission(req.user, permission)) {
+      next();
+      return;
+    }
+    res.status(403).json({ error: 'Forbidden: You do not have permission to access this resource' });
   };
 };
 
@@ -334,7 +410,8 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       nama: user.nama,
       email: user.email,
       role: user.role,
-      ref_id: user.ref_id
+      ref_id: user.ref_id,
+      permissions: normalizePermissions(user.permissions)
     }
   });
 });
@@ -355,7 +432,8 @@ app.get('/api/auth/me', authenticate, (req: AuthRequest, res: Response) => {
       nama: user.nama,
       email: user.email,
       role: user.role,
-      ref_id: user.ref_id
+      ref_id: user.ref_id,
+      permissions: normalizePermissions(user.permissions)
     }
   });
 });
@@ -400,6 +478,11 @@ app.get('/api/public/runtime', (req: Request, res: Response) => {
   res.json({
     supabaseConfigured: isSupabaseConfigured,
     supabaseConnected,
+    supabaseLastError: db.getSupabaseLastError(),
+    supabaseUrlPresent: Boolean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
+    supabaseKeyPresent: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY),
+    usingServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    netlifyRuntime: Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME),
     devPanelEnabled: !supabaseConnected
   });
 });
@@ -550,12 +633,10 @@ app.get('/api/admin/stats', authenticate, (req: AuthRequest, res: Response) => {
   let pendingBeritaCount = 0;
   let pendingSakaApprovalCount = 0;
 
-  if (user.role === 'kwarcab') {
+  if (hasKwarcabPermission(user, 'anggota')) {
     filteredAnggota = rawAnggota;
-    pendingBeritaCount = rawBerita.filter(b => b.status === 'pending').length;
   } else if (user.role === 'kwarran') {
     filteredAnggota = rawAnggota.filter(a => a.kwartir_ranting_id === user.ref_id);
-    pendingBeritaCount = rawBerita.filter(b => b.status === 'pending' && b.author_type === 'kwarran' && b.author_id === user.ref_id).length;
   } else if (user.role === 'gudep') {
     filteredAnggota = rawAnggota.filter(a => a.gudep_id === user.ref_id);
   } else if (user.role === 'saka') {
@@ -563,6 +644,14 @@ app.get('/api/admin/stats', authenticate, (req: AuthRequest, res: Response) => {
     const ids = new Set(sJunc.map(j => j.anggota_id));
     filteredAnggota = rawAnggota.filter(a => ids.has(a.id));
     pendingSakaApprovalCount = db.getAnggotaSaka().filter(as => as.saka_id === user.ref_id && as.status === 'pending').length;
+  } else if (user.role === 'staff_kwarcab') {
+    filteredAnggota = [];
+  }
+
+  if (hasKwarcabPermission(user, 'berita')) {
+    pendingBeritaCount = rawBerita.filter(b => b.status === 'pending').length;
+  } else if (user.role === 'kwarran') {
+    pendingBeritaCount = rawBerita.filter(b => b.status === 'pending' && b.author_type === 'kwarran' && b.author_id === user.ref_id).length;
   }
 
   // Calculate demographics
@@ -590,7 +679,9 @@ app.get('/api/admin/anggota', authenticate, (req: AuthRequest, res: Response) =>
 
   let results = allAnggota;
 
-  if (user.role === 'kwarran') {
+  if (user.role === 'staff_kwarcab' && !hasKwarcabPermission(user, 'anggota')) {
+    results = [];
+  } else if (user.role === 'kwarran') {
     results = allAnggota.filter(a => a.kwartir_ranting_id === user.ref_id);
   } else if (user.role === 'gudep') {
     results = allAnggota.filter(a => a.gudep_id === user.ref_id);
@@ -631,7 +722,7 @@ app.get('/api/admin/anggota', authenticate, (req: AuthRequest, res: Response) =>
 });
 
 // Add Anggota
-app.post('/api/admin/anggota', authenticate, authorize(['kwarcab', 'kwarran', 'gudep']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kwarran', 'gudep'], 'anggota'), (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const { 
     nama_lengkap, tempat_lahir, tanggal_lahir, golongan, tingkatan, 
@@ -694,7 +785,7 @@ app.post('/api/admin/anggota', authenticate, authorize(['kwarcab', 'kwarran', 'g
 });
 
 // Update Anggota
-app.put('/api/admin/anggota/:id', authenticate, authorize(['kwarcab', 'kwarran', 'gudep']), (req: AuthRequest, res: Response) => {
+app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission(['kwarran', 'gudep'], 'anggota'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
   const currentAnggota = db.getAnggota().find(a => a.id === id);
@@ -786,7 +877,7 @@ app.put('/api/admin/anggota/:id', authenticate, authorize(['kwarcab', 'kwarran',
 });
 
 // Delete Anggota
-app.delete('/api/admin/anggota/:id', authenticate, authorize(['kwarcab', 'kwarran', 'gudep']), (req: AuthRequest, res: Response) => {
+app.delete('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission(['kwarran', 'gudep'], 'anggota'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
   const currentAnggota = db.getAnggota().find(a => a.id === id);
@@ -811,7 +902,7 @@ app.delete('/api/admin/anggota/:id', authenticate, authorize(['kwarcab', 'kwarra
 });
 
 // --- PATH A: SAKA APPROVE/REJECT ENTRAINMENT ---
-app.post('/api/admin/saka/approve-member', authenticate, authorize(['saka', 'kwarcab']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/saka/approve-member', authenticate, authorizeWithKwarcabPermission(['saka'], 'saka'), (req: AuthRequest, res: Response) => {
   const { junction_id, action } = req.body; // action: 'approve' | 'reject'
   if (!junction_id || !action) {
     res.status(400).json({ error: 'junction_id and action are required' });
@@ -937,7 +1028,7 @@ app.get('/api/admin/kwarran', authenticate, (req: Request, res: Response) => {
   res.json(db.getKwarran());
 });
 
-app.post('/api/admin/kwarran', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: Request, res: Response) => {
   const { nama_kecamatan, ketua, sekretaris, bendahara, status, foto_ketua, foto_sekretaris, foto_bendahara } = req.body;
   if (!nama_kecamatan || !ketua || !sekretaris || !bendahara) {
     res.status(400).json({ error: 'Data kecamatan dan pengurus inti wajib diisi' });
@@ -968,7 +1059,7 @@ app.put('/api/admin/kwarran/:id', authenticate, (req: AuthRequest, res: Response
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
-  if (user.role !== 'kwarcab' && user.role !== 'kwarran') {
+  if (!hasKwarcabPermission(user, 'kwarran') && user.role !== 'kwarran') {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -977,7 +1068,7 @@ app.put('/api/admin/kwarran/:id', authenticate, (req: AuthRequest, res: Response
   res.json({ message: 'Kwarran updated successfully' });
 });
 
-app.delete('/api/admin/kwarran/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.delete('/api/admin/kwarran/:id', authenticate, authorizeKwarcab('kwarran'), (req: Request, res: Response) => {
   db.deleteKwarran(req.params.id);
   res.json({ message: 'Kwarran deleted successfully' });
 });
@@ -996,7 +1087,7 @@ app.get('/api/admin/gudep', authenticate, (req: AuthRequest, res: Response) => {
   }
 });
 
-app.post('/api/admin/gudep', authenticate, authorize(['kwarcab', 'kwarran']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/gudep', authenticate, authorizeWithKwarcabPermission(['kwarran'], 'gudep'), (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const { nama_pangkalan, kwartir_ranting_id } = req.body;
   const targetKwarranId = user.role === 'kwarran' ? user.ref_id! : kwartir_ranting_id;
@@ -1033,12 +1124,16 @@ app.put('/api/admin/gudep/:id', authenticate, (req: AuthRequest, res: Response) 
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
+  if (!hasKwarcabPermission(user, 'gudep') && user.role !== 'kwarran' && user.role !== 'gudep') {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
 
   db.updateGudep(id, req.body);
   res.json({ message: 'Gudep updated successfully' });
 });
 
-app.delete('/api/admin/gudep/:id', authenticate, authorize(['kwarcab', 'kwarran']), (req: AuthRequest, res: Response) => {
+app.delete('/api/admin/gudep/:id', authenticate, authorizeWithKwarcabPermission(['kwarran'], 'gudep'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
   const current = db.getGudep().find(g => g.id === id);
@@ -1062,7 +1157,7 @@ app.get('/api/admin/saka', authenticate, (req: Request, res: Response) => {
   res.json(db.getSaka());
 });
 
-app.post('/api/admin/saka', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.post('/api/admin/saka', authenticate, authorizeKwarcab('saka'), (req: Request, res: Response) => {
   const { nama_saka, ketua, sekretaris, bendahara, status, foto_ketua, foto_sekretaris, foto_bendahara } = req.body;
   if (!nama_saka || !ketua || !sekretaris || !bendahara) {
     res.status(400).json({ error: 'Data Saka dan Pengurus inti wajib' });
@@ -1091,7 +1186,7 @@ app.put('/api/admin/saka/:id', authenticate, (req: AuthRequest, res: Response) =
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
-  if (user.role !== 'kwarcab' && user.role !== 'saka') {
+  if (!hasKwarcabPermission(user, 'saka') && user.role !== 'saka') {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -1100,7 +1195,7 @@ app.put('/api/admin/saka/:id', authenticate, (req: AuthRequest, res: Response) =
   res.json({ message: 'Saka updated successfully' });
 });
 
-app.delete('/api/admin/saka/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.delete('/api/admin/saka/:id', authenticate, authorizeKwarcab('saka'), (req: Request, res: Response) => {
   db.deleteSaka(req.params.id);
   res.json({ message: 'Saka deleted successfully' });
 });
@@ -1111,7 +1206,7 @@ app.get('/api/admin/berita', authenticate, (req: AuthRequest, res: Response) => 
   const user = req.user!;
   const allBerita = db.getBerita();
 
-  if (user.role === 'kwarcab') {
+  if (hasKwarcabPermission(user, 'berita')) {
     res.json(allBerita);
   } else if (user.role === 'kwarran' || user.role === 'gudep' || user.role === 'saka') {
     // Return all where they are the author OR they submitted it
@@ -1125,19 +1220,25 @@ app.post('/api/admin/berita', authenticate, (req: AuthRequest, res: Response) =>
   const user = req.user!;
   const { judul, konten, gambar_cover, is_featured } = req.body;
 
+  if (user.role === 'staff_kwarcab' && !hasKwarcabPermission(user, 'berita')) {
+    res.status(403).json({ error: 'Forbidden: Akses staf Kwarcab tidak mencakup modul berita' });
+    return;
+  }
+
   if (!judul || !konten) {
     res.status(400).json({ error: 'Judul dan konten berita wajib diisi' });
     return;
   }
 
   // Kwarcab berita is AUTO-APPROVED, other roles go to PENDING
-  const isKwarcab = user.role === 'kwarcab';
+  const isKwarcab = hasKwarcabPermission(user, 'berita');
+  const authorType = asKwarcabContentType(user, 'berita');
   const newBerita = {
     id: `berita_${Date.now()}`,
     judul,
     konten,
     gambar_cover: gambar_cover || 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=800&auto=format&fit=crop',
-    author_type: user.role,
+    author_type: authorType,
     author_id: user.ref_id || user.id, // reference role ID
     author_nama: user.nama,
     status: (isKwarcab ? 'approved' : 'pending') as 'approved' | 'pending',
@@ -1167,7 +1268,7 @@ app.post('/api/admin/berita', authenticate, (req: AuthRequest, res: Response) =>
 });
 
 // Approve/Reject Berita (Kwarcab only)
-app.post('/api/admin/berita/:id/review', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/berita/:id/review', authenticate, authorizeKwarcab('berita'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { action, is_featured } = req.body; // action: 'approve' | 'reject'
   
@@ -1215,7 +1316,7 @@ app.put('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Response)
   }
 
   // Stricter author scoping
-  if (user.role !== 'kwarcab' && (current.author_type !== user.role || current.author_id !== user.ref_id)) {
+  if (!hasKwarcabPermission(user, 'berita') && (current.author_type !== user.role || current.author_id !== user.ref_id)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -1226,7 +1327,7 @@ app.put('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Response)
   if (konten !== undefined) updates.konten = konten;
   if (gambar_cover !== undefined) updates.gambar_cover = gambar_cover;
   
-  if (user.role === 'kwarcab' && is_featured !== undefined) {
+  if (hasKwarcabPermission(user, 'berita') && is_featured !== undefined) {
     updates.is_featured = is_featured;
   }
 
@@ -1244,7 +1345,7 @@ app.delete('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Respon
     return;
   }
 
-  if (user.role !== 'kwarcab' && (current.author_type !== user.role || current.author_id !== user.ref_id)) {
+  if (!hasKwarcabPermission(user, 'berita') && (current.author_type !== user.role || current.author_id !== user.ref_id)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -1259,7 +1360,7 @@ app.get('/api/admin/agenda', authenticate, (req: AuthRequest, res: Response) => 
   const user = req.user!;
   const allAgenda = db.getAgenda();
 
-  if (user.role === 'kwarcab') {
+  if (hasKwarcabPermission(user, 'agenda')) {
     res.json(allAgenda);
   } else {
     // Filter to their own agenda
@@ -1267,7 +1368,7 @@ app.get('/api/admin/agenda', authenticate, (req: AuthRequest, res: Response) => 
   }
 });
 
-app.post('/api/admin/agenda', authenticate, authorize(['kwarcab', 'kwarran', 'saka']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/agenda', authenticate, authorizeWithKwarcabPermission(['kwarran', 'saka'], 'agenda'), (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const { judul, deskripsi, tanggal_mulai, tanggal_selesai, kategori } = req.body;
 
@@ -1283,7 +1384,7 @@ app.post('/api/admin/agenda', authenticate, authorize(['kwarcab', 'kwarran', 'sa
     tanggal_mulai,
     tanggal_selesai,
     kategori: kategori || 'mandiri',
-    owner_type: user.role,
+    owner_type: asKwarcabContentType(user, 'agenda'),
     owner_id: user.ref_id || user.id,
     created_at: new Date().toISOString()
   };
@@ -1302,7 +1403,7 @@ app.put('/api/admin/agenda/:id', authenticate, (req: AuthRequest, res: Response)
     return;
   }
 
-  if (user.role !== 'kwarcab' && (current.owner_type !== user.role || current.owner_id !== user.ref_id)) {
+  if (!hasKwarcabPermission(user, 'agenda') && (current.owner_type !== user.role || current.owner_id !== user.ref_id)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -1321,7 +1422,7 @@ app.delete('/api/admin/agenda/:id', authenticate, (req: AuthRequest, res: Respon
     return;
   }
 
-  if (user.role !== 'kwarcab' && (current.owner_type !== user.role || current.owner_id !== user.ref_id)) {
+  if (!hasKwarcabPermission(user, 'agenda') && (current.owner_type !== user.role || current.owner_id !== user.ref_id)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -1332,17 +1433,17 @@ app.delete('/api/admin/agenda/:id', authenticate, (req: AuthRequest, res: Respon
 
 
 // --- KWARCAB PROFILE EDIT (KWARCAB ONLY) ---
-app.put('/api/admin/profil-kwarcab', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.put('/api/admin/profil-kwarcab', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   db.updateProfil(req.body);
   res.json({ message: 'Profil Kwarcab berhasil diperbarui' });
 });
 
 // Pimpinan Kwarcab CRUD (Kwarcab only)
-app.get('/api/admin/pimpinan', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.get('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   res.json(db.getPimpinan());
 });
 
-app.post('/api/admin/pimpinan', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.post('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   const { nama, jabatan, foto, urutan } = req.body;
   if (!nama || !jabatan) {
     res.status(400).json({ error: 'Nama dan jabatan wajib' });
@@ -1359,12 +1460,12 @@ app.post('/api/admin/pimpinan', authenticate, authorize(['kwarcab']), (req: Requ
   res.json(newP);
 });
 
-app.put('/api/admin/pimpinan/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.put('/api/admin/pimpinan/:id', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   db.updatePimpinan(req.params.id, req.body);
   res.json({ message: 'Pimpinan updated successfully' });
 });
 
-app.delete('/api/admin/pimpinan/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.delete('/api/admin/pimpinan/:id', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   db.deletePimpinan(req.params.id);
   res.json({ message: 'Pimpinan deleted' });
 });
@@ -1386,13 +1487,18 @@ app.get('/api/admin/users', authenticate, authorize(['kwarcab']), (req: Request,
 });
 
 app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
-  const { nama, email, password, role, ref_id } = req.body;
+  const { nama, email, password, role, ref_id, permissions } = req.body;
   if (!nama || !email || !password || !role) {
     res.status(400).json({ error: 'Semua field wajib diisi' });
     return;
   }
-  if (!['kwarran', 'gudep', 'saka'].includes(role)) {
+  if (!['staff_kwarcab', 'kwarran', 'gudep', 'saka'].includes(role)) {
     res.status(400).json({ error: 'Role pengguna tidak valid' });
+    return;
+  }
+  const userPermissions = role === 'staff_kwarcab' ? normalizePermissions(permissions) : [];
+  if (role === 'staff_kwarcab' && userPermissions.length === 0) {
+    res.status(400).json({ error: 'Pilih minimal satu akses pengelolaan untuk Staf Admin Kwarcab' });
     return;
   }
   if (role === 'kwarran' && !db.getKwarran().some(kw => kw.id === ref_id)) {
@@ -1410,7 +1516,8 @@ app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: R
     email: email.toLowerCase(),
     password_hash: `$2a$10$${password}hashsimulation`,
     role: role as UserRole,
-    ref_id: ref_id || null,
+    ref_id: role === 'staff_kwarcab' ? null : (ref_id || null),
+    permissions: userPermissions,
     created_at: new Date().toISOString()
   };
 
@@ -1425,10 +1532,14 @@ app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: R
 
 app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { nama, email, password, role, ref_id } = req.body;
+  const { nama, email, password, role, ref_id, permissions } = req.body;
   const current = db.getUsers().find(u => u.id === id);
   if (!current) {
     res.status(404).json({ error: 'User tidak ditemukan' });
+    return;
+  }
+  if (role !== undefined && !['staff_kwarcab', 'kwarran', 'gudep', 'saka'].includes(role)) {
+    res.status(400).json({ error: 'Role pengguna tidak valid' });
     return;
   }
 
@@ -1437,6 +1548,17 @@ app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req
   if (email !== undefined) updates.email = email.toLowerCase();
   if (role !== undefined) updates.role = role;
   if (ref_id !== undefined) updates.ref_id = ref_id;
+  if (role === 'staff_kwarcab') {
+    const userPermissions = normalizePermissions(permissions);
+    if (userPermissions.length === 0) {
+      res.status(400).json({ error: 'Pilih minimal satu akses pengelolaan untuk Staf Admin Kwarcab' });
+      return;
+    }
+    updates.ref_id = null;
+    updates.permissions = userPermissions;
+  } else if (permissions !== undefined || role !== undefined) {
+    updates.permissions = [];
+  }
   if (updates.role === 'kwarran' && !db.getKwarran().some(kw => kw.id === updates.ref_id)) {
     res.status(400).json({ error: 'Pilih Kwartir Ranting yang valid untuk akun Kwarran' });
     return;
@@ -1476,7 +1598,7 @@ app.get('/api/admin/kampung-pramuka', authenticate, (req: AuthRequest, res: Resp
   res.json(db.getKampungPramuka());
 });
 
-app.post('/api/admin/kampung-pramuka', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+app.post('/api/admin/kampung-pramuka', authenticate, authorizeKwarcab('kampung_pramuka'), (req: AuthRequest, res: Response) => {
   const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan } = req.body;
   if (!nama || !kecamatan || latitude === undefined || longitude === undefined || !sejarah || !keunggulan) {
     res.status(400).json({ error: 'Field nama, kecamatan, koordinat, sejarah, dan keunggulan wajib diisi' });
@@ -1497,7 +1619,7 @@ app.post('/api/admin/kampung-pramuka', authenticate, authorize(['kwarcab']), (re
   res.status(201).json(newKp);
 });
 
-app.put('/api/admin/kampung-pramuka/:id', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+app.put('/api/admin/kampung-pramuka/:id', authenticate, authorizeKwarcab('kampung_pramuka'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan } = req.body;
   const updates: any = {};
@@ -1513,17 +1635,17 @@ app.put('/api/admin/kampung-pramuka/:id', authenticate, authorize(['kwarcab']), 
   res.json({ message: 'Kampung Pramuka updated successfully' });
 });
 
-app.delete('/api/admin/kampung-pramuka/:id', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+app.delete('/api/admin/kampung-pramuka/:id', authenticate, authorizeKwarcab('kampung_pramuka'), (req: AuthRequest, res: Response) => {
   db.deleteKampungPramuka(req.params.id);
   res.json({ message: 'Kampung Pramuka deleted successfully' });
 });
 
 // --- KTA CONFIG ---
-app.get('/api/admin/kta-config', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.get('/api/admin/kta-config', authenticate, authorizeKwarcab('kta'), (req: Request, res: Response) => {
   res.json(db.getKtaConfig());
 });
 
-app.put('/api/admin/kta-config', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+app.put('/api/admin/kta-config', authenticate, authorizeKwarcab('kta'), (req: AuthRequest, res: Response) => {
   const { nama_ketua, tanda_tangan_url, stempel_url } = req.body;
   
   if (!nama_ketua) {

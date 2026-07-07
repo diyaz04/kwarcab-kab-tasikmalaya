@@ -7,9 +7,21 @@ import {
 } from 'lucide-react';
 import { 
   User as UserType, UserRole, KwartirRanting, GugusDepan, SatuanKarya,
-  Anggota, Berita, Agenda, Notifikasi, PimpinanKwarcab, ProfilKwarcab, GolonganPramuka, KampungPramuka, KtaConfig
+  Anggota, Berita, Agenda, Notifikasi, PimpinanKwarcab, ProfilKwarcab, GolonganPramuka, KampungPramuka, KtaConfig, AdminPermission
 } from '../types';
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
+
+const KWARCAB_ACCESS_OPTIONS: Array<{ id: AdminPermission; label: string; description: string }> = [
+  { id: 'anggota', label: 'Kelola Anggota', description: 'Data anggota, filter, dan ekspor dasar.' },
+  { id: 'kta', label: 'Kelola KTA', description: 'Cetak KTA, legalitas, dan konfigurasi tanda tangan.' },
+  { id: 'kwarran', label: 'Kwartir Ranting', description: 'Tambah, ubah, dan hapus data Kwarran.' },
+  { id: 'gudep', label: 'Gugus Depan', description: 'Tambah, ubah, dan hapus data pangkalan.' },
+  { id: 'saka', label: 'Satuan Karya', description: 'Kelola Saka dan persetujuan anggota Saka.' },
+  { id: 'kampung_pramuka', label: 'Kampung Pramuka', description: 'Kelola titik, profil, dan dokumentasi kampung.' },
+  { id: 'berita', label: 'Sinergi Berita', description: 'Tulis, review, dan atur berita sorotan.' },
+  { id: 'agenda', label: 'Agenda Kegiatan', description: 'Kelola kalender kegiatan Kwarcab.' },
+  { id: 'config', label: 'Profil Kwarcab', description: 'Ubah profil, pimpinan, visi, misi, dan hero.' }
+];
 
 interface AdminPortalProps {
   user: UserType;
@@ -108,6 +120,7 @@ export default function AdminPortal({
   const [confSejarah, setConfSejarah] = useState('');
   const [confHeroMode, setConfHeroMode] = useState<'statis' | 'dinamis'>('dinamis');
   const [confBanner, setConfBanner] = useState('');
+  const [previewKtaHtml, setPreviewKtaHtml] = useState<{ html: string, anggotaId: string } | null>(null);
 
   // User Form Fields
   const [uNama, setUNama] = useState('');
@@ -115,6 +128,7 @@ export default function AdminPortal({
   const [uPassword, setUPassword] = useState('');
   const [uRole, setURole] = useState<UserRole>('gudep');
   const [uRefId, setURefId] = useState('');
+  const [uPermissions, setUPermissions] = useState<AdminPermission[]>([]);
 
   // Kwarran Form Fields
   const [kwNama, setKwNama] = useState('');
@@ -409,6 +423,7 @@ export default function AdminPortal({
   const exportToKTA = async (singleAnggota: Anggota) => {
     // Ambil background sebagai base64 agar pasti ter-load di popup about:blank
     let ktaBgDataUrl = '';
+    let ktaBackDataUrl = '';
     try {
       const response = await fetch('/kta-bg.png');
       const blob = await response.blob();
@@ -417,15 +432,20 @@ export default function AdminPortal({
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(blob);
       });
+      
+      const responseBack = await fetch('/kta-back.png');
+      if (responseBack.ok) {
+        const blobBack = await responseBack.blob();
+        ktaBackDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blobBack);
+        });
+      }
     } catch (e) {
-      console.error('Gagal mengambil kta-bg.png', e);
+      console.error('Gagal mengambil background KTA', e);
       ktaBgDataUrl = ''; 
-    }
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Pop-up terblokir oleh browser. Harap izinkan pop-up untuk mencetak KTA.');
-      return;
+      ktaBackDataUrl = '';
     }
 
     const a = singleAnggota;
@@ -435,23 +455,38 @@ export default function AdminPortal({
     const htmlContent = `
       <html>
         <head>
-          <title>Cetak KTA - ${a.nama_lengkap}</title>
+          <title>Preview KTA - ${a.nama_lengkap}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@500;700;900&display=swap');
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
             
+            @page {
+              size: 85.6mm 53.98mm; /* Ukuran pas KTP */
+              margin: 0;
+            }
+            
             body {
-              font-family: 'Inter', sans-serif; margin: 0; padding: 0;
-              display: flex; justify-content: center; align-items: center;
-              height: 100vh; background-color: #f0f0f0;
+              font-family: 'Inter', sans-serif; margin: 0; padding: 20px;
+              display: flex; flex-direction: column; align-items: center; gap: 20px;
+              background-color: #555;
               -webkit-print-color-adjust: exact; print-color-adjust: exact;
             }
+            
             .kta-card {
               width: 85.6mm; height: 53.98mm;
-              background-image: url('${ktaBgDataUrl}');
               background-size: 100% 100%; background-position: center; background-repeat: no-repeat;
-              border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-              position: relative; overflow: hidden; box-sizing: border-box; border: 1px solid #ccc;
+              border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+              position: relative; overflow: hidden; box-sizing: border-box; background-color: white;
+            }
+            
+            .kta-front {
+              background-image: url('${ktaBgDataUrl}');
+              page-break-after: always;
+              break-after: page;
+            }
+            
+            .kta-back {
+              background-image: url('${ktaBackDataUrl}');
             }
             
             /* Photo Area */
@@ -495,11 +530,33 @@ export default function AdminPortal({
             .stempel { position: absolute; left: 0mm; bottom: 3.5mm; width: 18mm; height: 18mm; opacity: 0.6; z-index: 4; }
             .signature { position: absolute; right: 2mm; bottom: 4mm; width: 16mm; height: 6mm; z-index: 6; }
             
-            @media print { body { background-color: white; } .kta-card { box-shadow: none; border-color: transparent; } }
+            .action-bar {
+              margin-bottom: 10px;
+              display: flex;
+              gap: 10px;
+            }
+            
+            .btn-print {
+              padding: 10px 20px; font-size: 14px; font-weight: bold;
+              background-color: #007bff; color: white; border: none; border-radius: 4px;
+              cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            .btn-print:hover { background-color: #0056b3; }
+            
+            @media print { 
+              body { background-color: transparent; padding: 0; } 
+              .kta-card { box-shadow: none; border: none; border-radius: 0; } 
+              .action-bar { display: none; }
+            }
           </style>
         </head>
-        <body onload="window.print(); setTimeout(() => window.close(), 1000);">
-          <div class="kta-card">
+        <body>
+          <div class="action-bar">
+            <button class="btn-print" onclick="window.print()">Cetak KTA (PDF / Printer)</button>
+          </div>
+          
+          <!-- Halaman Depan -->
+          <div class="kta-card kta-front">
             <div class="photo"><img src="${fotoSrc}" alt="Foto" /></div>
             
             <div class="data-diri">
@@ -529,19 +586,20 @@ export default function AdminPortal({
                 : ``
               }
             </div>
-            
           </div>
+          
+          <!-- Halaman Belakang -->
+          <div class="kta-card kta-back"></div>
         </body>
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    setPreviewKtaHtml({ html: htmlContent, anggotaId: a.id });
 
     try {
       await fetch(`/api/admin/anggota/${a.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ ...a, is_kta_printed: true })
       });
       setAnggotaList(prev => prev.map(ang => ang.id === a.id ? { ...ang, is_kta_printed: true } : ang));
@@ -552,7 +610,7 @@ export default function AdminPortal({
   };
 
   const exportToSuratLegalitas = (singleAnggota?: Anggota) => {
-    if (user.role !== 'kwarcab') {
+    if (!canManage('kta')) {
       alert('Maaf, Surat Keterangan Legalitas hanya dapat diterbitkan oleh Kwartir Cabang (Kwarcab).');
       return;
     }
@@ -1208,12 +1266,14 @@ export default function AdminPortal({
       const notData = await notRes.json();
       setNotifList(notData);
 
-      // Superadmin Full Details
-      if (user.role === 'kwarcab') {
+      // Superadmin account management
+      if (isKwarcabAdmin) {
         const uRes = await fetch('/api/admin/users', { headers });
         const uData = await uRes.json();
         setUserList(uData);
+      }
 
+      if (canManage('config')) {
         const profRes = await fetch('/api/public/profil');
         const profData = await profRes.json();
         setConfVisi(profData.visi);
@@ -1225,11 +1285,15 @@ export default function AdminPortal({
         const pimRes = await fetch('/api/public/pimpinan');
         const pimData = await pimRes.json();
         setPimpinanList(pimData);
+      }
 
+      if (canManage('kampung_pramuka')) {
         const kpRes = await fetch('/api/admin/kampung-pramuka', { headers });
         const kpData = await kpRes.json();
         setKpList(kpData);
+      }
 
+      if (canManage('kta')) {
         const ktaCfgRes = await fetch('/api/admin/kta-config', { headers });
         if (ktaCfgRes.ok) {
           setKtaConfig(await ktaCfgRes.json());
@@ -1512,7 +1576,7 @@ export default function AdminPortal({
         })
       });
       if (res.ok) {
-        showSuccess(user.role === 'kwarcab' ? 'Berita berhasil dipublish!' : 'Pengajuan berita berhasil dikirim, menunggu peninjauan Kwarcab.');
+        showSuccess(canManage('berita') ? 'Berita berhasil dipublish!' : 'Pengajuan berita berhasil dikirim, menunggu peninjauan Kwarcab.');
         setFormMode('list');
         loadDashboardData();
       }
@@ -1654,6 +1718,10 @@ export default function AdminPortal({
   // --- ACTIONS: USER ACCOUNTS (KWARCAB) ---
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uRole === 'staff_kwarcab' && uPermissions.length === 0) {
+      setErrorMsg('Pilih minimal satu akses pengelolaan untuk Staf Admin Kwarcab.');
+      return;
+    }
     try {
       const method = formMode === 'add' ? 'POST' : 'PUT';
       const url = formMode === 'add' ? '/api/admin/users' : `/api/admin/users/${selectedItem.id}`;
@@ -1668,7 +1736,8 @@ export default function AdminPortal({
           email: uEmail,
           password: uPassword,
           role: uRole,
-          ref_id: uRefId || null
+          ref_id: uRole === 'staff_kwarcab' ? null : (uRefId || null),
+          permissions: uRole === 'staff_kwarcab' ? uPermissions : []
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -1861,9 +1930,51 @@ export default function AdminPortal({
 
 
   // Helpers
+  const isKwarcabAdmin = user.role === 'kwarcab';
+  const isKwarcabStaff = user.role === 'staff_kwarcab';
+  const userPermissions = user.permissions || [];
+  const canManage = (permission: AdminPermission) => {
+    return isKwarcabAdmin || (isKwarcabStaff && userPermissions.includes(permission));
+  };
+  const hasAnyStaffAccess = isKwarcabAdmin || userPermissions.length > 0;
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'kwarcab': return 'Superadmin Kwarcab';
+      case 'staff_kwarcab': return 'Staf Admin Kwarcab';
+      case 'kwarran': return 'Admin Kwarran';
+      case 'gudep': return 'Admin Gudep';
+      case 'saka': return 'Pamong Saka';
+      default: return role;
+    }
+  };
+  const getPermissionLabel = (permission: AdminPermission) => {
+    return KWARCAB_ACCESS_OPTIONS.find(option => option.id === permission)?.label || permission;
+  };
+  const adminMenuItems = [
+    { id: 'overview', label: 'Ringkasan Ikhtisar', icon: Compass, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
+    { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'anggota' as AdminPermission },
+    { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kta' as AdminPermission },
+    { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kwarran' as AdminPermission },
+    { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'gudep' as AdminPermission },
+    { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'saka' as AdminPermission },
+    { id: 'kampung_pramuka', label: 'Kampung Pramuka', icon: Globe, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kampung_pramuka' as AdminPermission },
+    { id: 'berita', label: 'Sinergi Berita', icon: Shield, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'berita' as AdminPermission },
+    { id: 'agenda', label: 'Agenda Kegiatan', icon: Calendar, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'saka'] as UserRole[], permission: 'agenda' as AdminPermission },
+    { id: 'config', label: 'Profil Kwarcab', icon: BookOpen, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'config' as AdminPermission },
+    { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab'] as UserRole[] },
+    { id: 'notif', label: 'Notifikasi', icon: Bell, badge: notifList.filter(n => !n.is_read).length, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
+  ];
+  const visibleMenuItems = adminMenuItems.filter(item => {
+    if (!item.roles.includes(user.role)) return false;
+    if (item.id === 'overview') return !isKwarcabStaff || hasAnyStaffAccess;
+    if (item.permission && isKwarcabStaff) return canManage(item.permission);
+    return true;
+  });
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'kwarcab': return 'bg-purple-900/60 text-purple-200 border-purple-500/35';
+      case 'staff_kwarcab': return 'bg-fuchsia-900/60 text-fuchsia-200 border-fuchsia-500/35';
       case 'kwarran': return 'bg-blue-900/60 text-blue-200 border-blue-500/35';
       case 'gudep': return 'bg-emerald-900/60 text-emerald-200 border-emerald-500/35';
       case 'saka': return 'bg-amber-900/60 text-[#D4AF37] border-amber-500/35';
@@ -1878,7 +1989,7 @@ export default function AdminPortal({
   // Filtered and Paginated Anggota calculations
   const filteredAnggotaList = anggotaList.filter((a) => {
     // 1. Filter by Kwartir Ranting (only for kwarcab/superadmin)
-    if (user.role === 'kwarcab') {
+    if (canManage('anggota')) {
       if (filterKwarran !== 'all' && a.kwartir_ranting_id !== filterKwarran) {
         return false;
       }
@@ -1951,26 +2062,13 @@ export default function AdminPortal({
               </div>
               <h3 className="text-sm font-bold text-white tracking-wide">{user.nama}</h3>
               <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest mt-1">
-                Role: {user.role === 'kwarcab' ? 'Superadmin Kwarcab' : user.role}
+                Role: {getRoleLabel(user.role)}
               </p>
             </div>
 
             {/* Menu Lists */}
             <div className="hidden lg:block space-y-1">
-              {[
-                { id: 'overview', label: 'Ringkasan Ikhtisar', icon: Compass, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab'] },
-                { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab'] },
-                { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'kwarran'] },
-                { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab'] },
-                { id: 'kampung_pramuka', label: 'Kampung Pramuka', icon: Globe, roles: ['kwarcab'] },
-                { id: 'berita', label: 'Sinergi Berita', icon: Shield, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                { id: 'agenda', label: 'Agenda Kegiatan', icon: Calendar, roles: ['kwarcab', 'kwarran', 'saka'] },
-                { id: 'config', label: 'Profil Kwarcab', icon: BookOpen, roles: ['kwarcab'] },
-                { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab'] },
-                { id: 'notif', label: 'Notifikasi', icon: Bell, badge: notifList.filter(n => !n.is_read).length, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-              ].filter(item => item.roles.includes(user.role)).map((item) => {
+              {visibleMenuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -2049,20 +2147,7 @@ export default function AdminPortal({
                 Menu Portal Admin
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { id: 'overview', label: 'Ringkasan Ikhtisar', icon: Compass, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                  { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                  { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab'] },
-                  { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab'] },
-                  { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'kwarran'] },
-                  { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab'] },
-                  { id: 'kampung_pramuka', label: 'Kampung Pramuka', icon: Globe, roles: ['kwarcab'] },
-                  { id: 'berita', label: 'Sinergi Berita', icon: Shield, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                  { id: 'agenda', label: 'Agenda Kegiatan', icon: Calendar, roles: ['kwarcab', 'kwarran', 'saka'] },
-                  { id: 'config', label: 'Profil Kwarcab', icon: BookOpen, roles: ['kwarcab'] },
-                  { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab'] },
-                  { id: 'notif', label: 'Notifikasi', icon: Bell, badge: notifList.filter(n => !n.is_read).length, roles: ['kwarcab', 'kwarran', 'gudep', 'saka'] },
-                ].filter(item => item.roles.includes(user.role)).map((item) => {
+                {visibleMenuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (
@@ -2135,7 +2220,7 @@ export default function AdminPortal({
               </div>
 
               {/* Special Tasks alerts */}
-              {user.role === 'kwarcab' && stats.pendingBerita > 0 && (
+              {canManage('berita') && stats.pendingBerita > 0 && (
                 <div className="p-4 rounded-2xl bg-amber-950/60 border border-amber-500/30 flex items-start gap-3 text-amber-300 animate-pulse">
                   <AlertTriangle className="w-5 h-5 flex-shrink-0 text-[#D4AF37]" />
                   <div>
@@ -2316,7 +2401,7 @@ export default function AdminPortal({
                       </div>
 
                       {/* Kwartir Ranting Filter - ONLY FOR SUPERADMIN (kwarcab) */}
-                      {user.role === 'kwarcab' && (
+                      {canManage('anggota') && (
                         <div className="col-span-1">
                           <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">
                             Kwartir Ranting
@@ -2360,7 +2445,7 @@ export default function AdminPortal({
                               <option value="all">Semua Pangkalan</option>
                               {gudepList
                                 .filter((g) => {
-                                  if (user.role === 'kwarcab' && filterKwarran !== 'all') {
+                                  if (canManage('anggota') && filterKwarran !== 'all') {
                                     return g.kwartir_ranting_id === filterKwarran;
                                   }
                                   if (user.role === 'kwarran') {
@@ -2673,7 +2758,7 @@ export default function AdminPortal({
                     </div>
 
                     {/* Kwarran (If superadmin can choose, otherwise auto-scoped) */}
-                    {user.role === 'kwarcab' && (
+                    {canManage('anggota') && (
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-purple-200">Kwartir Ranting *</label>
                         <select
@@ -2691,7 +2776,7 @@ export default function AdminPortal({
                     )}
 
                     {/* Gudep selection (Scoped to selected Kwarran) */}
-                    {user.role === 'kwarcab' && (
+                    {canManage('anggota') && (
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-purple-200">Gugus Depan Pangkalan (Opsional)</label>
                         <select
@@ -2794,7 +2879,7 @@ export default function AdminPortal({
           )}
 
           {/* --- TAB CONTENT: KELOLA KTA (KWARCAB) --- */}
-          {activeTab === 'kta' && user.role === 'kwarcab' && (
+          {activeTab === 'kta' && canManage('kta') && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
@@ -3255,7 +3340,7 @@ export default function AdminPortal({
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-purple-200">Gugus Depan Pangkalan</span>
-                    {user.role === 'kwarcab' && (
+                    {canManage('gudep') && (
                       <button
                         onClick={() => {
                           setFormMode('add');
@@ -3780,7 +3865,7 @@ export default function AdminPortal({
                   </div>
 
                   {/* Kwarcab superadmin Review section */}
-                  {user.role === 'kwarcab' && beritaList.some(b => b.status === 'pending') && (
+                  {canManage('berita') && beritaList.some(b => b.status === 'pending') && (
                     <div className="glass-panel rounded-2xl p-5 border border-amber-500/30 space-y-4">
                       <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
                         <AlertTriangle className="w-4 h-4 text-[#D4AF37] animate-pulse" />
@@ -3899,14 +3984,14 @@ export default function AdminPortal({
                               <td className="py-3.5 px-5 text-center">
                                 {b.status === 'approved' ? (
                                   <button
-                                    disabled={user.role !== 'kwarcab'}
+                                    disabled={!canManage('berita')}
                                     onClick={() => handleToggleFeaturedBerita(b.id, b.is_featured)}
                                     className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
                                       b.is_featured
                                         ? 'bg-purple-900/40 border-purple-400 text-purple-300 hover:bg-purple-900/60'
                                         : 'bg-white/5 border-white/10 text-purple-200/50 hover:bg-white/10'
-                                    } ${user.role === 'kwarcab' ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
-                                    title={user.role === 'kwarcab' ? 'Klik untuk mengubah status Tampil di Hero' : 'Hanya Kwarcab yang dapat menyetel Hero'}
+                                    } ${canManage('berita') ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                                    title={canManage('berita') ? 'Klik untuk mengubah status Tampil di Hero' : 'Hanya Kwarcab yang dapat menyetel Hero'}
                                   >
                                     <Sparkles className={`w-3.5 h-3.5 ${b.is_featured ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-purple-300/30'}`} />
                                     <span>{b.is_featured ? 'Aktif' : 'Non-aktif'}</span>
@@ -3938,7 +4023,7 @@ export default function AdminPortal({
                                   </button>
 
                                   {/* Edit/Hapus Actions */}
-                                  {(user.role === 'kwarcab' || b.author_id === user.ref_id) && (
+                                  {(canManage('berita') || b.author_id === user.ref_id) && (
                                     <>
                                       <button
                                         onClick={() => {
@@ -4017,19 +4102,19 @@ export default function AdminPortal({
                               </button>
                               {b.status === 'approved' && (
                                 <button
-                                  disabled={user.role !== 'kwarcab'}
+                                  disabled={!canManage('berita')}
                                   onClick={() => handleToggleFeaturedBerita(b.id, b.is_featured)}
                                   className={`flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border text-[10px] font-bold transition ${
                                     b.is_featured
                                       ? 'border-purple-400 text-[#D4AF37] bg-purple-900/20'
                                       : 'border-white/10 text-purple-200/50'
-                                  } ${user.role === 'kwarcab' ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                                  } ${canManage('berita') ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                                 >
                                   <Sparkles className={`w-3 h-3 ${b.is_featured ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-purple-300/30'}`} />
                                   <span>Hero: {b.is_featured ? 'On' : 'Off'}</span>
                                 </button>
                               )}
-                              {(user.role === 'kwarcab' || b.author_id === user.ref_id) && (
+                              {(canManage('berita') || b.author_id === user.ref_id) && (
                                 <>
                                   <button
                                     onClick={() => {
@@ -4110,7 +4195,7 @@ export default function AdminPortal({
                       )}
                     </div>
 
-                    {user.role === 'kwarcab' && (
+                    {canManage('berita') && (
                       <div className="flex items-start space-x-3 p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/10">
                         <input
                           id="is_featured"
@@ -4197,7 +4282,7 @@ export default function AdminPortal({
                     {/* Action buttons footer */}
                     <div className="border-t border-white/10 pt-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap gap-2">
-                        {user.role === 'kwarcab' && viewingBeritaDetail.status === 'pending' && (
+                        {canManage('berita') && viewingBeritaDetail.status === 'pending' && (
                           <>
                             <button
                               onClick={() => {
@@ -4221,7 +4306,7 @@ export default function AdminPortal({
                         )}
 
                         {/* Edit option inside the viewer */}
-                        {(user.role === 'kwarcab' || viewingBeritaDetail.author_id === user.ref_id) && (
+                        {(canManage('berita') || viewingBeritaDetail.author_id === user.ref_id) && (
                           <button
                             onClick={() => {
                               setFormMode('edit');
@@ -4511,11 +4596,13 @@ export default function AdminPortal({
                     <button
                       onClick={() => {
                         setFormMode('add');
+                        setSelectedItem(null);
                         setUNama('');
                         setUEmail('');
                         setUPassword('');
                         setURole('gudep');
                         setURefId('');
+                        setUPermissions([]);
                       }}
                       className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
                     >
@@ -4531,6 +4618,7 @@ export default function AdminPortal({
                           <th className="p-4">Nama Pengguna</th>
                           <th className="p-4">Email / Login</th>
                           <th className="p-4">Peran (Role)</th>
+                          <th className="p-4">Akses Pengelolaan</th>
                           <th className="p-4">Aksi</th>
                         </tr>
                       </thead>
@@ -4541,13 +4629,44 @@ export default function AdminPortal({
                             <td className="p-4 font-light">{u.email}</td>
                             <td className="p-4">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${getRoleBadge(u.role)}`}>
-                                {u.role.toUpperCase()}
+                                {getRoleLabel(u.role)}
                               </span>
                             </td>
                             <td className="p-4">
-                              <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-red-950/40 text-red-400 hover:text-white rounded-lg transition">
+                              {u.role === 'staff_kwarcab' && u.permissions?.length ? (
+                                <div className="flex flex-wrap gap-1.5 max-w-xs">
+                                  {u.permissions.map(permission => (
+                                    <span key={permission} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-purple-200">
+                                      {getPermissionLabel(permission)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-purple-300/50">Akses mengikuti role</span>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setFormMode('edit');
+                                  setSelectedItem(u);
+                                  setUNama(u.nama);
+                                  setUEmail(u.email);
+                                  setUPassword('');
+                                  setURole(u.role);
+                                  setURefId(u.ref_id || '');
+                                  setUPermissions(u.permissions || []);
+                                }}
+                                className="p-1.5 bg-white/5 text-purple-200 hover:text-white rounded-lg transition border border-white/10"
+                                title="Edit akun"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-red-950/40 text-red-400 hover:text-white rounded-lg transition" title="Hapus akun">
                                 <Trash2 className="w-4 h-4" />
                               </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -4558,7 +4677,7 @@ export default function AdminPortal({
               ) : (
                 <form onSubmit={handleSaveUser} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
                   <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
-                    Buat Akun Pengguna Baru (Kwartir / Gudep / Pamong Saka)
+                    {formMode === 'add' ? 'Buat Akun Pengguna Baru' : `Edit Akun: ${selectedItem?.nama}`}
                   </h3>
 
                   <div className="grid sm:grid-cols-2 gap-6">
@@ -4585,10 +4704,10 @@ export default function AdminPortal({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Password Akses *</label>
+                      <label className="text-xs text-purple-200">Password Akses {formMode === 'add' ? '*' : '(kosongkan jika tidak diubah)'}</label>
                       <input
                         type="password"
-                        required
+                        required={formMode === 'add'}
                         value={uPassword}
                         onChange={(e) => setUPassword(e.target.value)}
                         className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
@@ -4599,29 +4718,80 @@ export default function AdminPortal({
                       <label className="text-xs text-purple-200">Peran / Role Pengguna *</label>
                       <select
                         value={uRole}
-                        onChange={(e) => setURole(e.target.value as any)}
+                        onChange={(e) => {
+                          const nextRole = e.target.value as UserRole;
+                          setURole(nextRole);
+                          if (nextRole === 'staff_kwarcab') {
+                            setURefId('');
+                          } else {
+                            setUPermissions([]);
+                          }
+                        }}
                         className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
                       >
+                        <option value="staff_kwarcab">Staf Admin Kwarcab</option>
                         <option value="kwarran">Kwartir Ranting</option>
                         <option value="gudep">Gugus Depan</option>
                         <option value="saka">Satuan Karya (Saka)</option>
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Ref ID Organisasi Induk *</label>
-                      <select
-                        required
-                        value={uRefId}
-                        onChange={(e) => setURefId(e.target.value)}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
-                      >
-                        <option value="">-- Pilih Organisasi Referensi --</option>
-                        {uRole === 'kwarran' && allKwarran.map(kw => <option key={kw.id} value={kw.id}>Kwarran Kecamatan {kw.nama_kecamatan}</option>)}
-                        {uRole === 'saka' && allSaka.map(sk => <option key={sk.id} value={sk.id}>{sk.nama_saka}</option>)}
-                        {uRole === 'gudep' && gudepList.map(gd => <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>)}
-                      </select>
-                    </div>
+                    {uRole !== 'staff_kwarcab' && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-purple-200">Ref ID Organisasi Induk *</label>
+                        <select
+                          required
+                          value={uRefId}
+                          onChange={(e) => setURefId(e.target.value)}
+                          className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        >
+                          <option value="">-- Pilih Organisasi Referensi --</option>
+                          {uRole === 'kwarran' && allKwarran.map(kw => <option key={kw.id} value={kw.id}>Kwarran Kecamatan {kw.nama_kecamatan}</option>)}
+                          {uRole === 'saka' && allSaka.map(sk => <option key={sk.id} value={sk.id}>{sk.nama_saka}</option>)}
+                          {uRole === 'gudep' && gudepList.map(gd => <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    {uRole === 'staff_kwarcab' && (
+                      <div className="space-y-3 sm:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div>
+                          <label className="text-xs text-purple-200 font-bold uppercase tracking-wider">Centang Akses Pengelolaan *</label>
+                          <p className="text-[10px] text-purple-300/70 mt-1">Staf hanya melihat dan mengelola modul yang dicentang di bawah ini.</p>
+                        </div>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {KWARCAB_ACCESS_OPTIONS.map(option => {
+                            const checked = uPermissions.includes(option.id);
+                            return (
+                              <label
+                                key={option.id}
+                                className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition ${
+                                  checked
+                                    ? 'bg-purple-900/30 border-[#D4AF37]/50 text-white'
+                                    : 'bg-white/[0.03] border-white/10 text-purple-200 hover:border-white/20'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setUPermissions(prev => e.target.checked
+                                      ? [...prev, option.id]
+                                      : prev.filter(permission => permission !== option.id)
+                                    );
+                                  }}
+                                  className="mt-0.5 w-4 h-4 rounded border-purple-500/30 text-purple-600 focus:ring-purple-500/20 bg-black/40"
+                                />
+                                <span>
+                                  <span className="block text-xs font-bold">{option.label}</span>
+                                  <span className="block text-[10px] text-purple-300/70 mt-0.5 leading-snug">{option.description}</span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end space-x-3">
@@ -4996,7 +5166,7 @@ export default function AdminPortal({
               </button>
 
               {/* Card 3: Batch Surat Keterangan Legalitas */}
-              {user.role === 'kwarcab' && (
+              {canManage('kta') && (
                 <button
                   onClick={() => exportToSuratLegalitas()}
                   className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-white/5 hover:border-amber-500/30 text-left hover:bg-amber-950/20 group transition-all duration-300 cursor-pointer"
@@ -5017,6 +5187,33 @@ export default function AdminPortal({
               <span className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest">
                 Gerakan Pramuka Indonesia Kwartir Cabang Tasikmalaya
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- PREVIEW KTA MODAL --- */}
+      {previewKtaHtml && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-zinc-900 rounded-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Printer className="w-4 h-4 text-[#D4AF37]" />
+                Preview Cetak KTA
+              </h3>
+              <button
+                onClick={() => setPreviewKtaHtml(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden p-0 bg-[#555]">
+              <iframe 
+                srcDoc={previewKtaHtml.html}
+                title="KTA Preview"
+                className="w-full h-full border-0 rounded-b-xl bg-transparent"
+              />
             </div>
           </div>
         </div>

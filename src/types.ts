@@ -1,4 +1,15 @@
-export type UserRole = 'kwarcab' | 'kwarran' | 'gudep' | 'saka';
+export type UserRole = 'kwarcab' | 'staff_kwarcab' | 'kwarran' | 'gudep' | 'saka';
+
+export type AdminPermission =
+  | 'anggota'
+  | 'kta'
+  | 'kwarran'
+  | 'gudep'
+  | 'saka'
+  | 'kampung_pramuka'
+  | 'berita'
+  | 'agenda'
+  | 'config';
 
 export interface User {
   id: string;
@@ -7,6 +18,7 @@ export interface User {
   password_hash: string;
   role: UserRole;
   ref_id: string | null; // ID of Kwarran, Gudep, or Saka
+  permissions?: AdminPermission[]; // Scoped access for staff_kwarcab
   created_at: string;
 }
 

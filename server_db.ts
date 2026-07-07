@@ -535,6 +535,7 @@ export class DatabaseSim {
   private state: DbState;
   private syncTimer: NodeJS.Timeout | null = null;
   private supabaseConnected = false;
+  private supabaseLastError = '';
   public readonly ready: Promise<void>;
 
   constructor() {
@@ -588,15 +589,21 @@ export class DatabaseSim {
       await this.flushToSupabase();
       this.persistLocalOnly();
       this.supabaseConnected = true;
+      this.supabaseLastError = '';
       console.log('[Database] Supabase integration ready.');
-    } catch (e) {
+    } catch (e: any) {
       this.supabaseConnected = false;
+      this.supabaseLastError = e?.message || String(e);
       console.error('[Database] Supabase bootstrap failed; continuing with local JSON store.', e);
     }
   }
 
   public isSupabaseConnected(): boolean {
     return this.supabaseConnected;
+  }
+
+  public getSupabaseLastError(): string {
+    return this.supabaseLastError;
   }
 
   private async pullFromSupabase(): Promise<void> {
