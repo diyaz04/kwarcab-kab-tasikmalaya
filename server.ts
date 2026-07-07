@@ -9,6 +9,9 @@ import { User, UserRole, GolonganPramuka } from './src/types';
 
 const app = express();
 const PORT = 3000;
+const isServerlessRuntime = process.env.NETLIFY === 'true'
+  || process.env.NETLIFY_DEV === 'true'
+  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 // Initialize Database Sim
 const db = new DatabaseSim();
@@ -18,7 +21,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Ensure uploads folder exists
-const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
+const uploadsDir = isServerlessRuntime
+  ? path.join('/tmp', 'kwarcab-uploads')
+  : path.join(process.cwd(), 'data', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -1572,10 +1577,6 @@ const initServer = async () => {
 };
 
 export { app, db };
-
-const isServerlessRuntime = process.env.NETLIFY === 'true'
-  || process.env.NETLIFY_DEV === 'true'
-  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 if (!isServerlessRuntime) {
   initServer().catch(err => {

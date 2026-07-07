@@ -7,7 +7,12 @@ import {
   Notifikasi, PimpinanKwarcab, ProfilKwarcab, KampungPramuka, KtaConfig 
 } from './src/types';
 
-const STORE_PATH = path.join(process.cwd(), 'data', 'db_store.json');
+const IS_SERVERLESS_RUNTIME = process.env.NETLIFY === 'true'
+  || process.env.NETLIFY_DEV === 'true'
+  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+const STORE_PATH = IS_SERVERLESS_RUNTIME
+  ? path.join('/tmp', 'kwarcab-db-store.json')
+  : path.join(process.cwd(), 'data', 'db_store.json');
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 

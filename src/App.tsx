@@ -30,6 +30,16 @@ const readApiJson = async (res: Response) => {
   }
 };
 
+const readPublicJson = async (res: Response, label: string) => {
+  const data = await readApiJson(res);
+  if (!res.ok) {
+    throw new Error(data.error || `Gagal mengambil data ${label}`);
+  }
+  return data;
+};
+
+const ensureArray = <T,>(value: unknown): T[] => Array.isArray(value) ? value : [];
+
 export default function App() {
   // Public tabs: home, profil, berita, kwarran, saka, agenda, admin, validasi
   const [currentTab, setCurrentTab] = useState<string>('home');
@@ -108,13 +118,23 @@ export default function App() {
         fetch('/api/public/kampung-pramuka')
       ]);
 
-      setProfil(await pRes.json());
-      setPimpinan(await pimRes.json());
-      setBerita(await bRes.json());
-      setAgenda(await agRes.json());
-      setKwarran(await kwRes.json());
-      setSaka(await skRes.json());
-      setKampungPramuka(await kpRes.json());
+      const [profilData, pimpinanData, beritaData, agendaData, kwarranData, sakaData, kpData] = await Promise.all([
+        readPublicJson(pRes, 'profil'),
+        readPublicJson(pimRes, 'pimpinan'),
+        readPublicJson(bRes, 'berita'),
+        readPublicJson(agRes, 'agenda'),
+        readPublicJson(kwRes, 'kwarran'),
+        readPublicJson(skRes, 'saka'),
+        readPublicJson(kpRes, 'kampung pramuka')
+      ]);
+
+      setProfil(profilData);
+      setPimpinan(ensureArray<PimpinanKwarcab>(pimpinanData));
+      setBerita(ensureArray<Berita>(beritaData));
+      setAgenda(ensureArray<Agenda>(agendaData));
+      setKwarran(ensureArray<KwartirRanting>(kwarranData));
+      setSaka(ensureArray<SatuanKarya>(sakaData));
+      setKampungPramuka(ensureArray<KampungPramuka>(kpData));
     } catch (err) {
       console.error('Gagal mengambil data publik:', err);
     }
