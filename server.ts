@@ -3,7 +3,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { DatabaseSim } from './server_db';
+import { createClient } from '@supabase/supabase-js';
+import { DatabaseSim, isSupabaseConfigured, supabase } from './server_db';
 import { User, UserRole, GolonganPramuka } from './src/types';
 
 const app = express();
@@ -24,6 +25,15 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(uploadsDir));
+
+app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.ready;
+    next();
+  } catch (error: any) {
+    res.status(503).json({ error: error?.message || 'Database belum siap' });
+  }
+});
 
 type CloudinaryUploadResult = {
   secure_url?: string;
@@ -104,6 +114,83 @@ const uploadToCloudinary = async (
 
   const uploadedUrl = data.secure_url || data.url;
   return uploadedUrl ? optimizeCloudinaryUrl(uploadedUrl) : null;
+};
+
+const findSupabaseAuthUserByEmail = async (email: string) => {
+  if (!supabase) return null;
+
+  const targetEmail = email.toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const authUsers = data.users as Array<{ id: string; email?: string }>;
+    const match = authUsers.find(authUser => authUser.email?.toLowerCase() === targetEmail);
+    if (match) return match;
+    if (authUsers.length < perPage) return null;
+    page += 1;
+  }
+};
+
+const syncSupabaseAuthUser = async (user: User, password?: string, lookupEmail = user.email) => {
+  if (!supabase) return null;
+
+  const userMetadata = {
+    app_user_id: user.id,
+    nama: user.nama,
+    role: user.role,
+    ref_id: user.ref_id
+  };
+  const existingAuthUser = await findSupabaseAuthUserByEmail(lookupEmail);
+
+  if (existingAuthUser) {
+    const { data, error } = await supabase.auth.admin.updateUserById(existingAuthUser.id, {
+      email: user.email,
+      password: password || undefined,
+      email_confirm: true,
+      user_metadata: userMetadata
+    });
+    if (error) throw error;
+    return data.user;
+  }
+
+  const { data, error } = await supabase.auth.admin.createUser({
+    email: user.email,
+    password: password || crypto.randomUUID(),
+    email_confirm: true,
+    user_metadata: userMetadata
+  });
+  if (error) throw error;
+  return data.user;
+};
+
+const deleteSupabaseAuthUserByEmail = async (email: string) => {
+  if (!supabase) return;
+
+  const existingAuthUser = await findSupabaseAuthUserByEmail(email);
+  if (!existingAuthUser) return;
+
+  const { error } = await supabase.auth.admin.deleteUser(existingAuthUser.id);
+  if (error) throw error;
+};
+
+const validateSupabaseAuthPassword = async (email: string, password: string): Promise<boolean> => {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  if (!supabaseUrl || !supabaseKey) return false;
+
+  const authClient = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  });
+  const { error } = await authClient.auth.signInWithPassword({ email, password });
+  return !error;
 };
 
 // --- SIMPLE JWT / SESSION TOKEN SYSTEM ---
@@ -188,7 +275,7 @@ const authorize = (allowedRoles: UserRole[]) => {
 
 // --- AUTH ENDPOINTS ---
 
-app.post('/api/auth/login', (req: Request, res: Response) => {
+app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
     res.status(400).json({ error: 'Email and password are required' });
@@ -219,7 +306,10 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
   // Password checks
   const emailPrefix = email.split('@')[0];
+  const supabaseAuthAccepted = await validateSupabaseAuthPassword(user.email, password);
+
   const isValidPassword = 
+    supabaseAuthAccepted ||
     password === 'password' || 
     password === 'scout123' || 
     password === emailPrefix || 
@@ -299,6 +389,15 @@ app.post('/api/upload', authenticate, async (req: Request, res: Response) => {
 
 
 // --- PUBLIC DATA ENDPOINTS ---
+
+app.get('/api/public/runtime', (req: Request, res: Response) => {
+  const supabaseConnected = db.isSupabaseConnected();
+  res.json({
+    supabaseConfigured: isSupabaseConfigured,
+    supabaseConnected,
+    devPanelEnabled: !supabaseConnected
+  });
+});
 
 // Get Public Profil Kwarcab
 app.get('/api/public/profil', (req: Request, res: Response) => {
@@ -1281,43 +1380,90 @@ app.get('/api/admin/users', authenticate, authorize(['kwarcab']), (req: Request,
   res.json(db.getUsers());
 });
 
-app.post('/api/admin/users', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
   const { nama, email, password, role, ref_id } = req.body;
   if (!nama || !email || !password || !role) {
     res.status(400).json({ error: 'Semua field wajib diisi' });
     return;
   }
-  const newUser = {
+  if (!['kwarran', 'gudep', 'saka'].includes(role)) {
+    res.status(400).json({ error: 'Role pengguna tidak valid' });
+    return;
+  }
+  if (role === 'kwarran' && !db.getKwarran().some(kw => kw.id === ref_id)) {
+    res.status(400).json({ error: 'Pilih Kwartir Ranting yang valid untuk akun Kwarran' });
+    return;
+  }
+  if (db.getUsers().some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    res.status(409).json({ error: 'Email sudah terdaftar' });
+    return;
+  }
+
+  const newUser: User = {
     id: `u_${Date.now()}`,
     nama,
-    email,
+    email: email.toLowerCase(),
     password_hash: `$2a$10$${password}hashsimulation`,
     role: role as UserRole,
     ref_id: ref_id || null,
     created_at: new Date().toISOString()
   };
-  db.addUser(newUser);
-  res.status(201).json(newUser);
+
+  try {
+    const authUser = await syncSupabaseAuthUser(newUser, password);
+    db.addUser(newUser);
+    res.status(201).json({ ...newUser, supabase_auth_user_id: authUser?.id || null });
+  } catch (error: any) {
+    res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
+  }
 });
 
-app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { nama, email, password, role, ref_id } = req.body;
+  const current = db.getUsers().find(u => u.id === id);
+  if (!current) {
+    res.status(404).json({ error: 'User tidak ditemukan' });
+    return;
+  }
+
   const updates: Partial<User> = {};
   if (nama !== undefined) updates.nama = nama;
-  if (email !== undefined) updates.email = email;
+  if (email !== undefined) updates.email = email.toLowerCase();
   if (role !== undefined) updates.role = role;
   if (ref_id !== undefined) updates.ref_id = ref_id;
+  if (updates.role === 'kwarran' && !db.getKwarran().some(kw => kw.id === updates.ref_id)) {
+    res.status(400).json({ error: 'Pilih Kwartir Ranting yang valid untuk akun Kwarran' });
+    return;
+  }
   if (password) {
     updates.password_hash = `$2a$10$${password}hashsimulation`;
   }
-  db.updateUser(id, updates);
-  res.json({ message: 'User updated successfully' });
+
+  const nextUser: User = { ...current, ...updates };
+  try {
+    const authUser = await syncSupabaseAuthUser(nextUser, password, current.email);
+    db.updateUser(id, updates);
+    res.json({ message: 'User updated successfully', supabase_auth_user_id: authUser?.id || null });
+  } catch (error: any) {
+    res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
+  }
 });
 
-app.delete('/api/admin/users/:id', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
-  db.deleteUser(req.params.id);
-  res.json({ message: 'User deleted successfully' });
+app.delete('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
+  const current = db.getUsers().find(u => u.id === req.params.id);
+  if (!current) {
+    res.status(404).json({ error: 'User tidak ditemukan' });
+    return;
+  }
+
+  try {
+    await deleteSupabaseAuthUserByEmail(current.email);
+    db.deleteUser(req.params.id);
+    res.json({ message: 'User deleted successfully' });
+  } catch (error: any) {
+    res.status(502).json({ error: `Gagal menghapus user Supabase Auth: ${error.message}` });
+  }
 });
 
 // --- KAMPUNG PRAMUKA CRUD (Kwarcab only) ---
@@ -1425,6 +1571,14 @@ const initServer = async () => {
   });
 };
 
-initServer().catch(err => {
-  console.error('Server failed to start:', err);
-});
+export { app, db };
+
+const isServerlessRuntime = process.env.NETLIFY === 'true'
+  || process.env.NETLIFY_DEV === 'true'
+  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+if (!isServerlessRuntime) {
+  initServer().catch(err => {
+    console.error('Server failed to start:', err);
+  });
+}

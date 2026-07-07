@@ -1671,6 +1671,10 @@ export default function AdminPortal({
           ref_id: uRefId || null
         })
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal menyimpan akun user');
+      }
       if (res.ok) {
         showSuccess('Akun user berhasil disimpan!');
         setFormMode('list');

@@ -17,6 +17,19 @@ import AdminPortal from './components/AdminPortal';
 import ValidasiKTA from './components/ValidasiKTA';
 import { ProfilKwarcab, PimpinanKwarcab, Berita, Agenda, KwartirRanting, SatuanKarya, User as UserType, KampungPramuka } from './types';
 
+const readApiJson = async (res: Response) => {
+  const text = await res.text();
+  if (!text) {
+    throw new Error('Server API tidak mengembalikan data. Pastikan aplikasi dibuka dari npm run dev/start di port backend, bukan dari preview/static server.');
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Server API tidak mengembalikan JSON yang valid. Cek apakah backend Express sedang berjalan.');
+  }
+};
+
 export default function App() {
   // Public tabs: home, profil, berita, kwarran, saka, agenda, admin, validasi
   const [currentTab, setCurrentTab] = useState<string>('home');
@@ -79,6 +92,7 @@ export default function App() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Floating selector for quick evaluation
+  const [devPanelAllowed, setDevPanelAllowed] = useState(true);
   const [showDevPanel, setShowDevPanel] = useState(true);
 
   // Load all public data
@@ -108,6 +122,27 @@ export default function App() {
 
   useEffect(() => {
     loadPublicData();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/public/runtime')
+      .then(async res => {
+        if (!res.ok) return { devPanelEnabled: true };
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          return { devPanelEnabled: true };
+        }
+        return res.json();
+      })
+      .then(data => {
+        const enabled = data?.devPanelEnabled !== false;
+        setDevPanelAllowed(enabled);
+        setShowDevPanel(enabled);
+      })
+      .catch(() => {
+        setDevPanelAllowed(true);
+        setShowDevPanel(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -144,7 +179,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!res.ok) throw new Error(data.error || 'Autentikasi gagal');
 
       setUser(data.user);
@@ -173,7 +208,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: 'scout123' })
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (res.ok) {
         setUser(data.user);
         setToken(data.token);
@@ -211,7 +246,7 @@ export default function App() {
       />
 
       {/* DEV PANEL FOR QUICK ROLE EVALUATION (Modul 1 & 4 Multi-Role) */}
-      {showDevPanel && (
+      {devPanelAllowed && showDevPanel && (
         <div className="fixed bottom-6 left-6 z-40 max-w-sm w-full glass-panel-heavy p-4 rounded-2xl border border-[#D4AF37]/40 shadow-2xl animate-slide-up">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-1.5 text-xs font-bold text-[#D4AF37]">

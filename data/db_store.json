@@ -44,33 +44,18 @@
       "role": "saka",
       "ref_id": "saka_2",
       "created_at": "2026-01-12T00:00:00Z"
+    },
+    {
+      "id": "u_dyn_1783398961717",
+      "nama": "Adminkwarcab (Admin)",
+      "email": "adminkwarcab@gmail.com",
+      "password_hash": "AdminKwarcab2026!",
+      "role": "kwarcab",
+      "ref_id": null,
+      "created_at": "2026-07-07T04:36:01.719Z"
     }
   ],
   "kwartir_ranting": [
-    {
-      "id": "kwarran_1",
-      "nama_kecamatan": "Cisayong",
-      "ketua": "Kak H. Maman Budiman, M.Pd.",
-      "sekretaris": "Kak Ade Sukmana, S.Pd.",
-      "bendahara": "Kak Nenden Nurjanah, S.Pd.",
-      "foto_ketua": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
-      "foto_sekretaris": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
-      "foto_bendahara": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
-      "status": "aktif",
-      "created_at": "2026-01-10T00:00:00Z"
-    },
-    {
-      "id": "kwarran_2",
-      "nama_kecamatan": "Singaparna",
-      "ketua": "Kak Dr. H. Tatang, M.Si.",
-      "sekretaris": "Kak Dani Ramdani, S.Pd.",
-      "bendahara": "Kak Imas Masriah, S.Ag.",
-      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
-      "foto_sekretaris": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
-      "foto_bendahara": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
-      "status": "aktif",
-      "created_at": "2026-01-15T00:00:00Z"
-    },
     {
       "id": "kwarran_3",
       "nama_kecamatan": "Ciawi",
@@ -84,6 +69,18 @@
       "created_at": "2026-02-01T00:00:00Z"
     },
     {
+      "id": "kwarran_1",
+      "nama_kecamatan": "Cisayong",
+      "ketua": "Kak H. Maman Budiman, M.Pd.",
+      "sekretaris": "Kak Ade Sukmana, S.Pd.",
+      "bendahara": "Kak Nenden Nurjanah, S.Pd.",
+      "foto_ketua": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-10T00:00:00Z"
+    },
+    {
       "id": "kwarran_4",
       "nama_kecamatan": "Manonjaya",
       "ketua": "Kak H. Endang, S.Pd.",
@@ -94,6 +91,18 @@
       "foto_bendahara": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200",
       "status": "aktif",
       "created_at": "2026-02-10T00:00:00Z"
+    },
+    {
+      "id": "kwarran_2",
+      "nama_kecamatan": "Singaparna",
+      "ketua": "Kak Dr. H. Tatang, M.Si.",
+      "sekretaris": "Kak Dani Ramdani, S.Pd.",
+      "bendahara": "Kak Imas Masriah, S.Ag.",
+      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-15T00:00:00Z"
     }
   ],
   "gugus_depan": [
@@ -124,18 +133,6 @@
   ],
   "satuan_karya": [
     {
-      "id": "saka_1",
-      "nama_saka": "Saka Bhayangkara",
-      "ketua": "Kak AKP H. Subarna (Polres Tasikmalaya)",
-      "sekretaris": "Kak Bripka Heri, S.H.",
-      "bendahara": "Kak Rina Marlina",
-      "foto_ketua": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
-      "foto_sekretaris": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
-      "foto_bendahara": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200",
-      "status": "aktif",
-      "created_at": "2026-01-10T00:00:00Z"
-    },
-    {
       "id": "saka_2",
       "nama_saka": "Saka Bakti Husada",
       "ketua": "Kak Dr. H. Heru (Dinas Kesehatan)",
@@ -148,16 +145,16 @@
       "created_at": "2026-01-12T00:00:00Z"
     },
     {
-      "id": "saka_3",
-      "nama_saka": "Saka Wira Kartika",
-      "ketua": "Kak Mayor Inf. Sugeng (Kodim 0612)",
-      "sekretaris": "Kak Serma Jajang",
-      "bendahara": "Kak Astri Rahayu",
-      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
-      "foto_sekretaris": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200",
-      "foto_bendahara": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200",
+      "id": "saka_1",
+      "nama_saka": "Saka Bhayangkara",
+      "ketua": "Kak AKP H. Subarna (Polres Tasikmalaya)",
+      "sekretaris": "Kak Bripka Heri, S.H.",
+      "bendahara": "Kak Rina Marlina",
+      "foto_ketua": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200",
       "status": "aktif",
-      "created_at": "2026-01-15T00:00:00Z"
+      "created_at": "2026-01-10T00:00:00Z"
     },
     {
       "id": "saka_4",
@@ -170,6 +167,18 @@
       "foto_bendahara": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
       "status": "transisi",
       "created_at": "2026-01-20T00:00:00Z"
+    },
+    {
+      "id": "saka_3",
+      "nama_saka": "Saka Wira Kartika",
+      "ketua": "Kak Mayor Inf. Sugeng (Kodim 0612)",
+      "sekretaris": "Kak Serma Jajang",
+      "bendahara": "Kak Astri Rahayu",
+      "foto_ketua": "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200",
+      "foto_sekretaris": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200",
+      "foto_bendahara": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200",
+      "status": "aktif",
+      "created_at": "2026-01-15T00:00:00Z"
     }
   ],
   "anggota": [
@@ -325,17 +334,6 @@
       "created_at": "2026-03-15T00:00:00Z"
     },
     {
-      "id": "agenda_2",
-      "judul": "Pengiriman Kontingen Kwarcab Tasikmalaya ke Raimuna Nasional XIII 2026",
-      "deskripsi": "Pelepasan resmi dan pemberangkatan kontingen cabang terbaik Kabupaten Tasikmalaya untuk mengikuti Raimuna Nasional XIII di Bumi Perkemahan Cibubur, Jakarta.",
-      "tanggal_mulai": "2026-08-14",
-      "tanggal_selesai": "2026-08-21",
-      "kategori": "partisipasi_nasional",
-      "owner_type": "kwarcab",
-      "owner_id": "u_1",
-      "created_at": "2026-05-10T00:00:00Z"
-    },
-    {
       "id": "agenda_3",
       "judul": "Lomba Tingkat III (LT-III) Penggalang Kwarcab Tasikmalaya",
       "deskripsi": "Pertemuan dan perlombaan regu penggalang terbaik utusan tiap Kwartir Ranting se-Kabupaten Tasikmalaya untuk merebut tiket mewakili cabang ke LT-IV tingkat Daerah Jawa Barat.",
@@ -345,6 +343,17 @@
       "owner_type": "kwarcab",
       "owner_id": "u_1",
       "created_at": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "agenda_2",
+      "judul": "Pengiriman Kontingen Kwarcab Tasikmalaya ke Raimuna Nasional XIII 2026",
+      "deskripsi": "Pelepasan resmi dan pemberangkatan kontingen cabang terbaik Kabupaten Tasikmalaya untuk mengikuti Raimuna Nasional XIII di Bumi Perkemahan Cibubur, Jakarta.",
+      "tanggal_mulai": "2026-08-14",
+      "tanggal_selesai": "2026-08-21",
+      "kategori": "partisipasi_nasional",
+      "owner_type": "kwarcab",
+      "owner_id": "u_1",
+      "created_at": "2026-05-10T00:00:00Z"
     }
   ],
   "notifikasi": [

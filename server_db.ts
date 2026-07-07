@@ -529,6 +529,7 @@ function createDefaultState(): DbState {
 export class DatabaseSim {
   private state: DbState;
   private syncTimer: NodeJS.Timeout | null = null;
+  private supabaseConnected = false;
   public readonly ready: Promise<void>;
 
   constructor() {
@@ -581,10 +582,16 @@ export class DatabaseSim {
       await this.pullFromSupabase();
       await this.flushToSupabase();
       this.persistLocalOnly();
+      this.supabaseConnected = true;
       console.log('[Database] Supabase integration ready.');
     } catch (e) {
+      this.supabaseConnected = false;
       console.error('[Database] Supabase bootstrap failed; continuing with local JSON store.', e);
     }
+  }
+
+  public isSupabaseConnected(): boolean {
+    return this.supabaseConnected;
   }
 
   private async pullFromSupabase(): Promise<void> {
