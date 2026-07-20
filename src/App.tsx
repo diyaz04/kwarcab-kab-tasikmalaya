@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Compass, Shield, Award, Users, Calendar, BookOpen, MapPin, 
   ChevronRight, ArrowUpRight, Activity, HelpCircle, User, 
-  Key, LogOut, CheckCircle2, Lock, Sparkles, Building, AlertCircle, X,
+  Key, LogOut, CheckCircle2, Lock, Building, AlertCircle, X,
   ShieldCheck, RefreshCw
 } from 'lucide-react';
 import Navbar from './components/Navbar';
@@ -102,8 +102,6 @@ export default function App() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Floating selector for quick evaluation
-  const [devPanelAllowed, setDevPanelAllowed] = useState(true);
-  const [showDevPanel, setShowDevPanel] = useState(true);
 
   // Load all public data
   const loadPublicData = async () => {
@@ -142,27 +140,6 @@ export default function App() {
 
   useEffect(() => {
     loadPublicData();
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/public/runtime')
-      .then(async res => {
-        if (!res.ok) return { devPanelEnabled: true };
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          return { devPanelEnabled: true };
-        }
-        return res.json();
-      })
-      .then(data => {
-        const enabled = data?.devPanelEnabled !== false;
-        setDevPanelAllowed(enabled);
-        setShowDevPanel(enabled);
-      })
-      .catch(() => {
-        setDevPanelAllowed(true);
-        setShowDevPanel(true);
-      });
   }, []);
 
   useEffect(() => {
@@ -217,27 +194,6 @@ export default function App() {
     setCurrentTab('home');
   };
 
-  // Quick Switch Test Accounts (evaluator's best friend)
-  const handleQuickSwitchRole = async (email: string) => {
-    setLoginEmail(email);
-    setLoginPassword('scout123');
-    setLoginError('');
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'scout123' })
-      });
-      const data = await readApiJson(res);
-      if (res.ok) {
-        setUser(data.user);
-        setToken(data.token);
-        setShowLoginModal(false);
-        setCurrentTab('admin');
-      }
-    } catch (err) {}
-  };
-
   const featuredNews = berita.filter(b => b.is_featured && b.status === 'approved');
   const approvedNews = berita.filter(b => b.status === 'approved');
 
@@ -264,61 +220,6 @@ export default function App() {
         theme={theme}
         onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
       />
-
-      {/* DEV PANEL FOR QUICK ROLE EVALUATION (Modul 1 & 4 Multi-Role) */}
-      {devPanelAllowed && showDevPanel && (
-        <div className="fixed bottom-6 left-6 z-40 max-w-sm w-full glass-panel-heavy p-4 rounded-2xl border border-[#D4AF37]/40 shadow-2xl animate-slide-up">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-1.5 text-xs font-bold text-[#D4AF37]">
-              <Sparkles className="w-4 h-4 text-[#D4AF37] animate-pulse" />
-              <span>Developer &amp; Evaluator Panel</span>
-            </div>
-            <button 
-              onClick={() => setShowDevPanel(false)} 
-              className="text-xs text-purple-300 hover:text-white px-1 py-0.5 rounded bg-white/5 border border-white/10"
-            >
-              Sembunyikan
-            </button>
-          </div>
-          <p className="text-[10px] text-purple-200/80 mb-3 leading-normal font-light">
-            Klik tombol di bawah ini untuk berpindah peran dan menguji fitur database multi-role serta simulasi RBAC secara langsung tanpa registrasi manual.
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-[9px] font-bold">
-            <button
-              onClick={() => handleQuickSwitchRole('admin@kwarcabtasik.id')}
-              className="p-2 rounded bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/30 text-left"
-            >
-              👑 Superadmin Kwarcab
-            </button>
-            <button
-              onClick={() => handleQuickSwitchRole('cisayong@kwarcabtasik.id')}
-              className="p-2 rounded bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-500/30 text-left"
-            >
-              📍 Kwarran Cisayong
-            </button>
-            <button
-              onClick={() => handleQuickSwitchRole('gudep_sma1@kwarcabtasik.id')}
-              className="p-2 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/30 text-left"
-            >
-              🏫 Gudep SMAN 1
-            </button>
-            <button
-              onClick={() => handleQuickSwitchRole('bhayangkara@kwarcabtasik.id')}
-              className="p-2 rounded bg-amber-950/80 hover:bg-amber-900 text-[#D4AF37] border border-amber-500/30 text-left"
-            >
-              ⚔️ Saka Bhayangkara
-            </button>
-          </div>
-          {user && (
-            <div className="mt-3.5 pt-2 border-t border-white/5 flex items-center justify-between text-[9px]">
-              <span className="text-purple-300">Aktif: <strong className="text-white">{user.nama}</strong></span>
-              <button onClick={handleLogout} className="text-red-400 hover:underline flex items-center gap-0.5">
-                <LogOut className="w-3 h-3" /> Log Out
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* MAIN VIEWPORT */}
       <main className="flex-grow z-10">
