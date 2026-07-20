@@ -1,0 +1,41 @@
+{
+  "name": "Kwarcab Kab. Tasikmalaya",
+  "short_name": "Kwarcab Kab. Tasikmalaya",
+  "description": "Portal resmi Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya — berita, agenda, kwartir ranting, saka, dan layanan keanggotaan.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F0A1A",
+  "theme_color": "#663996",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["education", "government", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
