@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Compass, Shield, Award, Users, Calendar, BookOpen, MapPin, 
   ChevronRight, ArrowUpRight, Activity, HelpCircle, User, 
@@ -85,9 +85,22 @@ export default function App() {
   const [agenda, setAgenda] = useState<Agenda[]>([]);
   const [kwarran, setKwarran] = useState<KwartirRanting[]>([]);
   const [saka, setSaka] = useState<SatuanKarya[]>([]);
-  const [selectedBerita, setSelectedBerita] = useState<Berita | null>(null);
+  const [selectedBerita, setSelectedBeritaState] = useState<Berita | null>(null);
   const [selectedKp, setSelectedKp] = useState<KampungPramuka | null>(null);
   const [kampungPramuka, setKampungPramuka] = useState<KampungPramuka[]>([]);
+
+  // Pilih/batalkan berita + selalu sinkronkan URL (?berita=<id>) supaya link yang
+  // dibagikan (WhatsApp/Facebook/Twitter/copy link) mengarah langsung ke berita tsb.
+  const setSelectedBerita = (b: Berita | null) => {
+    setSelectedBeritaState(b);
+    const url = new URL(window.location.href);
+    if (b) {
+      url.searchParams.set('berita', b.id);
+    } else {
+      url.searchParams.delete('berita');
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
 
   // Modals
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -141,6 +154,23 @@ export default function App() {
   useEffect(() => {
     loadPublicData();
   }, []);
+
+  // Buka berita spesifik jika URL membawa ?berita=<id> (mis. dari link yang dibagikan)
+  const deepLinkBeritaApplied = useRef(false);
+  useEffect(() => {
+    if (deepLinkBeritaApplied.current) return;
+    if (berita.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const beritaId = params.get('berita');
+    if (beritaId) {
+      const found = berita.find(b => b.id === beritaId);
+      if (found) {
+        setSelectedBeritaState(found);
+        setCurrentTab('berita');
+      }
+    }
+    deepLinkBeritaApplied.current = true;
+  }, [berita]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

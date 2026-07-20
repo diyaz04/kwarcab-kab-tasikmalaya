@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, User, Eye, X, Filter, Compass, ChevronRight, ArrowLeft, Share2, Link, Check, Send, Facebook, Twitter, Clock } from 'lucide-react';
+import { Search, Calendar, User, Eye, X, Filter, Compass, ChevronRight, ArrowLeft, Share2, Link, Check, Send, Facebook, Twitter, Clock, Image as ImageIcon, Download, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Berita } from '../types';
+import { generateBeritaPamflet, downloadPamflet, sharePamflet } from '../utils/beritaPamflet';
 
 interface LandingBeritaProps {
   berita: Berita[];
@@ -13,6 +14,12 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // all, kwarcab, kwarran, gudep, saka
   const [copied, setCopied] = useState(false);
+
+  // Pamflet Berita (poster siap unduh/bagikan dengan QR)
+  const [pamfletLoading, setPamfletLoading] = useState(false);
+  const [pamfletDataUrl, setPamfletDataUrl] = useState<string | null>(null);
+  const [pamfletError, setPamfletError] = useState<string | null>(null);
+  const [showPamfletModal, setShowPamfletModal] = useState(false);
 
   // Auto scroll to top when selecting an article
   useEffect(() => {
@@ -58,11 +65,19 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   };
 
   // Share Handlers
-  const shareUrl = window.location.href;
+  // Link spesifik ke berita ini (?berita=<id>), bukan sekadar URL halaman saat ini,
+  // supaya siapa pun yang membuka link langsung diarahkan ke berita yang dimaksud.
+  const shareUrl = (() => {
+    const url = new URL(window.location.href);
+    if (selectedBerita) {
+      url.searchParams.set('berita', selectedBerita.id);
+    }
+    return url.toString();
+  })();
   const shareText = selectedBerita ? `Baca warta Pramuka terbaru: "${selectedBerita.judul}" di Kwarcab Kabupaten Tasikmalaya` : '';
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${shareUrl}#news-${selectedBerita?.id}`);
+    navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
@@ -92,6 +107,31 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
     } else {
       handleCopyLink();
     }
+  };
+
+  // Buat Pamflet Berita (poster PNG: template statis + judul/isi/QR dinamis)
+  const handleGeneratePamflet = async () => {
+    if (!selectedBerita) return;
+    setPamfletError(null);
+    setPamfletDataUrl(null);
+    setShowPamfletModal(true);
+    setPamfletLoading(true);
+    try {
+      const dataUrl = await generateBeritaPamflet(selectedBerita);
+      setPamfletDataUrl(dataUrl);
+    } catch (err) {
+      setPamfletError('Template pamflet belum ditemukan. Pastikan file "pamflet-berita-template.png" sudah disimpan di folder /public project ini.');
+    } finally {
+      setPamfletLoading(false);
+    }
+  };
+
+  const handleDownloadPamflet = () => {
+    if (pamfletDataUrl && selectedBerita) downloadPamflet(pamfletDataUrl, selectedBerita);
+  };
+
+  const handleSharePamflet = () => {
+    if (pamfletDataUrl && selectedBerita) sharePamflet(pamfletDataUrl, selectedBerita);
   };
 
   // Other related stories (excluding current story)
@@ -260,6 +300,15 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                   Bagikan Secara Native
                 </button>
               )}
+
+              {/* Buat Pamflet Berita (poster dengan QR, siap diunduh/dibagikan) */}
+              <button
+                onClick={handleGeneratePamflet}
+                className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-400/30 text-purple-100 font-bold text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer"
+              >
+                <ImageIcon className="w-4 h-4 text-[#D4AF37]" />
+                Buat Pamflet Berita
+              </button>
             </div>
 
             {/* Related/Latest Stories Sidebar Widget */}
@@ -299,6 +348,68 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
             </div>
           </aside>
         </motion.div>
+
+        {/* Modal Preview Pamflet Berita */}
+        {showPamfletModal && (
+          <div
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowPamfletModal(false)}
+          >
+            <div
+              className="glass-panel-heavy rounded-3xl p-6 border border-[#D4AF37]/30 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-heading flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-[#D4AF37]" />
+                  Pamflet Berita
+                </h3>
+                <button onClick={() => setShowPamfletModal(false)} className="text-purple-300 hover:text-white p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {pamfletLoading && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-purple-200">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
+                  <p className="text-xs font-light">Sedang membuat pamflet...</p>
+                </div>
+              )}
+
+              {!pamfletLoading && pamfletError && (
+                <div className="py-8 text-center">
+                  <p className="text-xs text-red-300 leading-relaxed">{pamfletError}</p>
+                </div>
+              )}
+
+              {!pamfletLoading && !pamfletError && pamfletDataUrl && (
+                <>
+                  <img
+                    src={pamfletDataUrl}
+                    alt={`Pamflet - ${selectedBerita.judul}`}
+                    className="w-full rounded-2xl border border-white/10 mb-4"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={handleDownloadPamflet}
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-100 font-semibold text-xs transition active:scale-95"
+                    >
+                      <Download className="w-4 h-4 text-purple-300" />
+                      Unduh
+                    </button>
+                    <button
+                      onClick={handleSharePamflet}
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0F0A1A] font-bold text-xs transition active:scale-95"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Bagikan
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
