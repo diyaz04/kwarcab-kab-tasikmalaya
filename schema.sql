@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS kwartir_ranting (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Link media sosial (JSON: instagram, facebook, youtube, tiktok, x, whatsapp, website)
+ALTER TABLE kwartir_ranting ADD COLUMN IF NOT EXISTS sosmed JSONB DEFAULT '{}'::jsonb;
+
 CREATE TABLE IF NOT EXISTS gugus_depan (
   id TEXT PRIMARY KEY,
   nama_pangkalan TEXT NOT NULL,
@@ -129,6 +132,9 @@ CREATE TABLE IF NOT EXISTS profil_kwarcab (
   hero_mode TEXT DEFAULT 'dinamis' CHECK (hero_mode IN ('statis', 'dinamis')),
   banner_statis_url TEXT DEFAULT ''
 );
+
+-- Link media sosial Kwarcab (tampil di footer landingpage)
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sosmed JSONB DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS kampung_pramuka (
   id TEXT PRIMARY KEY,

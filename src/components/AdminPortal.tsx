@@ -7,9 +7,11 @@ import {
 } from 'lucide-react';
 import { 
   User as UserType, UserRole, KwartirRanting, GugusDepan, SatuanKarya,
-  Anggota, Berita, Agenda, Notifikasi, PimpinanKwarcab, ProfilKwarcab, GolonganPramuka, KampungPramuka, KtaConfig, AdminPermission
+  Anggota, Berita, Agenda, Notifikasi, PimpinanKwarcab, ProfilKwarcab, GolonganPramuka, KampungPramuka, KtaConfig, AdminPermission, SosmedLinks
 } from '../types';
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
+import SosmedFields from './SosmedFields';
+import { sanitizeSosmed } from '../utils/sosmed';
 
 const KWARCAB_ACCESS_OPTIONS: Array<{ id: AdminPermission; label: string; description: string }> = [
   { id: 'anggota', label: 'Kelola Anggota', description: 'Data anggota, filter, dan ekspor dasar.' },
@@ -119,6 +121,7 @@ export default function AdminPortal({
   const [confMisi, setConfMisi] = useState('');
   const [confSejarah, setConfSejarah] = useState('');
   const [confHeroMode, setConfHeroMode] = useState<'statis' | 'dinamis'>('dinamis');
+  const [confSosmed, setConfSosmed] = useState<SosmedLinks>({});
   const [confBanner, setConfBanner] = useState('');
   const [previewKtaHtml, setPreviewKtaHtml] = useState<{ html: string, anggotaId: string } | null>(null);
 
@@ -136,6 +139,15 @@ export default function AdminPortal({
   const [kwSekretaris, setKwSekretaris] = useState('');
   const [kwBendahara, setKwBendahara] = useState('');
   const [kwStatus, setKwStatus] = useState<'aktif' | 'non-aktif' | 'transisi'>('aktif');
+
+  // Media sosial Kwarran (diisi admin Kwarran dari dashboard-nya sendiri)
+  const [kwSosmed, setKwSosmed] = useState<SosmedLinks>({});
+  const ownKwarran = user.role === 'kwarran' ? allKwarran.find(k => k.id === user.ref_id) : undefined;
+  const ownKwarranSosmedKey = JSON.stringify(ownKwarran?.sosmed || {});
+  useEffect(() => {
+    if (ownKwarran) setKwSosmed(ownKwarran.sosmed || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownKwarran?.id, ownKwarranSosmedKey]);
 
   // Gudep Form Fields
   const [gdNama, setGdNama] = useState('');
@@ -1281,6 +1293,7 @@ export default function AdminPortal({
         setConfSejarah(profData.sejarah);
         setConfHeroMode(profData.hero_mode);
         setConfBanner(profData.banner_statis_url);
+        setConfSosmed(profData.sosmed || {});
 
         const pimRes = await fetch('/api/public/pimpinan');
         const pimData = await pimRes.json();
@@ -1703,10 +1716,12 @@ export default function AdminPortal({
           misi: confMisi,
           sejarah: confSejarah,
           hero_mode: confHeroMode,
-          banner_statis_url: confBanner
+          banner_statis_url: confBanner,
+          sosmed: confSosmed
         })
       });
       if (res.ok) {
+        setConfSosmed(sanitizeSosmed(confSosmed));
         showSuccess('Konfigurasi Profil Kwarcab berhasil disimpan!');
         onRefreshData();
       }
@@ -1859,6 +1874,32 @@ export default function AdminPortal({
     }
   };
 
+  // --- ACTIONS: MEDIA SOSIAL KWARRAN (ADMIN KWARRAN) ---
+  const handleSaveKwarranSosmed = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user.ref_id) return;
+    try {
+      const res = await fetch(`/api/admin/kwarran/${user.ref_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ sosmed: kwSosmed })
+      });
+      if (res.ok) {
+        setKwSosmed(sanitizeSosmed(kwSosmed));
+        showSuccess('Link media sosial Kwarran berhasil disimpan!');
+        onRefreshData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || 'Gagal menyimpan media sosial Kwarran');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    }
+  };
+
   // --- ACTIONS: GUDEP CRUD (KWARCAB/KWARRAN) ---
   const handleSaveGudep = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1955,6 +1996,7 @@ export default function AdminPortal({
     { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'anggota' as AdminPermission },
     { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kta' as AdminPermission },
     { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kwarran' as AdminPermission },
+    { id: 'kwarran_sosmed', label: 'Media Sosial Kwarran', icon: Globe, roles: ['kwarran'] as UserRole[] },
     { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'gudep' as AdminPermission },
     { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'saka' as AdminPermission },
     { id: 'kampung_pramuka', label: 'Kampung Pramuka', icon: Globe, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kampung_pramuka' as AdminPermission },
@@ -4536,11 +4578,50 @@ export default function AdminPortal({
                 </div>
               </div>
 
+              <div className="space-y-4 pt-2">
+                <div className="border-b border-white/5 pb-2">
+                  <h4 className="text-xs font-bold text-white uppercase">Media Sosial Kwarcab (Footer Landingpage)</h4>
+                  <p className="text-[11px] text-purple-300/70 mt-1">
+                    Tempel link akun resmi Kwarcab. Yang dikosongkan tidak akan ditampilkan sebagai tombol di footer.
+                  </p>
+                </div>
+                <SosmedFields value={confSosmed} onChange={setConfSosmed} />
+              </div>
+
               <div className="flex justify-end pt-4">
                 <button type="submit" className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
                   Simpan Konfigurasi Profil
                 </button>
               </div>
+            </form>
+          )}
+
+          {/* --- TAB CONTENT: MEDIA SOSIAL KWARRAN (ADMIN KWARRAN) --- */}
+          {activeTab === 'kwarran_sosmed' && user.role === 'kwarran' && (
+            <form onSubmit={handleSaveKwarranSosmed} className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/5 space-y-6 animate-fade-in">
+              <div className="border-b border-white/5 pb-2">
+                <h3 className="text-sm font-bold text-white uppercase">
+                  Media Sosial Kwarran {ownKwarran ? ownKwarran.nama_kecamatan : ''}
+                </h3>
+                <p className="text-[11px] text-purple-300/70 mt-1">
+                  Link ini tampil sebagai tombol di halaman detail Kwarran pada landingpage. Kosongkan kolom yang tidak dipakai.
+                </p>
+              </div>
+
+              {ownKwarran ? (
+                <>
+                  <SosmedFields value={kwSosmed} onChange={setKwSosmed} />
+                  <div className="flex justify-end pt-2">
+                    <button type="submit" className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
+                      Simpan Media Sosial
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-purple-300 italic">
+                  Akun ini belum terhubung ke data Kwartir Ranting. Hubungi Superadmin Kwarcab.
+                </p>
+              )}
             </form>
           )}
 

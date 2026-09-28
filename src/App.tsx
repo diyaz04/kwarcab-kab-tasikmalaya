@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import Navbar from './components/Navbar';
 import LandingHero from './components/LandingHero';
+import LandingBeritaStrip from './components/LandingBeritaStrip';
+import SosmedButtons from './components/SosmedButtons';
+import { sanitizeSosmed } from './utils/sosmed';
 import LandingProfil from './components/LandingProfil';
 import LandingBerita from './components/LandingBerita';
 import LandingKwarranSaka from './components/LandingKwarranSaka';
@@ -227,6 +230,11 @@ export default function App() {
   const featuredNews = berita.filter(b => b.is_featured && b.status === 'approved');
   const approvedNews = berita.filter(b => b.status === 'approved');
 
+  // Kartu kecil di bawah hero: berita lain (bukan yang sedang tampil di slide), maks. 6.
+  // Jika hero statis / tidak ada berita sorotan, semua berita terbaru boleh tampil.
+  const heroShowsSlides = (profil?.hero_mode || 'dinamis') === 'dinamis' && featuredNews.length > 0;
+  const stripNews = approvedNews.filter(b => !heroShowsSlides || !b.is_featured).slice(0, 6);
+
   return (
     <div className={`min-h-screen bg-[#0F0A1A] text-white flex flex-col relative overflow-x-hidden ${theme === 'light' ? 'light-mode' : ''}`}>
       {/* Background stars / ambient dots */}
@@ -257,21 +265,34 @@ export default function App() {
         {/* --- PORTAL LANDING: HOME --- */}
         {currentTab === 'home' && (
           <div className="animate-fade-in space-y-20">
-            {/* Hero */}
-            <LandingHero 
-              profil={profil} 
-              featuredNews={featuredNews} 
-              onSelectBerita={(b) => {
-                setSelectedBerita(b);
-                setCurrentTab('berita');
-              }}
-              onNavigateToTab={(tab) => {
-                if (tab === 'berita') {
+            {/* Hero + kartu berita kecil di bawahnya */}
+            <div>
+              <LandingHero 
+                profil={profil} 
+                featuredNews={featuredNews} 
+                onSelectBerita={(b) => {
+                  setSelectedBerita(b);
+                  setCurrentTab('berita');
+                }}
+                onNavigateToTab={(tab) => {
+                  if (tab === 'berita') {
+                    setSelectedBerita(null);
+                  }
+                  setCurrentTab(tab);
+                }}
+              />
+              <LandingBeritaStrip
+                news={stripNews}
+                onSelectBerita={(b) => {
+                  setSelectedBerita(b);
+                  setCurrentTab('berita');
+                }}
+                onSeeAll={() => {
                   setSelectedBerita(null);
-                }
-                setCurrentTab(tab);
-              }}
-            />
+                  setCurrentTab('berita');
+                }}
+              />
+            </div>
 
             {/* Quick Stats Grid section (No AI template look, pure premium bento design) */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -356,48 +377,6 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </section>
-
-            {/* Quick news teaser section */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-              <div className="flex items-center justify-between mb-10">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-heading">Warta Kepanduan Terbaru</h2>
-                  <p className="text-xs text-purple-300 mt-1 font-light">Rilis berita dan dinamika kegiatan pramuka se-kabupaten</p>
-                </div>
-                <button 
-                  onClick={() => setCurrentTab('berita')}
-                  className="text-xs font-bold text-[#D4AF37] flex items-center space-x-1 hover:underline"
-                >
-                  <span>Semua Berita</span>
-                  <ArrowUpRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-6">
-                {approvedNews.slice(0, 3).map((b) => (
-                  <div 
-                    key={b.id} 
-                    onClick={() => {
-                      setSelectedBerita(b);
-                      setCurrentTab('berita');
-                    }}
-                    className="glass-panel glass-panel-interactive rounded-2xl overflow-hidden flex flex-col h-full border border-white/5 cursor-pointer group"
-                  >
-                    <div className="h-40 overflow-hidden relative">
-                      <img src={b.gambar_cover} alt="" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
-                    </div>
-                    <div className="p-4 flex-grow flex flex-col justify-between">
-                      <div>
-                        <span className="text-[9px] font-bold text-purple-300 uppercase">{b.author_type}</span>
-                        <h4 className="text-sm font-bold text-white mt-1 line-clamp-2 group-hover:text-[#D4AF37] transition-colors">{b.judul}</h4>
-                      </div>
-                      <p className="text-[10px] text-purple-200/60 font-light mt-3 line-clamp-2 leading-relaxed">{b.konten}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
             </section>
 
@@ -571,6 +550,12 @@ export default function App() {
               Kabupaten Tasikmalaya, Jawa Barat, Indonesia<br />
               Email: humas@kwarcabtasikmalaya.or.id
             </p>
+            {Object.keys(sanitizeSosmed(profil?.sosmed)).length > 0 && (
+              <div className="mt-5">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider mb-3">Ikuti Kami</h4>
+                <SosmedButtons links={profil?.sosmed} variant="footer" />
+              </div>
+            )}
           </div>
         </div>
 

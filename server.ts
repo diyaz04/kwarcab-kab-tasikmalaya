@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
+import { sanitizeSosmed } from './src/utils/sosmed';
 
 const app = express();
 const PORT = 3000;
@@ -1064,7 +1065,17 @@ app.put('/api/admin/kwarran/:id', authenticate, (req: AuthRequest, res: Response
     return;
   }
 
-  db.updateKwarran(id, req.body);
+  // Admin Kwarran hanya boleh mengubah link media sosial kwarrannya sendiri.
+  // (Data inti seperti nama, pengurus, status hanya dikelola Kwarcab.)
+  const updates: Record<string, unknown> = user.role === 'kwarran'
+    ? { sosmed: sanitizeSosmed(req.body?.sosmed) }
+    : { ...req.body };
+  if (user.role !== 'kwarran' && 'sosmed' in updates) {
+    updates.sosmed = sanitizeSosmed(updates.sosmed);
+  }
+  delete updates.id;
+
+  db.updateKwarran(id, updates);
   res.json({ message: 'Kwarran updated successfully' });
 });
 
@@ -1434,7 +1445,11 @@ app.delete('/api/admin/agenda/:id', authenticate, (req: AuthRequest, res: Respon
 
 // --- KWARCAB PROFILE EDIT (KWARCAB ONLY) ---
 app.put('/api/admin/profil-kwarcab', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
-  db.updateProfil(req.body);
+  const updates = { ...req.body };
+  if ('sosmed' in updates) {
+    updates.sosmed = sanitizeSosmed(updates.sosmed);
+  }
+  db.updateProfil(updates);
   res.json({ message: 'Profil Kwarcab berhasil diperbarui' });
 });
 

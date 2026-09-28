@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, User, MapPin, Award, Shield, CheckCircle2, AlertTriangle, HelpCircle, Activity, BookOpen, Calendar, X, Building, ArrowLeft, Landmark, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { KwartirRanting, SatuanKarya } from '../types';
+import SosmedButtons from './SosmedButtons';
 
 interface LandingKwarranSakaProps {
   type: 'kwarran' | 'saka';
@@ -139,6 +140,13 @@ export default function LandingKwarranSaka({ type, items }: LandingKwarranSakaPr
                         ? `Kwartir Ranting ${detailData.kwarran.nama_kecamatan}` 
                         : detailData.saka.nama_saka}
                     </h1>
+                    {type === 'kwarran' && (
+                      <SosmedButtons
+                        links={detailData.kwarran.sosmed}
+                        variant="header"
+                        className="mt-4"
+                      />
+                    )}
                   </div>
                 </div>
 

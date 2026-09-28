@@ -15,6 +15,13 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // all, kwarcab, kwarran, gudep, saka
   const [copied, setCopied] = useState(false);
 
+  // Paginasi daftar berita: 10 berita terbaru per halaman
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory]);
+
   // Pamflet Berita (poster siap unduh/bagikan dengan QR)
   const [pamfletLoading, setPamfletLoading] = useState(false);
   const [pamfletDataUrl, setPamfletDataUrl] = useState<string | null>(null);
@@ -35,6 +42,29 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
     const matchesCategory = selectedCategory === 'all' || b.author_type === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // Urutkan terbaru -> terlama, lalu potong sesuai halaman aktif
+  const sorted = [...filtered].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const activePage = Math.min(currentPage, totalPages);
+  const pageItems = sorted.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
+
+  // Nomor halaman ringkas: 1 ... 4 5 6 ... 12
+  const pageNumbers: Array<number | 'gap'> = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - activePage) <= 1) {
+      pageNumbers.push(i);
+    } else if (pageNumbers[pageNumbers.length - 1] !== 'gap') {
+      pageNumbers.push('gap');
+    }
+  }
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+    document.getElementById('daftar-berita')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const getAuthorBadgeColor = (type: string) => {
     switch (type) {
@@ -471,13 +501,14 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
       </div>
 
       {/* Grid List */}
+      <div id="daftar-berita" className="scroll-mt-28"></div>
       {filtered.length === 0 ? (
         <div className="glass-panel rounded-2xl p-12 text-center text-purple-300/70">
           Tidak ditemukan berita yang cocok dengan kriteria pencarian Anda.
         </div>
       ) : (
         <div className="grid md:grid-cols-3 gap-8 relative z-10">
-          {filtered.map((news) => (
+          {pageItems.map((news) => (
             <div
               key={news.id}
               onClick={() => setSelectedBerita(news)}
@@ -530,6 +561,56 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="mt-10 flex flex-col items-center gap-4">
+          <span className="text-xs text-purple-300/70">
+            Menampilkan {(activePage - 1) * PAGE_SIZE + 1}&ndash;{Math.min(activePage * PAGE_SIZE, sorted.length)} dari {sorted.length} berita
+          </span>
+
+          {totalPages > 1 && (
+            <nav aria-label="Paginasi berita" className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => goToPage(activePage - 1)}
+                disabled={activePage === 1}
+                className="px-3.5 py-2 rounded-xl glass-panel border border-white/10 text-xs font-bold text-purple-100 hover:text-white hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+              >
+                Sebelumnya
+              </button>
+
+              {pageNumbers.map((n, idx) =>
+                n === 'gap' ? (
+                  <span key={`gap-${idx}`} className="px-1 text-purple-300/60 text-xs">&hellip;</span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => goToPage(n)}
+                    aria-current={n === activePage ? 'page' : undefined}
+                    className={`min-w-[36px] px-2.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 ${
+                      n === activePage
+                        ? 'bg-purple-600/40 text-white border-[#D4AF37]/60 shadow-md shadow-purple-500/10'
+                        : 'glass-panel text-purple-200 border-white/10 hover:text-white hover:border-white/30'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() => goToPage(activePage + 1)}
+                disabled={activePage === totalPages}
+                className="px-3.5 py-2 rounded-xl glass-panel border border-white/10 text-xs font-bold text-purple-100 hover:text-white hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+              >
+                Selanjutnya
+              </button>
+            </nav>
+          )}
         </div>
       )}
     </div>

@@ -1,3 +1,8 @@
+export type SosmedPlatform = 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'x' | 'whatsapp' | 'website';
+
+// Link media sosial. Semua opsional; yang kosong tidak ditampilkan di landingpage.
+export type SosmedLinks = Partial<Record<SosmedPlatform, string>>;
+
 export type UserRole = 'kwarcab' | 'staff_kwarcab' | 'kwarran' | 'gudep' | 'saka';
 
 export type AdminPermission =
@@ -32,6 +37,7 @@ export interface KwartirRanting {
   foto_sekretaris: string;
   foto_bendahara: string;
   status: 'aktif' | 'non-aktif' | 'transisi';
+  sosmed?: SosmedLinks;
   created_at: string;
 }
 
@@ -135,6 +141,7 @@ export interface ProfilKwarcab {
   sejarah: string;
   hero_mode: 'statis' | 'dinamis';
   banner_statis_url: string;
+  sosmed?: SosmedLinks;
 }
 
 export interface KampungPramuka {
