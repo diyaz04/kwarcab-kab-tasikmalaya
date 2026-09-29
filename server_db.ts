@@ -10,7 +10,7 @@ import {
 const IS_SERVERLESS_RUNTIME = process.env.NETLIFY === 'true'
   || process.env.NETLIFY_DEV === 'true'
   || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
-  || process.env.VERCEL === '1';
+  || Boolean(process.env.VERCEL);
 const STORE_PATH = IS_SERVERLESS_RUNTIME
   ? path.join('/tmp', 'kwarcab-db-store.json')
   : path.join(process.cwd(), 'data', 'db_store.json');
