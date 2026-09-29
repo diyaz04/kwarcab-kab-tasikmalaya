@@ -12,7 +12,8 @@ const app = express();
 const PORT = 3000;
 const isServerlessRuntime = process.env.NETLIFY === 'true'
   || process.env.NETLIFY_DEV === 'true'
-  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
+  || process.env.VERCEL === '1';
 
 // Initialize Database Sim
 const db = new DatabaseSim();
@@ -356,6 +357,31 @@ const authorizeWithKwarcabPermission = (allowedRoles: UserRole[], permission: Ad
 };
 
 // --- AUTH ENDPOINTS ---
+
+app.put('/api/auth/password', authenticate, async (req: AuthRequest, res: Response) => {
+  const { password } = req.body;
+  if (!password || password.length < 6) {
+    res.status(400).json({ error: 'Password minimal 6 karakter' });
+    return;
+  }
+  const user = req.user!;
+  const current = db.getUsers().find(u => u.id === user.id);
+  if (!current) {
+    res.status(404).json({ error: 'User tidak ditemukan' });
+    return;
+  }
+  
+  const updates = { password_hash: `$2a$10$${password}hashsimulation` };
+  const nextUser = { ...current, ...updates };
+  
+  try {
+    await syncSupabaseAuthUser(nextUser, password, current.email);
+    db.updateUser(user.id, updates);
+    res.json({ message: 'Password berhasil diubah' });
+  } catch (error: any) {
+    res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
+  }
+});
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -1031,16 +1057,16 @@ app.get('/api/admin/kwarran', authenticate, (req: Request, res: Response) => {
 
 app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: Request, res: Response) => {
   const { nama_kecamatan, ketua, sekretaris, bendahara, status, foto_ketua, foto_sekretaris, foto_bendahara } = req.body;
-  if (!nama_kecamatan || !ketua || !sekretaris || !bendahara) {
-    res.status(400).json({ error: 'Data kecamatan dan pengurus inti wajib diisi' });
+  if (!nama_kecamatan) {
+    res.status(400).json({ error: 'Data nama kecamatan wajib diisi' });
     return;
   }
   const newKw = {
     id: `kwarran_${Date.now()}`,
     nama_kecamatan,
-    ketua,
-    sekretaris,
-    bendahara,
+    ketua: ketua || '-',
+    sekretaris: sekretaris || '-',
+    bendahara: bendahara || '-',
     foto_ketua: foto_ketua || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
     foto_sekretaris: foto_sekretaris || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
     foto_bendahara: foto_bendahara || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200',
@@ -1065,11 +1091,16 @@ app.put('/api/admin/kwarran/:id', authenticate, (req: AuthRequest, res: Response
     return;
   }
 
-  // Admin Kwarran hanya boleh mengubah link media sosial kwarrannya sendiri.
-  // (Data inti seperti nama, pengurus, status hanya dikelola Kwarcab.)
-  const updates: Record<string, unknown> = user.role === 'kwarran'
-    ? { sosmed: sanitizeSosmed(req.body?.sosmed) }
-    : { ...req.body };
+  // Admin Kwarran boleh mengubah data profil mereka (pengurus, sosmed, foto).
+  // Nama kecamatan dan status hanya dikelola Kwarcab.
+  const updates: Record<string, unknown> = { ...req.body };
+  if (user.role === 'kwarran') {
+    delete updates.nama_kecamatan;
+    delete updates.status;
+  }
+  if ('sosmed' in updates) {
+    updates.sosmed = sanitizeSosmed(updates.sosmed);
+  }
   if (user.role !== 'kwarran' && 'sosmed' in updates) {
     updates.sosmed = sanitizeSosmed(updates.sosmed);
   }
@@ -1497,12 +1528,20 @@ app.post('/api/admin/notifikasi/:id/read', authenticate, (req: Request, res: Res
   res.json({ message: 'Notification marked as read' });
 });
 
-app.get('/api/admin/users', authenticate, authorize(['kwarcab']), (req: Request, res: Response) => {
+app.get('/api/admin/users', authenticate, authorize(['kwarcab', 'kwarran']), (req: Request, res: Response) => {
   res.json(db.getUsers());
 });
 
-app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
+app.post('/api/admin/users', authenticate, authorize(['kwarcab', 'kwarran']), async (req: AuthRequest, res: Response) => {
   const { nama, email, password, role, ref_id, permissions } = req.body;
+  
+  if (req.user?.role === 'kwarran') {
+    if (role !== 'gudep') {
+      res.status(403).json({ error: 'Admin Kwarran hanya bisa membuat akun Gudep' });
+      return;
+    }
+  }
+
   if (!nama || !email || !password || !role) {
     res.status(400).json({ error: 'Semua field wajib diisi' });
     return;
@@ -1545,9 +1584,15 @@ app.post('/api/admin/users', authenticate, authorize(['kwarcab']), async (req: R
   }
 });
 
-app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
+app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab', 'kwarran']), async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { nama, email, password, role, ref_id, permissions } = req.body;
+  
+  if (req.user?.role === 'kwarran' && role && role !== 'gudep') {
+    res.status(403).json({ error: 'Admin Kwarran hanya bisa mengubah/membuat akun Gudep' });
+    return;
+  }
+
   const current = db.getUsers().find(u => u.id === id);
   if (!current) {
     res.status(404).json({ error: 'User tidak ditemukan' });
@@ -1592,7 +1637,7 @@ app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req
   }
 });
 
-app.delete('/api/admin/users/:id', authenticate, authorize(['kwarcab']), async (req: Request, res: Response) => {
+app.delete('/api/admin/users/:id', authenticate, authorize(['kwarcab', 'kwarran']), async (req: AuthRequest, res: Response) => {
   const current = db.getUsers().find(u => u.id === req.params.id);
   if (!current) {
     res.status(404).json({ error: 'User tidak ditemukan' });

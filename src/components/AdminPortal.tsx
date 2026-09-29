@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, User, Compass, Calendar, BookOpen, MapPin, Award, Shield, 
-  Trash2, Edit, Plus, Check, X, Bell, RefreshCw, Layers, CheckCircle2,
+  Users, User, Compass, Calendar, BookOpen, Clock, ArrowUpRight, ArrowRight, Layers, MapPin, Award, Shield, 
+  Trash2, Edit, Plus, Check, X, Bell, RefreshCw, CheckCircle2,
   AlertCircle, AlertTriangle, Key, Building, Eye, ChevronRight, FileText,
-  Download, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles
+  Download, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles, LogOut, Home, MoreHorizontal
 } from 'lucide-react';
 import { 
   User as UserType, UserRole, KwartirRanting, GugusDepan, SatuanKarya,
@@ -12,6 +12,10 @@ import {
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import { sanitizeSosmed } from '../utils/sosmed';
+
+// Logo resmi website (sama dengan Navbar & landing page).
+const LOGO_KWARCAB = 'https://lh3.googleusercontent.com/d/1LprUBW33eBc7zyJak0e8LkBfF8F1_b-z';
+const LOGO_KWARCAB_FALLBACK = '/logo-source.png';
 
 const KWARCAB_ACCESS_OPTIONS: Array<{ id: AdminPermission; label: string; description: string }> = [
   { id: 'anggota', label: 'Kelola Anggota', description: 'Data anggota, filter, dan ekspor dasar.' },
@@ -32,6 +36,7 @@ interface AdminPortalProps {
   allKwarran: KwartirRanting[];
   allSaka: SatuanKarya[];
   onBackToLanding: () => void;
+  onLogout?: () => void;
 }
 
 export default function AdminPortal({
@@ -40,7 +45,8 @@ export default function AdminPortal({
   onRefreshData,
   allKwarran,
   allSaka,
-  onBackToLanding
+  onBackToLanding,
+  onLogout
 }: AdminPortalProps) {
   // Navigation inside Admin Dashboard
   const [activeTab, setActiveTab] = useState<string>('overview'); // overview, anggota, kwarran, gudep, saka, berita, agenda, config, users, notif
@@ -84,6 +90,12 @@ export default function AdminPortal({
   const [kpSejarah, setKpSejarah] = useState('');
   const [kpKeunggulan, setKpKeunggulan] = useState('');
 
+  // Password Change Modal (Self)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [selfNewPassword, setSelfNewPassword] = useState('');
+  const [selfConfirmPassword, setSelfConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
   // Form states
   const [formMode, setFormMode] = useState<'list' | 'add' | 'edit'>('list');
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -102,6 +114,14 @@ export default function AdminPortal({
   const [angAktifSaka, setAngAktifSaka] = useState(false);
   const [angSakaIds, setAngSakaIds] = useState<string[]>([]);
   const [angFoto, setAngFoto] = useState('');
+
+  // Drill-down Anggota Mode
+  const [anggotaViewMode, setAnggotaViewMode] = useState<'rekap_kwarran' | 'list'>(
+    (user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran') ? 'rekap_kwarran' : 'list'
+  );
+  const [selectedRekapKwarranId, setSelectedRekapKwarranId] = useState<string | null>(
+    user.role === 'kwarran' ? user.ref_id : null
+  );
 
   // Berita Form Fields
   const [berJudul, setBerJudul] = useState('');
@@ -123,6 +143,16 @@ export default function AdminPortal({
   const [confHeroMode, setConfHeroMode] = useState<'statis' | 'dinamis'>('dinamis');
   const [confSosmed, setConfSosmed] = useState<SosmedLinks>({});
   const [confBanner, setConfBanner] = useState('');
+  const [confKetuaKwarcabNama, setConfKetuaKwarcabNama] = useState('');
+  const [confKetuaKwarcabFoto, setConfKetuaKwarcabFoto] = useState('');
+  const [confKetuaHarianNama, setConfKetuaHarianNama] = useState('');
+  const [confKetuaHarianFoto, setConfKetuaHarianFoto] = useState('');
+  const [confSekretarisNama, setConfSekretarisNama] = useState('');
+  const [confSekretarisFoto, setConfSekretarisFoto] = useState('');
+  const [confBendaharaNama, setConfBendaharaNama] = useState('');
+  const [confBendaharaFoto, setConfBendaharaFoto] = useState('');
+  const [confKetuaPusdatinNama, setConfKetuaPusdatinNama] = useState('');
+  const [confKetuaPusdatinFoto, setConfKetuaPusdatinFoto] = useState('');
   const [previewKtaHtml, setPreviewKtaHtml] = useState<{ html: string, anggotaId: string } | null>(null);
 
   // User Form Fields
@@ -370,18 +400,24 @@ export default function AdminPortal({
         </style>
       </head>
       <body>
-        <div class="kop-surat">
-          <img class="kop-logo" src="https://lh3.googleusercontent.com/d/1LprUBW33eBc7zyJak0e8LkBfF8F1_b-z" alt="Logo Pramuka" />
-          <div class="kop-text">
-            <h1>Gerakan Pramuka Indonesia</h1>
-            <h2>Kwartir Cabang Kabupaten Tasikmalaya</h2>
-            <p>Sekretariat: Kompleks Perkantoran Sukapura, Jl. Pemuda Raya, Tasikmalaya - Jawa Barat, Telp: (0265) 123456</p>
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 5px solid #111; padding-bottom: 5px; margin-bottom: 2px;">
+          <div style="width: 100px; text-align: left;">
+            <img src="/tunas.png" alt="Tunas Kelapa" style="width: 55px; height: auto;" />
+          </div>
+          <div style="text-align: center; flex: 1;">
+            <h2 style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold; margin: 0; letter-spacing: 1px; color: #222;">GERAKAN PRAMUKA</h2>
+            <h1 style="font-family: 'Times New Roman', Times, serif; font-size: 34px; font-weight: 900; margin: 2px 0; letter-spacing: -0.5px; color: #111;">KWARTIR CABANG KAB. TASIKMALAYA</h1>
+            <p style="font-family: 'Times New Roman', Times, serif; font-size: 15px; font-style: italic; margin: 0; color: #111;">Jln. Dalem Wirawangsa KM 1 Tasikmalaya 46462</p>
+          </div>
+          <div style="width: 100px; text-align: right;">
+            <img src="/wosm.png" alt="WOSM" style="width: 75px; height: auto;" />
           </div>
         </div>
+        <div style="border-bottom: 1.5px solid #111; margin-bottom: 24px;"></div>
 
         <div class="title-container">
           <h3>Daftar Anggota Gerakan Pramuka Terdaftar</h3>
-          <p>Golongan: \${exportFilterGolongan.toUpperCase()} | Dicetak pada: \${today}</p>
+          <p>Golongan: ${exportFilterGolongan.toUpperCase()} | Dicetak pada: ${today}</p>
         </div>
 
         <table>
@@ -398,7 +434,7 @@ export default function AdminPortal({
             </tr>
           </thead>
           <tbody>
-            \${tableRows}
+            ${tableRows}
           </tbody>
         </table>
 
@@ -411,11 +447,11 @@ export default function AdminPortal({
             <p>NTA / NIP</p>
           </div>
           <div class="signature-col">
-            <p>Tasikmalaya, \${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p>Tasikmalaya, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             <p style="font-weight: bold;">Sekretariat Kwartir Cabang</p>
             <div class="signature-space"></div>
-            <p class="signature-name">\${user.nama}</p>
-            <p>Role: \${user.role.toUpperCase()} (ID: \${user.id.substring(0,6)})</p>
+            <p class="signature-name">${confSekretarisNama || 'Sekretaris Kwarcab'}</p>
+            <p>Sekretaris Kwartir Cabang</p>
           </div>
         </div>
 
@@ -665,21 +701,20 @@ export default function AdminPortal({
       return `
         <div class="skl-page" style="${idx > 0 ? 'page-break-before: always;' : ''}">
           <!-- Letterhead (KOP SURAT) -->
-          <div class="kop-surat">
-            <div class="kop-logo-left">
-              <img src="https://lh3.googleusercontent.com/d/1LprUBW33eBc7zyJak0e8LkBfF8F1_b-z" alt="Logo Kwartir" />
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 5px solid #111; padding-bottom: 5px; margin-bottom: 2px;">
+            <div style="width: 100px; text-align: left;">
+              <img src="/tunas.png" alt="Tunas Kelapa" style="width: 55px; height: auto;" />
             </div>
-            <div class="kop-text">
-              <h2>GERAKAN PRAMUKA INDONESIA</h2>
-              <h1>KWARTIR CABANG KABUPATEN TASIKMALAYA</h1>
-              <h3>PUSAT DATA DAN INFORMASI (PUSDATIN)</h3>
-              <p>Sekretariat: Jl. Pemuda No. 12, Tasikmalaya, Jawa Barat | Pos 46111 | Email: pusdatin@kwarcabtasik.id</p>
+            <div style="text-align: center; flex: 1;">
+              <h2 style="font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; margin: 0; letter-spacing: 1px; color: #222;">GERAKAN PRAMUKA</h2>
+              <h1 style="font-family: 'Times New Roman', Times, serif; font-size: 32px; font-weight: 900; margin: 2px 0; letter-spacing: -0.5px; color: #111;">KWARTIR CABANG KAB. TASIKMALAYA</h1>
+              <p style="font-family: 'Times New Roman', Times, serif; font-size: 14px; font-style: italic; margin: 0; color: #111;">Jln. Dalem Wirawangsa KM 1 Tasikmalaya 46462</p>
             </div>
-            <div class="kop-logo-right">
-              <img src="https://lh3.googleusercontent.com/d/1lIpW-IUIUljA-sCXEloLp8Q1N3hJeymm" alt="Logo Pusdatin" />
+            <div style="width: 100px; text-align: right;">
+              <img src="/wosm.png" alt="WOSM" style="width: 75px; height: auto;" />
             </div>
           </div>
-          <div class="kop-divider"></div>
+          <div style="border-bottom: 1.5px solid #111; margin-bottom: 24px;"></div>
 
           <!-- Title -->
           <div class="surat-title">
@@ -768,7 +803,7 @@ export default function AdminPortal({
                 <div class="sig-line"></div>
               </div>
               
-              <p class="sig-name">Pusdatin Kwarcab Tasikmalaya</p>
+              <p class="sig-name">${confKetuaPusdatinNama || 'Pusdatin Kwarcab Tasikmalaya'}</p>
               <p class="sig-nip">ID Pusdatin: 32.06-PUSD-2026</p>
             </div>
           </div>
@@ -812,31 +847,6 @@ export default function AdminPortal({
             justify-content: space-between;
             color: #1f2937;
             overflow: hidden;
-          }
-
-          /* Elegant Certificate Frame Accent */
-          .skl-page::before {
-            content: '';
-            position: absolute;
-            top: 10mm;
-            left: 10mm;
-            right: 10mm;
-            bottom: 10mm;
-            border: 1px solid #e5e7eb;
-            pointer-events: none;
-            z-index: 1;
-          }
-          .skl-page::after {
-            content: '';
-            position: absolute;
-            top: 12mm;
-            left: 12mm;
-            right: 12mm;
-            bottom: 12mm;
-            border: 2px solid #D4AF37;
-            opacity: 0.35;
-            pointer-events: none;
-            z-index: 1;
           }
 
           /* Kop Surat Styles */
@@ -1186,6 +1196,11 @@ export default function AdminPortal({
           }
 
           @media print {
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+
             body {
               background-color: #ffffff;
               padding: 0;
@@ -1197,15 +1212,6 @@ export default function AdminPortal({
               padding: 20mm 15mm;
               page-break-inside: avoid;
               page-break-after: always;
-            }
-
-            .skl-page::before {
-              border: 1px solid #e5e7eb;
-            }
-
-            .skl-page::after {
-              border: 2px solid #D4AF37;
-              opacity: 0.35;
             }
           }
         </style>
@@ -1278,11 +1284,15 @@ export default function AdminPortal({
       const notData = await notRes.json();
       setNotifList(notData);
 
-      // Superadmin account management
-      if (isKwarcabAdmin) {
+      // Superadmin and Kwarran account management
+      if (isKwarcabAdmin || user.role === 'kwarran') {
         const uRes = await fetch('/api/admin/users', { headers });
         const uData = await uRes.json();
-        setUserList(uData);
+        if (Array.isArray(uData)) {
+          setUserList(uData);
+        } else {
+          setUserList([]);
+        }
       }
 
       if (canManage('config')) {
@@ -1294,6 +1304,16 @@ export default function AdminPortal({
         setConfHeroMode(profData.hero_mode);
         setConfBanner(profData.banner_statis_url);
         setConfSosmed(profData.sosmed || {});
+        setConfKetuaKwarcabNama(profData.ketua_kwarcab_nama || '');
+        setConfKetuaKwarcabFoto(profData.ketua_kwarcab_foto || '');
+        setConfKetuaHarianNama(profData.ketua_harian_nama || '');
+        setConfKetuaHarianFoto(profData.ketua_harian_foto || '');
+        setConfSekretarisNama(profData.sekretaris_nama || '');
+        setConfSekretarisFoto(profData.sekretaris_foto || '');
+        setConfBendaharaNama(profData.bendahara_nama || '');
+        setConfBendaharaFoto(profData.bendahara_foto || '');
+        setConfKetuaPusdatinNama(profData.ketua_pusdatin_nama || '');
+        setConfKetuaPusdatinFoto(profData.ketua_pusdatin_foto || '');
 
         const pimRes = await fetch('/api/public/pimpinan');
         const pimData = await pimRes.json();
@@ -1717,7 +1737,17 @@ export default function AdminPortal({
           sejarah: confSejarah,
           hero_mode: confHeroMode,
           banner_statis_url: confBanner,
-          sosmed: confSosmed
+          sosmed: confSosmed,
+          ketua_kwarcab_nama: confKetuaKwarcabNama,
+          ketua_kwarcab_foto: confKetuaKwarcabFoto,
+          ketua_harian_nama: confKetuaHarianNama,
+          ketua_harian_foto: confKetuaHarianFoto,
+          sekretaris_nama: confSekretarisNama,
+          sekretaris_foto: confSekretarisFoto,
+          bendahara_nama: confBendaharaNama,
+          bendahara_foto: confBendaharaFoto,
+          ketua_pusdatin_nama: confKetuaPusdatinNama,
+          ketua_pusdatin_foto: confKetuaPusdatinFoto
         })
       });
       if (res.ok) {
@@ -1786,6 +1816,39 @@ export default function AdminPortal({
       }
     } catch (err: any) {
       setErrorMsg(err.message);
+    }
+  };
+
+  const handleSelfChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selfNewPassword !== selfConfirmPassword) {
+      showError('Konfirmasi password tidak cocok');
+      return;
+    }
+    if (selfNewPassword.length < 6) {
+      showError('Password minimal 6 karakter');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ password: selfNewPassword })
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Gagal mengubah password');
+      }
+      showSuccess('Password berhasil diubah!');
+      setIsChangePasswordOpen(false);
+      setSelfNewPassword('');
+      setSelfConfirmPassword('');
+    } catch (err: any) {
+      showError(err.message);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -1995,7 +2058,7 @@ export default function AdminPortal({
     { id: 'overview', label: 'Ringkasan Ikhtisar', icon: Compass, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
     { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'anggota' as AdminPermission },
     { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kta' as AdminPermission },
-    { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kwarran' as AdminPermission },
+    { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'kwarran' as AdminPermission },
     { id: 'kwarran_sosmed', label: 'Media Sosial Kwarran', icon: Globe, roles: ['kwarran'] as UserRole[] },
     { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'gudep' as AdminPermission },
     { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'saka' as AdminPermission },
@@ -2003,7 +2066,7 @@ export default function AdminPortal({
     { id: 'berita', label: 'Sinergi Berita', icon: Shield, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'berita' as AdminPermission },
     { id: 'agenda', label: 'Agenda Kegiatan', icon: Calendar, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'saka'] as UserRole[], permission: 'agenda' as AdminPermission },
     { id: 'config', label: 'Profil Kwarcab', icon: BookOpen, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'config' as AdminPermission },
-    { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab'] as UserRole[] },
+    { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab', 'kwarran'] as UserRole[] },
     { id: 'notif', label: 'Notifikasi', icon: Bell, badge: notifList.filter(n => !n.is_read).length, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
   ];
   const visibleMenuItems = adminMenuItems.filter(item => {
@@ -2013,19 +2076,50 @@ export default function AdminPortal({
     return true;
   });
 
+  // --- Agenda Mendatang di Ringkasan (real dari database, bukan data contoh) ---
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const BULAN_SINGKAT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const AGENDA_KATEGORI: Record<string, { label: string; color: string }> = {
+    mandiri: { label: 'Mandiri', color: 'bg-green-600' },
+    partisipasi_daerah: { label: 'Partisipasi Daerah', color: 'bg-blue-600' },
+    partisipasi_nasional: { label: 'Partisipasi Nasional', color: 'bg-amber-500' },
+    partisipasi_internasional: { label: 'Partisipasi Internasional', color: 'bg-purple-600' },
+  };
+  const parseYmd = (value?: string) => {
+    const [y, m, d] = (value || '').slice(0, 10).split('-').map(Number);
+    return { y, m, d, valid: Boolean(y && m && d) };
+  };
+  const formatTanggalSingkat = (value?: string) => {
+    const { y, m, d, valid } = parseYmd(value);
+    return valid ? `${d} ${BULAN_SINGKAT[m - 1]} ${y}` : '-';
+  };
+  const upcomingAgenda = [...agendaList]
+    .filter(a => (a.tanggal_selesai || a.tanggal_mulai || '').slice(0, 10) >= todayStr)
+    .sort((a, b) => (a.tanggal_mulai || '').localeCompare(b.tanggal_mulai || ''))
+    .slice(0, 4);
+  const canOpenAgenda = visibleMenuItems.some(item => item.id === 'agenda');
+  const goToAgenda = () => {
+    setActiveTab('agenda');
+    setFormMode('list');
+    setSelectedItem(null);
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'kwarcab': return 'bg-purple-900/60 text-purple-200 border-purple-500/35';
+      case 'kwarcab': return 'bg-green-100 text-gray-600 border-green-200';
       case 'staff_kwarcab': return 'bg-fuchsia-900/60 text-fuchsia-200 border-fuchsia-500/35';
       case 'kwarran': return 'bg-blue-900/60 text-blue-200 border-blue-500/35';
       case 'gudep': return 'bg-emerald-900/60 text-emerald-200 border-emerald-500/35';
-      case 'saka': return 'bg-amber-900/60 text-[#D4AF37] border-amber-500/35';
+      case 'saka': return 'bg-amber-900/60 text-green-700 border-amber-500/35';
       default: return 'bg-slate-900/60 text-slate-200 border-slate-500/35';
     }
   };
 
   const getSakaStatusColor = (status: string) => {
-    return status === 'approved' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+    return status === 'approved' ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border-amber-500/20';
   };
 
   // Filtered and Paginated Anggota calculations
@@ -2074,271 +2168,644 @@ export default function AdminPortal({
   );
 
   return (
-    <div className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex h-screen bg-[#F4F7F6] font-sans relative">
       {/* Toast Messages */}
       {successMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 shadow-2xl backdrop-blur-md animate-slide-up">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-green-50 text-green-800 border border-green-200 shadow-2xl animate-slide-up">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
           <span className="text-sm font-semibold">{successMsg}</span>
         </div>
       )}
       {errorMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-red-950/90 text-red-300 border border-red-500/30 shadow-2xl backdrop-blur-md animate-slide-up">
-          <AlertCircle className="w-5 h-5 text-red-400" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-red-50 text-red-800 border border-red-200 shadow-2xl animate-slide-up">
+          <AlertCircle className="w-5 h-5 text-red-600" />
           <span className="text-sm font-semibold">{errorMsg}</span>
-          <button onClick={() => setErrorMsg('')} className="text-xs font-bold pl-2 underline text-white">Tutup</button>
+          <button onClick={() => setErrorMsg('')} className="text-xs font-bold pl-2 underline text-red-900">Tutup</button>
         </div>
       )}
 
-      {/* Main Grid: Sidebar + Pane */}
-      <div className="grid lg:grid-cols-4 gap-8">
-        {/* Left side: Navigation links (Glass panel) */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-panel rounded-3xl p-6 border border-white/5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-purple-900/10 filter blur-2xl"></div>
-            
-            {/* User card info */}
-            <div className="text-center pb-0 lg:pb-6 border-b-0 lg:border-b border-white/10 mb-0 lg:mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center mx-auto text-xl font-black text-[#D4AF37] mb-3 shadow-lg shadow-purple-500/15">
-                {user.nama.substring(0, 2).toUpperCase()}
-              </div>
-              <h3 className="text-sm font-bold text-white tracking-wide">{user.nama}</h3>
-              <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest mt-1">
-                Role: {getRoleLabel(user.role)}
-              </p>
-            </div>
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+      )}
 
-            {/* Menu Lists */}
-            <div className="hidden lg:block space-y-1">
-              {visibleMenuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setFormMode('list');
-                      setSelectedItem(null);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium tracking-wide transition-all duration-150 border ${
-                      isActive
-                        ? 'bg-purple-950/50 text-white border-[#D4AF37]/50 shadow-sm'
-                        : 'text-purple-200/80 border-transparent hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-[#D4AF37]' : 'text-purple-300'}`} />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-
-              <div className="border-t border-white/10 my-4 pt-4"></div>
+      {/* ========== MOBILE DRAWER SIDEBAR ========== */}
+      {/* Completely separate element for mobile, fixed positioned */}
+      <div className={`lg:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-72 bg-white border-r border-gray-100 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Logo area */}
+        <div className="h-16 flex items-center px-5 border-b border-gray-100 flex-shrink-0 gap-3">
+          <div className="w-9 h-9 bg-white border border-gray-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden">
+            <img
+              src={LOGO_KWARCAB}
+              alt="Logo Kwarcab"
+              className="w-full h-full object-cover scale-110"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = LOGO_KWARCAB_FALLBACK;
+              }}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[10px] font-black text-gray-900 uppercase tracking-wide leading-none">Kwartir Cabang</h1>
+            <p className="text-[8px] text-green-700 font-bold uppercase mt-0.5">Kab. Tasikmalaya</p>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Scrollable menu */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {visibleMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
               <button
-                onClick={onBackToLanding}
-                className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-[#D4AF37] hover:text-white bg-purple-950/20 hover:bg-purple-900/40 border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 shadow-lg shadow-purple-950/20 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setFormMode('list');
+                  setSelectedItem(null);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-[13px] font-bold tracking-wide transition-all duration-150 ${
+                  isActive
+                    ? 'bg-green-50 text-green-700 border border-green-100/50'
+                    : 'text-gray-500 hover:text-green-700 hover:bg-gray-50 border border-transparent'
+                }`}
               >
-                <Compass className="w-4 h-4 text-[#D4AF37]" />
-                <span>Kembali Ke Landing Page</span>
+                <div className="flex items-center space-x-3">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none">
+                    {item.badge}
+                  </span>
+                )}
               </button>
+            );
+          })}
+        </div>
+        {/* Logout Button */}
+        <div className="p-4 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all text-sm font-bold mb-2"
+          >
+            <Key className="w-4 h-4" />
+            <span>Ganti Password</span>
+          </button>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-all text-sm font-bold"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Keluar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ========== DESKTOP SIDEBAR (in-flow) ========== */}
+      <div className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-full flex-shrink-0">
+        {/* Logo area */}
+        <div className="h-20 flex flex-col justify-center px-6 border-b border-gray-50 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden p-1">
+              <img
+                src={LOGO_KWARCAB}
+                alt="Logo Kwarcab"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = LOGO_KWARCAB_FALLBACK;
+                }}
+              />
+            </div>
+            <div>
+              <h1 className="text-[11px] font-black text-gray-900 uppercase tracking-wide leading-tight">Kwartir Cabang<br/>Kab. Tasikmalaya</h1>
+              <p className="text-[8px] text-gray-500 font-medium">Gerakan Pramuka Indonesia</p>
             </div>
           </div>
         </div>
 
-        {/* Right side: Active Pane Workspace */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Breadcrumb / Top Bar */}
-          <div className="glass-panel rounded-2xl p-5 border border-white/5 flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-3.5">
-              {/* Hamburger Button (Strip 3) - ONLY ON MOBILE */}
+        {/* Scrollable menu */}
+        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1 scrollbar-none">
+          {visibleMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-purple-900/30 border border-white/10 text-white hover:bg-purple-900/50 hover:border-white/20 active:scale-95 transition-all duration-150 cursor-pointer"
-                aria-label="Toggle Menu"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5 text-[#D4AF37]" /> : <Menu className="w-5 h-5 text-[#D4AF37]" />}
-              </button>
-              <div>
-                <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Workspace Kontrol</span>
-                <h2 className="text-sm sm:text-lg font-black text-white font-heading mt-0.5">
-                  {activeTab.toUpperCase()} &mdash; {user.role.toUpperCase()}
-                </h2>
-              </div>
-            </div>
-            <button
-              onClick={loadDashboardData}
-              disabled={loading}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-purple-200 hover:text-white hover:bg-white/10 transition-all duration-200"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#D4AF37]' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-
-          {/* Mobile Collapsible Navigation Menu */}
-          {isMobileMenuOpen && (
-            <div className="lg:hidden glass-panel rounded-2xl p-5 border border-white/10 bg-[#0F0A1A]/95 backdrop-blur-xl animate-fade-in space-y-2 shadow-2xl">
-              <div className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest mb-3 px-1 border-b border-white/10 pb-2">
-                Menu Portal Admin
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {visibleMenuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setFormMode('list');
-                        setSelectedItem(null);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 border ${
-                        isActive
-                          ? 'bg-purple-950/50 text-[#D4AF37] border-[#D4AF37]/50 shadow-sm'
-                          : 'text-purple-200/80 border-transparent hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-[#D4AF37]' : 'text-purple-300'}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none">
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="border-t border-white/10 my-3 pt-3"></div>
-              <button
+                key={item.id}
                 onClick={() => {
-                  onBackToLanding();
+                  setActiveTab(item.id);
+                  setFormMode('list');
+                  setSelectedItem(null);
                   setIsMobileMenuOpen(false);
                 }}
-                className="w-full flex items-center justify-center space-x-2.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-[#D4AF37] hover:text-white bg-purple-900/30 hover:bg-purple-900/50 border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 transition-all duration-150 cursor-pointer"
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-[13px] font-bold tracking-wide transition-all duration-150 ${
+                  isActive
+                    ? 'bg-green-50 text-green-700 shadow-sm border border-green-100/50'
+                    : 'text-gray-500 hover:text-green-700 hover:bg-gray-50 border border-transparent'
+                }`}
               >
-                <Compass className="w-4.5 h-4.5 text-[#D4AF37]" />
-                <span>Kembali Ke Landing Page</span>
+                <div className="flex items-center space-x-3">
+                  <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                  <span>{item.label}</span>
+                </div>
+                {item.id !== 'overview' && (
+                  <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-green-600' : 'text-gray-300'}`} />
+                )}
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none">
+                    {item.badge}
+                  </span>
+                )}
               </button>
-            </div>
-          )}
+            );
+          })}
+        </div>
 
+        {/* Promo banner and actions */}
+        <div className="p-4 flex-shrink-0 space-y-3">
+          <button
+             onClick={() => setIsChangePasswordOpen(true)}
+             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 border border-gray-100 transition-all text-xs font-bold"
+          >
+            <Key className="w-4 h-4" />
+            <span>Ganti Password</span>
+          </button>
+          <button
+             onClick={onLogout}
+             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-red-600 hover:bg-red-50 border border-red-100 transition-all text-xs font-bold"
+          >
+             <LogOut className="w-4 h-4" />
+             <span>Keluar</span>
+          </button>
+          
+          <div className="rounded-2xl overflow-hidden relative shadow-sm border border-green-100 bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+            <div className="absolute right-[-20px] bottom-[-20px] opacity-20">
+              <img src={LOGO_KWARCAB} className="w-32 h-32 object-contain" alt="" referrerPolicy="no-referrer" />
+            </div>
+            <div className="relative z-10">
+              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center mb-3 shadow-md">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h4 className="text-sm font-black text-green-900 leading-tight">Satyaku Kudarmakan<br/>Darmaku Kubaktikan</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Workspace */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        {/* Header */}
+        <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 flex flex-col flex-shrink-0 sticky top-0 z-30">
+          <div className="h-16 sm:h-20 flex items-center justify-between px-4 sm:px-8">
+            <div className="flex items-center gap-3">
+              {/* Mobile menu button (Hidden if using bottom nav 'Lainnya', but keeping it for flexibility) */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 -ml-2 rounded-xl text-gray-600 hover:text-green-700 hover:bg-gray-50"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              
+              {/* Mobile Logo */}
+              <div className="flex lg:hidden items-center gap-2">
+                <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <img
+                    src={LOGO_KWARCAB}
+                    alt="Logo Kwarcab"
+                    className="w-full h-full object-cover scale-110"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = LOGO_KWARCAB_FALLBACK;
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-[10px] font-black text-gray-900 uppercase tracking-wide leading-none">Kwartir Cabang</h1>
+                  <p className="text-[7px] text-green-700 font-bold uppercase mt-0.5">Kab. Tasikmalaya</p>
+                </div>
+              </div>
+
+              {/* Desktop Search Bar */}
+              <div className="hidden lg:flex items-center relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-4" />
+                <input 
+                  type="text" 
+                  placeholder="Cari menu, kegiatan, atau informasi..." 
+                  className="pl-11 pr-4 py-2.5 w-80 rounded-full bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-green-500 focus:bg-white transition-all"
+                />
+                <div className="absolute right-3 flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-white border border-gray-200 rounded text-gray-400">⌘</kbd>
+                  <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-white border border-gray-200 rounded text-gray-400">K</kbd>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Back to Landing Page (Desktop Only) */}
+              <button
+                type="button"
+                onClick={onBackToLanding}
+                title="Kembali ke halaman utama"
+                className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition-all text-xs font-semibold"
+              >
+                <Home className="w-4 h-4" />
+                <span>Beranda</span>
+              </button>
+
+              {/* Divider */}
+              <div className="hidden sm:block h-8 w-px bg-gray-200"></div>
+
+              {/* Bell notification */}
+              <button type="button" className="relative p-2 rounded-full text-gray-500 hover:text-green-700 transition-colors hover:bg-gray-50">
+                <Bell className="w-5 h-5 sm:w-4 sm:h-4" />
+                <span className="absolute top-1 right-1 sm:top-2 sm:right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              </button>
+
+              {/* User info */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden md:block text-right">
+                  <div className="text-xs font-bold text-gray-900">{user.nama}</div>
+                  <div className="text-[10px] text-gray-500 font-medium">{getRoleLabel(user.role)}</div>
+                </div>
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 border border-green-200 flex items-center justify-center text-green-700 font-bold text-xs sm:text-sm overflow-hidden shadow-sm flex-shrink-0 relative">
+                  <img src="https://i.pravatar.cc/150?u=admin" alt="avatar" className="w-full h-full object-cover" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 hidden sm:block rotate-90" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Mobile Search Bar (Only visible on mobile below the header) */}
+          <div className="lg:hidden px-4 pb-3">
+             <div className="relative w-full">
+                <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text" 
+                  placeholder="Cari menu, kegiatan, atau informasi..." 
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 text-[11px] focus:outline-none focus:border-green-500 focus:bg-white transition-all shadow-sm"
+                />
+             </div>
+          </div>
+        </header>
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-8 relative bg-[#F4F7F6] pb-24 lg:pb-8">
+          
           {/* --- TAB CONTENT: OVERVIEW --- */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Stat Cards */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="glass-panel rounded-xl p-5 border border-white/5 shadow-sm hover:border-purple-500/20 transition-all">
-                  <div className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Total Anggota</div>
-                  <div className="text-2xl font-bold text-white mt-1.5 font-heading">{stats.totalAnggota}</div>
-                  <div className="text-[9px] text-purple-200/60 mt-2">Dihitung real-time dari pangkalan</div>
-                </div>
-                <div className="glass-panel rounded-xl p-5 border border-white/5 shadow-sm hover:border-purple-500/20 transition-all">
-                  <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">Golongan Siaga</div>
-                  <div className="text-2xl font-bold text-white mt-1.5 font-heading">{stats.siaga}</div>
-                  <div className="text-[9px] text-purple-200/60 mt-2">Peserta Didik SD (7-10 Th)</div>
-                </div>
-                <div className="glass-panel rounded-xl p-5 border border-white/5 shadow-sm hover:border-purple-500/20 transition-all">
-                  <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Penegak &amp; Pandega</div>
-                  <div className="text-2xl font-bold text-white mt-1.5 font-heading">{stats.penegak + stats.pandega}</div>
-                  <div className="text-[9px] text-purple-200/60 mt-2">Sasaran Utama Rekrutmen Saka</div>
-                </div>
-                <div className="glass-panel rounded-xl p-5 border border-white/5 shadow-sm hover:border-purple-500/20 transition-all">
-                  <div className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-wider">Agenda Kegiatan</div>
-                  <div className="text-2xl font-bold text-white mt-1.5 font-heading">{agendaList.length}</div>
-                  <div className="text-[9px] text-purple-200/60 mt-2">Terjadwal se-Kabupaten</div>
-                </div>
-              </div>
-
-              {/* Special Tasks alerts */}
-              {canManage('berita') && stats.pendingBerita > 0 && (
-                <div className="p-4 rounded-2xl bg-amber-950/60 border border-amber-500/30 flex items-start gap-3 text-amber-300 animate-pulse">
-                  <AlertTriangle className="w-5 h-5 flex-shrink-0 text-[#D4AF37]" />
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">Butuh Tindakan Cepat</h4>
-                    <p className="text-xs font-light mt-1">Ada {stats.pendingBerita} berita pending yang diajukan oleh Kwarran/Gudep/Saka se-Kabupaten yang memerlukan review persetujuan publik.</p>
-                    <button onClick={() => setActiveTab('berita')} className="text-[10px] font-bold text-[#D4AF37] uppercase underline mt-2 block hover:text-white">Buka Review Antrean</button>
+            <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+              
+              {/* Top Row: Welcome Banner & Profile Card */}
+              <div className="grid lg:grid-cols-3 gap-2 sm:gap-3">
+                <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-white shadow-sm min-h-[90px] sm:min-h-[110px] flex flex-col justify-center p-3 sm:p-4 border border-gray-100">
+                  {/* Background Image */}
+                  <div className="absolute inset-0">
+                    <div className="w-full h-full bg-[url('/img/admin_hero.jpg')] bg-center bg-cover bg-no-repeat"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-transparent w-full sm:w-3/4"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent sm:hidden"></div>
                   </div>
-                </div>
-              )}
-
-              {user.role === 'saka' && stats.pendingSakaApproval > 0 && (
-                <div className="p-4 rounded-2xl bg-purple-950/80 border border-purple-500/40 flex items-start gap-3 text-purple-300 animate-pulse">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 text-[#D4AF37]" />
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">Pemberitahuan Hubungan Anggota</h4>
-                    <p className="text-xs font-light mt-1">Ada {stats.pendingSakaApproval} calon anggota baru diajukan oleh Kwarran/Gudep untuk bergabung dengan Saka Anda. Silakan verifikasi (Path A).</p>
-                    <button onClick={() => setActiveTab('anggota')} className="text-[10px] font-bold text-[#D4AF37] uppercase underline mt-2 block hover:text-white">Proses Persetujuan</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Demographics Graph visualization bar */}
-              <div className="glass-panel rounded-3xl p-6 border border-white/5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Penyebaran Demografis Anggota se-Wilayah Kerja</h3>
-                
-                <div className="space-y-4">
-                  {[
-                    { label: 'Siaga', value: stats.siaga, color: 'bg-emerald-500', desc: 'Golongan Hijau' },
-                    { label: 'Penggalang', value: stats.penggalang, color: 'bg-red-500', desc: 'Golongan Merah' },
-                    { label: 'Penegak', value: stats.penegak, color: 'bg-purple-500', desc: 'Golongan Kuning' },
-                    { label: 'Pandega', value: stats.pandega, color: 'bg-sky-500', desc: 'Golongan Cokelat' },
-                    { label: 'Dewasa', value: stats.dewasa, color: 'bg-[#D4AF37]', desc: 'Anggota Dewasa / Pembina' }
-                  ].map((row) => {
-                    const percentage = stats.totalAnggota > 0 ? (row.value / stats.totalAnggota) * 100 : 0;
-                    return (
-                      <div key={row.label} className="flex items-center justify-between gap-4">
-                        <div className="w-24 text-xs font-medium text-purple-200">{row.label}</div>
-                        <div className="flex-grow h-3 rounded-full bg-white/5 overflow-hidden">
-                          <div className={`h-full ${row.color} rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
-                        </div>
-                        <div className="w-16 text-right text-xs font-bold text-white">{row.value} orang</div>
+                  
+                  <div className="relative z-10 max-w-xs sm:max-w-md">
+                    <div className="flex items-center gap-2 text-green-700 mb-1">
+                      <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span className="text-[9px] sm:text-[10px] font-bold tracking-widest uppercase">Selamat Datang,</span>
+                    </div>
+                    <h2 className="text-base sm:text-xl font-black text-gray-900 font-heading mb-0.5 sm:mb-1">{user.nama}</h2>
+                    <p className="text-[9px] sm:text-[10px] text-gray-700 font-medium leading-tight">
+                      Di Sistem Informasi Kwartir Cabang Kabupaten Tasikmalaya. 
+                      <span className="italic block mt-0.5 text-gray-500 font-normal">"Pramuka selalu hadir di setiap langkah, untuk membangun generasi yang lebih baik."</span>
+                    </p>
+                    
+                    <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5">
+                      <div className="px-2 py-1 rounded-lg bg-green-700 text-white text-[8px] sm:text-[9px] font-bold flex items-center gap-1 shadow-sm">
+                        <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-200" />
+                        <span>{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                       </div>
-                    );
-                  })}
+                      <div className="px-2 py-1 rounded-lg bg-green-800 text-white text-[8px] sm:text-[9px] font-bold flex items-center gap-1 shadow-sm">
+                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-200" />
+                        <span>Waktu Sistem</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-1 bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                  <div className="absolute -right-2 -top-2 opacity-5 pointer-events-none">
+                    <img src={LOGO_KWARCAB} className="w-24 h-24 sm:w-32 sm:h-32 object-contain" alt="" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 mb-1.5 sm:mb-2 shadow-sm">
+                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </div>
+                    <h3 className="text-sm sm:text-base font-black text-gray-900 leading-tight mb-1">Kwartir Cabang<br/>Kab. Tasikmalaya</h3>
+                    <div className="inline-block px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-1.5 sm:mb-2 border border-green-100">Admin Area</div>
+                    <p className="text-[9px] sm:text-[10px] text-gray-500 font-light leading-tight hidden sm:block">Kelola seluruh data dan kegiatan kepramukaan di wilayah Kabupaten Tasikmalaya.</p>
+                  </div>
+                  <button className="relative z-10 mt-1.5 sm:mt-2 w-full py-1.5 sm:py-2 rounded-lg bg-green-700 hover:bg-green-800 text-white text-[9px] sm:text-[10px] font-bold transition-colors flex items-center justify-between px-2 sm:px-3 shadow-sm shadow-green-700/20">
+                    <div className="flex items-center gap-1.5">
+                      <Key className="w-3 h-3" />
+                      <span>Pengaturan Sistem</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Welcoming instruction cards */}
-              <div className="glass-panel rounded-3xl p-6 border border-white/5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Panduan Penggunaan Sistem Terintegrasi</h3>
-                <p className="text-xs text-purple-200/80 font-light leading-relaxed">
-                  Sistem Web Kwarcab Kabupaten Tasikmalaya didesain untuk memusatkan pendataan anggota Gerakan Pramuka se-kabupaten. 
-                  Sesuai perolehan tugas: Admin Kwarcab mengontrol penuh, sedangkan Kwartir Ranting, Gugus Depan pangkalan, dan Pamong Saka bekerja sama dalam melacak dinamika anggota. 
-                  Saka memiliki keistimewaan untuk menarik anggota golongan Penegak/Pandega secara sepihak untuk mempercepat pembinaan krida (Path B).
-                </p>
+              {/* Quick Stats Row */}
+              {(() => {
+                let gudepCount = 0;
+                let anggotaCount = 0;
+                let agendaCount = 0;
+                let beritaCount = 0;
+            
+                if (isKwarcabAdmin || user.role === 'kwarcab') {
+                  gudepCount = gudepList.length || 56;
+                  anggotaCount = stats?.totalAnggota || anggotaList.length || 1;
+                  agendaCount = agendaList.length || 18;
+                  beritaCount = beritaList.length || 42;
+                } else if (user.role === 'kwarran') {
+                  gudepCount = gudepList.filter(g => g.kwartir_ranting_id === user.ref_id).length;
+                  anggotaCount = anggotaList.filter(a => a.kwartir_ranting_id === user.ref_id).length;
+                  agendaCount = agendaList.filter(a => (a.owner_type === 'kwarran' && a.owner_id === user.ref_id) || a.owner_id === user.id).length;
+                  beritaCount = beritaList.filter(b => (b.author_type === 'kwarran' && b.author_id === user.ref_id) || b.author_id === user.id).length;
+                } else if (user.role === 'gudep') {
+                  gudepCount = 1;
+                  anggotaCount = anggotaList.filter(a => a.gudep_id === user.ref_id).length;
+                  agendaCount = agendaList.filter(a => (a.owner_type === 'gudep' && a.owner_id === user.ref_id) || a.owner_id === user.id).length;
+                  beritaCount = beritaList.filter(b => (b.author_type === 'gudep' && b.author_id === user.ref_id) || b.author_id === user.id).length;
+                } else {
+                  // staff_kwarcab, saka, etc
+                  gudepCount = 0;
+                  anggotaCount = anggotaList.filter(a => a.created_by === user.id).length;
+                  agendaCount = agendaList.filter(a => a.owner_id === user.id || a.owner_id === user.ref_id).length;
+                  beritaCount = beritaList.filter(b => b.author_id === user.id || b.author_id === user.ref_id).length;
+                }
+
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Total Anggota', value: anggotaCount, trend: '+12%', color: 'text-green-600', bg: 'bg-green-50', icon: Users, line: 'stroke-green-500' },
+                      { label: 'Satuan / Gugus Depan', value: gudepCount, trend: '+8%', color: 'text-blue-600', bg: 'bg-blue-50', icon: Building, line: 'stroke-blue-500' },
+                      { label: 'Kegiatan Tahun Ini', value: agendaCount, trend: '+25%', color: 'text-green-700', bg: 'bg-purple-50', icon: Calendar, line: 'stroke-purple-500' },
+                      { label: 'Berita & Publikasi', value: beritaCount, trend: '+18%', color: 'text-amber-600', bg: 'bg-amber-50', icon: FileText, line: 'stroke-amber-500' },
+                      ...(isKwarcabAdmin || user.role === 'kwarran' ? [{ label: 'Akun Pengguna', value: isKwarcabAdmin ? (userList?.length || 24) : userList.filter(u => u.role === 'gudep' && gudepList.some(g => g.id === u.ref_id && g.kwartir_ranting_id === user.ref_id)).length, trend: '+5%', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: User, line: 'stroke-emerald-500' }] : []),
+                    ].map((stat, i) => (
+                  <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group hover:border-gray-200 transition-all">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                        <stat.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500 font-bold mb-0.5 leading-tight">{stat.label}</div>
+                        <div className="text-xl font-black text-gray-900 font-heading leading-none">{stat.value.toLocaleString('id-ID')}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-green-600 z-10">
+                      <ArrowUpRight className="w-3 h-3" />
+                      <span>{stat.trend} dari bulan lalu</span>
+                    </div>
+                    {/* Mock Sparkline SVG */}
+                    <svg className="absolute bottom-0 left-0 w-full h-12 opacity-40 group-hover:opacity-100 transition-opacity" viewBox="0 0 100 30" preserveAspectRatio="none">
+                      <path d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,10 T100,15 L100,30 L0,30 Z" className={`${stat.color.replace('text-', 'fill-').replace('600', '100')} opacity-30`} />
+                      <path d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,10 T100,15" fill="none" strokeWidth="1.5" className={stat.line} />
+                    </svg>
+                  </div>
+                ))}
+                  </div>
+                );
+              })()}
+
+              {/* Chart & Agenda Row */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Main Chart Area */}
+                <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">Statistik Kegiatan</h3>
+                        <p className="text-[10px] text-gray-500">Data kegiatan dalam 6 bulan terakhir</p>
+                      </div>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-600 flex items-center gap-2 cursor-pointer hover:bg-gray-50">
+                      <span>6 Bulan Terakhir</span>
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                    </div>
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex items-center justify-end gap-4 mb-4 text-[10px] font-bold text-gray-500">
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div>Kegiatan</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div>Anggota</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div>Saka</div>
+                  </div>
+
+                  {/* Mock Line Chart */}
+                  <div className="flex-1 relative min-h-[200px] w-full border-b border-l border-gray-100 pb-2 pl-2">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-2 pl-2">
+                      {[20,15,10,5,0].map(val => (
+                        <div key={val} className="w-full border-t border-gray-100 flex items-center">
+                          <span className="absolute -left-5 text-[9px] text-gray-400">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* SVG Chart Lines */}
+                    <svg className="absolute inset-0 w-full h-full pt-4 pb-2 pl-2" preserveAspectRatio="none" viewBox="0 0 100 100">
+                       <polyline points="0,80 20,70 40,75 60,70 80,60 100,55" fill="none" stroke="#8B5CF6" strokeWidth="1.5" />
+                       <polyline points="0,70 20,60 40,65 60,65 80,50 100,45" fill="none" stroke="#3B82F6" strokeWidth="1.5" />
+                       <polyline points="0,60 20,50 40,50 60,45 80,40 100,30" fill="none" stroke="#22C55E" strokeWidth="2" />
+                       
+                       {/* Data points (green line) */}
+                       <circle cx="0" cy="60" r="1.5" fill="#22C55E" />
+                       <circle cx="20" cy="50" r="1.5" fill="#22C55E" />
+                       <circle cx="40" cy="50" r="1.5" fill="#22C55E" />
+                       <circle cx="60" cy="45" r="1.5" fill="#22C55E" />
+                       <circle cx="80" cy="40" r="1.5" fill="#22C55E" />
+                       <circle cx="100" cy="30" r="1.5" fill="#22C55E" />
+                    </svg>
+                    {/* X-Axis labels */}
+                    <div className="absolute bottom-[-16px] left-0 w-full flex justify-between text-[9px] text-gray-400 pl-2">
+                      <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>Mei</span><span>Jun</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Agenda Mendatang */}
+                <div className="lg:col-span-1 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">Agenda Mendatang</h3>
+                        <p className="text-[10px] text-gray-500">Jadwal kegiatan & agenda penting</p>
+                      </div>
+                    </div>
+                    {canOpenAgenda && (
+                      <button onClick={goToAgenda} className="text-[10px] font-bold text-gray-500 flex items-center gap-1 hover:text-green-700">
+                        Lihat Semua <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    {upcomingAgenda.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center py-8 text-gray-400">
+                        <Calendar className="w-10 h-10 mb-3 opacity-40" />
+                        <p className="text-xs font-bold text-gray-500">Belum ada agenda mendatang</p>
+                        <p className="text-[10px] mt-1 max-w-[220px]">Agenda yang belum lewat akan tampil di sini otomatis dari menu Agenda Kegiatan.</p>
+                      </div>
+                    ) : upcomingAgenda.map((ag) => {
+                      const kat = AGENDA_KATEGORI[ag.kategori] || AGENDA_KATEGORI.mandiri;
+                      const mulai = parseYmd(ag.tanggal_mulai);
+                      const sedangBerlangsung = (ag.tanggal_mulai || '').slice(0, 10) <= todayStr;
+                      const sameDay = (ag.tanggal_selesai || '').slice(0, 10) === (ag.tanggal_mulai || '').slice(0, 10) || !ag.tanggal_selesai;
+                      return (
+                        <div
+                          key={ag.id}
+                          className={`flex gap-3 group ${canOpenAgenda ? 'cursor-pointer' : ''}`}
+                          onClick={canOpenAgenda ? goToAgenda : undefined}
+                        >
+                          <div className={`w-12 h-12 rounded-xl ${kat.color} text-white flex flex-col items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}>
+                            <span className="text-sm font-black leading-none">{mulai.valid ? String(mulai.d).padStart(2, '0') : '--'}</span>
+                            <span className="text-[9px] uppercase tracking-wider">{mulai.valid ? BULAN_SINGKAT[mulai.m - 1] : ''}</span>
+                          </div>
+                          <div className="flex-1 min-w-0 border-b border-gray-50 pb-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="text-xs font-bold text-gray-900 group-hover:text-green-700 transition-colors">{ag.judul}</h4>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold border flex-shrink-0 ${sedangBerlangsung ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-green-700 bg-green-50 border-green-100'}`}>
+                                {sedangBerlangsung ? 'Berlangsung' : 'Terjadwal'}
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-gray-500 mt-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {sameDay ? formatTanggalSingkat(ag.tanggal_mulai) : `${formatTanggalSingkat(ag.tanggal_mulai)} - ${formatTanggalSingkat(ag.tanggal_selesai)}`}
+                            </div>
+                            <div className="text-[9px] text-gray-500 mt-0.5 flex items-center gap-1">
+                              <Layers className="w-3 h-3" /> {kat.label}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
+
+              {/* Bottom Info Banner */}
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900">Informasi Terbaru</h4>
+                    <p className="text-[10px] text-gray-500">Jadwal kegiatan dan pengumuman penting dapat diakses melalui menu Agenda Kegiatan.</p>
+                  </div>
+                </div>
+                {canOpenAgenda && (
+                  <button onClick={goToAgenda} className="px-4 py-2 rounded-xl bg-white border border-blue-100 text-[10px] font-bold text-blue-600 flex items-center gap-2 hover:bg-blue-100 transition-colors shadow-sm">
+                    Lihat Agenda <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
             </div>
           )}
 
+          {/* WRAPPER FOR OLD DARK TABS TO NOT BREAK THE UI */}
+          <div className={activeTab !== 'overview' ? 'block' : 'hidden'}>
+            {/* Page title banner */}
+            {(() => {
+              const tabMeta: Record<string, { title: string; subtitle: string; icon: React.ReactNode }> = {
+                anggota:   { title: 'Kelola Anggota', subtitle: 'Manajemen data keanggotaan Pramuka Kabupaten Tasikmalaya', icon: <Users className="w-5 h-5 text-white" /> },
+                kta:       { title: 'Kelola KTA', subtitle: 'Penerbitan Kartu Tanda Anggota (KTA) Pramuka', icon: <IdCard className="w-5 h-5 text-white" /> },
+                kwarran:   { title: 'Kwartir Ranting', subtitle: 'Data Kwartir Ranting se-Kabupaten Tasikmalaya', icon: <MapPin className="w-5 h-5 text-white" /> },
+                gudep:     { title: 'Gugus Depan', subtitle: 'Data Gugus Depan / Pangkalan Pramuka', icon: <Shield className="w-5 h-5 text-white" /> },
+                saka:      { title: 'Satuan Karya (Saka)', subtitle: 'Manajemen Satuan Karya Pramuka se-Kabupaten Tasikmalaya', icon: <Award className="w-5 h-5 text-white" /> },
+                berita:    { title: 'Berita & Konten', subtitle: 'Kelola artikel, berita, dan publikasi Kwarcab', icon: <FileText className="w-5 h-5 text-white" /> },
+                agenda:    { title: 'Agenda Kegiatan', subtitle: 'Jadwal dan kegiatan kepramukaan Kabupaten Tasikmalaya', icon: <Calendar className="w-5 h-5 text-white" /> },
+                kampung:   { title: 'Kampung Pramuka', subtitle: 'Data lokasi dan titik Kampung Pramuka', icon: <MapPin className="w-5 h-5 text-white" /> },
+                sosmed:    { title: 'Pengaturan Sosial Media', subtitle: 'Kelola tautan media sosial dan kontak resmi Kwarcab', icon: <Globe className="w-5 h-5 text-white" /> },
+                users:     { title: 'Manajemen Pengguna', subtitle: 'Kelola akun dan hak akses pengguna portal', icon: <Users className="w-5 h-5 text-white" /> },
+                permissions: { title: 'Hak Akses (Permissions)', subtitle: 'Kelola izin dan otorisasi per peran pengguna', icon: <Key className="w-5 h-5 text-white" /> },
+                profil:    { title: 'Profil Kwarcab', subtitle: 'Informasi dan identitas resmi Kwartir Cabang Kabupaten Tasikmalaya', icon: <Building className="w-5 h-5 text-white" /> },
+                pimpinan:  { title: 'Pimpinan Kwarcab', subtitle: 'Data pengurus dan pimpinan Kwartir Cabang', icon: <User className="w-5 h-5 text-white" /> },
+              };
+              const meta = tabMeta[activeTab];
+              if (!meta) return null;
+              return (
+                <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+                  <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                    {meta.icon}
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-black text-gray-900">{meta.title}</h1>
+                    <p className="text-xs text-gray-500">{meta.subtitle}</p>
+                  </div>
+                </div>
+              );
+            })()}
           {/* --- TAB CONTENT: ANGGOTA MANAGEMENT --- */}
           {activeTab === 'anggota' && (
             <div className="space-y-6 animate-fade-in">
               {formMode === 'list' ? (
                 <>
+                  {/* View Mode Toggle (Only for Kwarcab/Staff or Kwarran to see Gudeps) */}
+                  {(user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran') && (
+                    <div className="flex border-b border-gray-200">
+                      <button
+                        onClick={() => {
+                          setAnggotaViewMode('rekap_kwarran');
+                          if (user.role === 'kwarran') setSelectedRekapKwarranId(user.ref_id);
+                        }}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+                          anggotaViewMode === 'rekap_kwarran' 
+                            ? 'text-green-700 border-b-2 border-green-700' 
+                            : 'text-gray-500 hover:text-green-600'
+                        }`}
+                      >
+                        Rekapitulasi Anggota
+                      </button>
+                      <button
+                        onClick={() => setAnggotaViewMode('list')}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+                          anggotaViewMode === 'list' 
+                            ? 'text-green-700 border-b-2 border-green-700' 
+                            : 'text-gray-500 hover:text-green-600'
+                        }`}
+                      >
+                        Daftar Anggota Lengkap
+                      </button>
+                    </div>
+                  )}
+
                   {/* Top bar with actions */}
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-semibold text-purple-200">Daftar Anggota : {anggotaList.length} baris</span>
+                      <span className="text-xs font-semibold text-gray-600">
+                        {anggotaViewMode === 'list' ? `Daftar Anggota : ${anggotaList.length} baris` : 'Rekapitulasi Data Keanggotaan'}
+                      </span>
                     </div>
 
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setShowExportModal(true)}
-                        className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-[#D4AF37] border border-[#D4AF37]/30 text-xs font-bold tracking-wide uppercase active:scale-95 transition-all duration-200"
+                        className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-50 hover:bg-green-600 hover:text-white text-green-700 border border-green-300 text-xs font-bold tracking-wide uppercase active:scale-95 transition-all duration-200"
                       >
-                        <Download className="w-4 h-4 text-[#D4AF37]" />
+                        <Download className="w-4 h-4 text-green-700" />
                         <span>Ekspor Data</span>
                       </button>
 
@@ -2363,20 +2830,126 @@ export default function AdminPortal({
                             setAngAktifSaka(false);
                             setAngSakaIds([]);
                           }}
-                          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold tracking-wide uppercase active:scale-95 transition-all duration-200"
+                          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold tracking-wide uppercase active:scale-95 transition-all duration-200"
                         >
-                          <Plus className="w-4 h-4 text-[#D4AF37]" />
-                          <span>Input Anggota Baru</span>
+                          <Plus className="w-4 h-4 text-white" />
+                           <span>Input Anggota Baru</span>
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Path A Pending list for Saka specifically */}
-                  {user.role === 'saka' && anggotaList.some(a => a.saka_list?.some((j: any) => j.saka_id === user.ref_id && j.status === 'pending')) && (
-                    <div className="glass-panel rounded-2xl p-5 border border-purple-500/30">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37] mb-4 flex items-center space-x-2 animate-pulse">
-                        <AlertCircle className="w-4 h-4 text-[#D4AF37]" />
+                  {/* ========================================= */}
+                  {/* REKAPITULASI KWARRAN & GUDEP (ACCORDION)  */}
+                  {/* ========================================= */}
+                  {anggotaViewMode === 'rekap_kwarran' && (
+                    <div className="space-y-4">
+                      {allKwarran.length === 0 ? (
+                        <div className="py-8 text-center text-gray-500 font-medium italic text-sm">
+                          Belum ada data Kwartir Ranting.
+                        </div>
+                      ) : (
+                        allKwarran.map(kw => {
+                          const isExpanded = selectedRekapKwarranId === kw.id;
+                          const anggotaKwarran = anggotaList.filter(a => a.kwartir_ranting_id === kw.id);
+                          const totalKwarran = anggotaKwarran.length;
+                          const siagaCount = anggotaKwarran.filter(a => a.golongan === 'siaga').length;
+                          const penggalangCount = anggotaKwarran.filter(a => a.golongan === 'penggalang').length;
+                          const penegakCount = anggotaKwarran.filter(a => a.golongan === 'penegak').length;
+                          const pandegaCount = anggotaKwarran.filter(a => a.golongan === 'pandega').length;
+                          const dewasaCount = anggotaKwarran.filter(a => a.golongan === 'dewasa').length;
+                          
+                          const gudeps = gudepList.filter(g => g.kwartir_ranting_id === kw.id);
+                          return (
+                            <div key={kw.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm transition-all">
+                              {/* Kwarran Header */}
+                              <div 
+                                onClick={() => setSelectedRekapKwarranId(isExpanded ? null : kw.id)}
+                                className={`flex items-start sm:items-center justify-between p-4 cursor-pointer hover:bg-green-50 transition-colors ${isExpanded ? 'bg-green-50/50' : ''}`}
+                              >
+                                <div className="flex items-start sm:items-center space-x-4">
+                                  <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 flex items-center justify-center shrink-0 mt-1 sm:mt-0">
+                                    <MapPin className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-gray-900 text-sm md:text-base mb-1.5">Kecamatan {kw.nama_kecamatan}</h3>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md text-[10px] font-black border border-gray-200">
+                                        Total: {totalKwarran}
+                                      </span>
+                                      <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-green-100">
+                                        Siaga: {siagaCount}
+                                      </span>
+                                      <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-red-100">
+                                        Penggalang: {penggalangCount}
+                                      </span>
+                                      <span className="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-yellow-100">
+                                        Penegak: {penegakCount}
+                                      </span>
+                                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-amber-100">
+                                        Pandega: {pandegaCount}
+                                      </span>
+                                      <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-purple-100">
+                                        Dewasa: {dewasaCount}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                  <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-green-600' : ''}`} />
+                                </div>
+                              </div>
+                              
+                              {/* Gudep List (Accordion Content) */}
+                              {isExpanded && (
+                                <div className="border-t border-gray-100 bg-gray-50/70 p-4 md:p-5">
+                                  {gudeps.length === 0 ? (
+                                    <div className="text-center text-gray-500 text-xs italic py-4 bg-white rounded-xl border border-gray-100">
+                                      Belum ada Gugus Depan di Kwartir Ranting ini.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2 md:pl-14">
+                                      {gudeps.map(gudep => {
+                                        const totalGudep = anggotaList.filter(a => a.gugus_depan_id === gudep.id).length;
+                                        return (
+                                          <div key={gudep.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-green-200 transition-colors gap-3">
+                                            <div className="flex items-center space-x-3">
+                                              <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
+                                                <Building className="w-4 h-4" />
+                                              </div>
+                                              <div>
+                                                <h4 className="font-semibold text-gray-800 text-xs sm:text-sm">{gudep.nama_pangkalan}</h4>
+                                                <p className="text-[10px] sm:text-xs text-gray-500 font-mono mt-0.5">Gudep: {gudep.no_gudep_putra} / {gudep.no_gudep_putri}</p>
+                                              </div>
+                                            </div>
+                                            <div className="bg-green-50 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold self-start sm:self-auto flex items-center space-x-1 shrink-0">
+                                              <Users className="w-3.5 h-3.5" />
+                                              <span>{totalGudep} Anggota</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* ========================================= */}
+                  {/* DAFTAR ANGGOTA LENGKAP VIEW               */}
+                  {/* ========================================= */}
+                  {anggotaViewMode === 'list' && (
+                    <>
+                      {/* Path A Pending list for Saka specifically */}
+                      {user.role === 'saka' && anggotaList.some(a => a.saka_list?.some((j: any) => j.saka_id === user.ref_id && j.status === 'pending')) && (
+                    <div className="bg-white shadow-sm rounded-2xl border border-green-200 p-5">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-green-700 mb-4 flex items-center space-x-2 animate-pulse">
+                        <AlertCircle className="w-4 h-4 text-green-700" />
                         <span>Antrean Pengajuan Keanggotaan (Path A)</span>
                       </h3>
 
@@ -2384,10 +2957,10 @@ export default function AdminPortal({
                         {anggotaList.filter(a => a.saka_list?.some((j: any) => j.saka_id === user.ref_id && j.status === 'pending')).map(a => {
                           const junction = a.saka_list.find((j: any) => j.saka_id === user.ref_id && j.status === 'pending');
                           return (
-                            <div key={a.id} className="flex flex-wrap items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/5 text-xs">
+                            <div key={a.id} className="flex flex-wrap items-center justify-between p-3.5 rounded-xl bg-gray-50 border border-gray-200 text-xs">
                               <div>
-                                <div className="font-bold text-white text-sm">{a.nama_lengkap}</div>
-                                <div className="text-[10px] text-purple-300 mt-1">
+                                <div className="font-bold text-gray-900 text-sm">{a.nama_lengkap}</div>
+                                <div className="text-[10px] text-gray-500 mt-1">
                                   Pangkalan: {a.pangkalan} &bull; Golongan: {a.golongan.toUpperCase()} ({a.tingkatan})
                                 </div>
                               </div>
@@ -2415,16 +2988,16 @@ export default function AdminPortal({
                   )}
 
                   {/* Filter Panel (Adhering to strict role filter conditions) */}
-                  <div className="glass-panel rounded-2xl p-5 border border-white/5 space-y-4">
-                    <div className="flex items-center space-x-2 text-xs font-bold text-white uppercase tracking-wider">
-                      <Search className="w-4 h-4 text-[#D4AF37]" />
+                  <div className="bg-white shadow-sm rounded-2xl border border-gray-100 p-5 space-y-4">
+                    <div className="flex items-center space-x-2 text-xs font-bold text-gray-900 uppercase tracking-wider">
+                      <Search className="w-4 h-4 text-green-700" />
                       <span>Filter & Pencarian Anggota</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       {/* Search Input (All Roles) */}
                       <div className="col-span-1">
-                        <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                           Nama / Tingkatan
                         </label>
                         <div className="relative">
@@ -2436,16 +3009,16 @@ export default function AdminPortal({
                               setSearchQuery(e.target.value);
                               setCurrentPage(1);
                             }}
-                            className="w-full bg-[#1C1538]/80 border border-white/10 hover:border-white/20 text-white text-xs rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 placeholder-purple-300/40 transition"
+                            className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 placeholder-gray-400 transition"
                           />
-                          <Search className="absolute left-3.5 top-3 w-4 h-4 text-purple-400" />
+                          <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
                         </div>
                       </div>
 
                       {/* Kwartir Ranting Filter - ONLY FOR SUPERADMIN (kwarcab) */}
                       {canManage('anggota') && (
                         <div className="col-span-1">
-                          <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                             Kwartir Ranting
                           </label>
                           <div className="relative">
@@ -2456,7 +3029,7 @@ export default function AdminPortal({
                                 setFilterGudep('all'); // reset pangkalan when kwarran changes
                                 setCurrentPage(1);
                               }}
-                              className="w-full bg-[#1C1538]/80 border border-white/10 hover:border-white/20 text-white text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition cursor-pointer"
+                              className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                             >
                               <option value="all">Semua Kwartir Ranting</option>
                               {allKwarran.map((kw) => (
@@ -2472,7 +3045,7 @@ export default function AdminPortal({
                       {/* Pangkalan Filter - FOR ALL EXCEPT GUDEP (since Gudep is single-pangkalan) */}
                       {user.role !== 'gudep' && (
                         <div className="col-span-1">
-                          <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                             Pangkalan (Gudep)
                           </label>
                           <div className="relative">
@@ -2482,7 +3055,7 @@ export default function AdminPortal({
                                 setFilterGudep(e.target.value);
                                 setCurrentPage(1);
                               }}
-                              className="w-full bg-[#1C1538]/80 border border-white/10 hover:border-white/20 text-white text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition cursor-pointer"
+                              className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                             >
                               <option value="all">Semua Pangkalan</option>
                               {gudepList
@@ -2507,7 +3080,7 @@ export default function AdminPortal({
 
                       {/* Golongan Filter - ALWAYS SHOWN FOR ALL ROLES */}
                       <div className="col-span-1">
-                        <label className="block text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                           Golongan
                         </label>
                         <div className="relative">
@@ -2517,7 +3090,7 @@ export default function AdminPortal({
                               setFilterGolongan(e.target.value);
                               setCurrentPage(1);
                             }}
-                            className="w-full bg-[#1C1538]/80 border border-white/10 hover:border-white/20 text-white text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition cursor-pointer"
+                            className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                           >
                             <option value="all">Semua Golongan</option>
                             <option value="siaga">Siaga</option>
@@ -2532,11 +3105,11 @@ export default function AdminPortal({
                   </div>
 
                   {/* Members Table */}
-                  <div className="glass-panel rounded-3xl overflow-hidden border border-white/5">
+                  <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-purple-950/40 text-purple-200 border-b border-white/5 text-[10px] font-bold uppercase tracking-wider">
+                          <tr className="bg-gray-100 text-gray-600 border-b border-gray-200 text-[10px] font-bold uppercase tracking-wider">
                             <th className="p-4">Nama Lengkap</th>
                             <th className="p-4">Golongan / Tingkat</th>
                             <th className="p-4">Alamat &amp; Pangkalan</th>
@@ -2544,32 +3117,32 @@ export default function AdminPortal({
                             {user.role !== 'saka' && <th className="p-4 text-right">Aksi</th>}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-purple-100">
+                        <tbody className="divide-y divide-gray-100 text-gray-800">
                           {displayedAnggotaList.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="p-8 text-center text-purple-300/60 font-light">
+                              <td colSpan={5} className="p-8 text-center text-gray-400 font-light">
                                 Belum ada data anggota terdaftar.
                               </td>
                             </tr>
                           ) : (
                             displayedAnggotaList.map((a) => (
-                              <tr key={a.id} className="hover:bg-white/[0.02] transition-colors duration-150">
+                              <tr key={a.id} className="hover:bg-gray-50 transition-colors duration-150">
                                 <td className="p-4">
-                                  <div className="font-bold text-white text-sm flex items-center gap-2">
+                                  <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
                                     {a.nama_lengkap}
                                     {a.is_kta_printed && (
-                                      <span title="KTA Sudah Dicetak" className="px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest font-black">KTA</span>
+                                      <span title="KTA Sudah Dicetak" className="px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 uppercase tracking-widest font-black">KTA</span>
                                     )}
                                   </div>
-                                  <div className="text-[10px] text-purple-300 mt-0.5">{a.tempat_lahir}, {a.tanggal_lahir}</div>
+                                  <div className="text-[10px] text-gray-500 mt-0.5">{a.tempat_lahir}, {a.tanggal_lahir}</div>
                                 </td>
                                 <td className="p-4">
-                                  <span className="font-bold uppercase tracking-wider text-[10px] text-[#D4AF37]">{a.golongan}</span>
-                                  <div className="text-[10px] text-purple-300 mt-0.5">{a.tingkatan}</div>
+                                  <span className="font-bold uppercase tracking-wider text-[10px] text-green-700">{a.golongan}</span>
+                                  <div className="text-[10px] text-gray-500 mt-0.5">{a.tingkatan}</div>
                                 </td>
                                 <td className="p-4 max-w-[200px]">
                                   <div className="truncate font-light">{a.pangkalan}</div>
-                                  <div className="text-[10px] text-purple-300 truncate mt-0.5">{a.alamat_asal}</div>
+                                  <div className="text-[10px] text-gray-500 truncate mt-0.5">{a.alamat_asal}</div>
                                 </td>
                                 <td className="p-4">
                                   <div className="flex flex-wrap gap-1">
@@ -2584,7 +3157,7 @@ export default function AdminPortal({
                                         </span>
                                       ))
                                     ) : (
-                                      <span className="text-purple-300/40 font-light italic text-[10px]">Non-Saka</span>
+                                      <span className="text-gray-300 font-light italic text-[10px]">Non-Saka</span>
                                     )}
                                   </div>
                                 </td>
@@ -2594,7 +3167,7 @@ export default function AdminPortal({
                                       <button
                                         onClick={() => exportToSuratLegalitas(a)}
                                         title="Cetak Surat Keterangan Legalitas"
-                                        className="p-1.5 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-500/20 text-[#D4AF37] hover:text-white transition-all duration-150"
+                                        className="p-1.5 rounded-lg bg-gray-50 hover:bg-green-800 border border-gray-200 text-green-700 hover:text-gray-900 transition-all duration-150"
                                       >
                                         <Printer className="w-3.5 h-3.5" />
                                       </button>
@@ -2615,13 +3188,13 @@ export default function AdminPortal({
                                           setAngAktifSaka(a.saka_list?.length > 0);
                                           setAngSakaIds(a.saka_list?.map((sl: any) => sl.saka_id) || []);
                                         }}
-                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-purple-200 hover:text-white transition-all duration-150"
+                                        className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-all duration-150"
                                       >
                                         <Edit className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteAnggota(a.id)}
-                                        className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900 border border-red-500/10 text-red-400 hover:text-white transition-all duration-150"
+                                        className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900 border border-red-500/10 text-red-400 hover:text-gray-900 transition-all duration-150"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -2637,9 +3210,9 @@ export default function AdminPortal({
                   </div>
 
                   {/* Pagination Section (Identical to User Image) */}
-                  <div className="bg-[#130E26]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="bg-[#130E26]/60 backdrop-blur-xl border border-gray-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                     {/* Left: Tampilkan [dropdown] [count] siswa */}
-                    <div className="flex items-center space-x-2 text-xs text-purple-200/80">
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
                       <span>Tampilkan</span>
                       <div className="relative">
                         <select
@@ -2648,72 +3221,74 @@ export default function AdminPortal({
                             setItemsPerPage(Number(e.target.value));
                             setCurrentPage(1);
                           }}
-                          className="appearance-none bg-[#1C1538]/80 border border-white/10 hover:border-white/20 text-white text-xs rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition cursor-pointer"
+                          className="appearance-none bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                         >
                           <option value={10}>10</option>
                           <option value={20}>20</option>
                           <option value={50}>50</option>
                           <option value={100}>100</option>
                         </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-300">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                           <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
                           </svg>
                         </div>
                       </div>
-                      <span className="font-bold text-white px-1">{totalAnggotaCount}</span>
+                      <span className="font-bold text-gray-900 px-1">{totalAnggotaCount}</span>
                       <span>siswa</span>
                     </div>
 
                     {/* Right: [<-] page / total [->] */}
-                    <div className="flex items-center space-x-3 text-xs text-purple-200/80">
+                    <div className="flex items-center space-x-3 text-xs text-gray-500">
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={activePage === 1}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 text-purple-200 hover:text-white hover:bg-white/5 disabled:opacity-20 disabled:pointer-events-none active:scale-95 transition-all duration-150 cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-white border border-gray-100 shadow-sm disabled:opacity-20 disabled:pointer-events-none active:scale-95 transition-all duration-150 cursor-pointer"
                       >
                         &larr;
                       </button>
-                      <span className="font-semibold text-white/90">
+                      <span className="font-semibold text-gray-900/90">
                         {activePage} / {totalPages}
                       </span>
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={activePage === totalPages}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 text-[#D4AF37] hover:text-white hover:bg-white/5 disabled:opacity-20 disabled:pointer-events-none active:scale-95 transition-all duration-150 cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-green-700 hover:text-gray-900 hover:bg-white border border-gray-100 shadow-sm disabled:opacity-20 disabled:pointer-events-none active:scale-95 transition-all duration-150 cursor-pointer"
                       >
                         &rarr;
                       </button>
                     </div>
                   </div>
+                    </>
+                  )}
                 </>
               ) : (
                 /* ADD / EDIT ANGGOTA FORM (Modul 3.1) */
-                <form onSubmit={handleSaveAnggota} className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/5 space-y-6">
-                  <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2 mb-6">
+                <form onSubmit={handleSaveAnggota} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 border border-gray-200 space-y-6">
+                  <h3 className="text-base font-bold text-gray-900 uppercase tracking-wider border-b border-white/5 pb-2 mb-6">
                     {formMode === 'add' ? 'Input Data Anggota Baru' : `Sunting Data Anggota: ${selectedItem?.nama_lengkap}`}
                   </h3>
 
                   <div className="grid sm:grid-cols-2 gap-6">
                     {/* Nama Lengkap */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Nama Lengkap *</label>
+                      <label className="text-xs font-bold text-gray-700">Nama Lengkap *</label>
                       <input
                         type="text"
                         required
                         value={angNama}
                         onChange={(e) => setAngNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                         placeholder="Masukkan nama lengkap sesuai identitas"
                       />
                     </div>
 
                     {/* Foto (Upload with compression) */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Foto Profil KTA *</label>
+                      <label className="text-xs font-bold text-gray-700">Foto Profil KTA *</label>
                       <div className="flex items-center gap-4">
                         {angFoto && (
-                          <div className="w-16 h-20 rounded-md overflow-hidden bg-black/40 border border-white/10 shrink-0">
+                          <div className="w-16 h-20 rounded-md overflow-hidden bg-white border border-gray-200 shrink-0">
                             <img src={angFoto} alt="Preview Foto" className="w-full h-full object-cover" />
                           </div>
                         )}
@@ -2722,9 +3297,9 @@ export default function AdminPortal({
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleCompressedUpload(e, setAngFoto)}
-                            className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-900/40 file:text-purple-300 hover:file:bg-purple-900/60"
+                            className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-green-50 file:text-gray-500 hover:file:bg-green-100"
                           />
-                          <p className="text-[10px] text-purple-300/60 font-light mt-1">
+                          <p className="text-[10px] text-gray-400 font-light mt-1">
                             Pilih gambar dari perangkat Anda. Gambar akan otomatis dikompresi sebelum diunggah ke Cloudinary.
                           </p>
                         </div>
@@ -2733,36 +3308,36 @@ export default function AdminPortal({
 
                     {/* Tempat Lahir */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Tempat Lahir *</label>
+                      <label className="text-xs font-bold text-gray-700">Tempat Lahir *</label>
                       <input
                         type="text"
                         required
                         value={angTempat}
                         onChange={(e) => setAngTempat(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                         placeholder="Tempat lahir (Kota/Kabupaten)"
                       />
                     </div>
 
                     {/* Tanggal Lahir */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Tanggal Lahir *</label>
+                      <label className="text-xs font-bold text-gray-700">Tanggal Lahir *</label>
                       <input
                         type="date"
                         required
                         value={angTanggal}
                         onChange={(e) => setAngTanggal(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                       />
                     </div>
 
                     {/* Golongan Pramuka */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Golongan Pramuka *</label>
+                      <label className="text-xs font-bold text-gray-700">Golongan Pramuka *</label>
                       <select
                         value={angGolongan}
                         onChange={(e) => setAngGolongan(e.target.value as GolonganPramuka)}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                       >
                         <option value="siaga">Siaga (SD / 7-10 Th)</option>
                         <option value="penggalang">Penggalang (SMP / 11-15 Th)</option>
@@ -2774,11 +3349,11 @@ export default function AdminPortal({
 
                     {/* Tingkatan (Dependent) */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Tingkatan Pramuka *</label>
+                      <label className="text-xs font-bold text-gray-700">Tingkatan Pramuka *</label>
                       <select
                         value={angTingkatan}
                         onChange={(e) => setAngTingkatan(e.target.value)}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                       >
                         {TINGKATAN_MAP[angGolongan]?.map((ting) => (
                           <option key={ting} value={ting}>{ting}</option>
@@ -2788,13 +3363,13 @@ export default function AdminPortal({
 
                     {/* Pangkalan */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-purple-200">Pangkalan / Gugus Depan *</label>
+                      <label className="text-xs font-bold text-gray-700">Pangkalan / Gugus Depan *</label>
                       <input
                         type="text"
                         required
                         value={angPangkalan}
                         onChange={(e) => setAngPangkalan(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                         placeholder="Contoh: SMAN 1 Cisayong atau Pangkalan RT"
                       />
                     </div>
@@ -2802,12 +3377,12 @@ export default function AdminPortal({
                     {/* Kwarran (If superadmin can choose, otherwise auto-scoped) */}
                     {canManage('anggota') && (
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-purple-200">Kwartir Ranting *</label>
+                        <label className="text-xs font-bold text-gray-700">Kwartir Ranting *</label>
                         <select
                           value={angKwarranId}
                           onChange={(e) => setAngKwarranId(e.target.value)}
                           required
-                          className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                          className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                         >
                           <option value="">-- Pilih Kwarran --</option>
                           {allKwarran.map((kw) => (
@@ -2820,11 +3395,11 @@ export default function AdminPortal({
                     {/* Gudep selection (Scoped to selected Kwarran) */}
                     {canManage('anggota') && (
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-purple-200">Gugus Depan Pangkalan (Opsional)</label>
+                        <label className="text-xs font-bold text-gray-700">Gugus Depan Pangkalan (Opsional)</label>
                         <select
                           value={angGudepId}
                           onChange={(e) => setAngGudepId(e.target.value)}
-                          className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                          className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                         >
                           <option value="">-- Pilih Gudep (Jika Ada) --</option>
                           {gudepList.filter(g => g.kwartir_ranting_id === angKwarranId).map((gd) => (
@@ -2837,35 +3412,35 @@ export default function AdminPortal({
 
                   {/* Alamat Asal */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-purple-200">Alamat Lengkap Asal</label>
+                    <label className="text-xs font-bold text-gray-700">Alamat Lengkap Asal</label>
                     <textarea
                       value={angAlamat}
                       onChange={(e) => setAngAlamat(e.target.value)}
                       rows={3}
-                      className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none transition"
+                      className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                       placeholder="Masukkan alamat lengkap rumah tinggal"
                     />
                   </div>
 
                   {/* MANY-TO-MANY SAKA INTEGRATION (Modul 3.3 Relasi Many-to-Many) */}
-                  <div className="border-t border-white/10 pt-6 space-y-4">
+                  <div className="border-t border-gray-200 pt-6 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-white">Apakah Aktif sebagai Anggota Saka?</h4>
-                        <p className="text-[10px] text-purple-300">Hubungkan anggota dengan 1 atau lebih Satuan Karya Pramuka (Saka) se-Tasikmalaya.</p>
+                        <h4 className="text-sm font-bold text-gray-900">Apakah Aktif sebagai Anggota Saka?</h4>
+                        <p className="text-[10px] text-gray-500">Hubungkan anggota dengan 1 atau lebih Satuan Karya Pramuka (Saka) se-Tasikmalaya.</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setAngAktifSaka(!angAktifSaka)}
-                        className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${angAktifSaka ? 'bg-[#D4AF37]' : 'bg-white/10'}`}
+                        className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${angAktifSaka ? 'bg-[#D4AF37]' : 'bg-gray-50'}`}
                       >
-                        <div className={`bg-[#0F0A1A] w-4 h-4 rounded-full shadow-md transform transition-all duration-300 ${angAktifSaka ? 'translate-x-6' : 'translate-x-0'}`} />
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-all duration-300 ${angAktifSaka ? 'translate-x-6' : 'translate-x-0'}`} />
                       </button>
                     </div>
 
                     {angAktifSaka && (
-                      <div className="p-4 rounded-2xl bg-black/20 border border-white/5 space-y-3">
-                        <label className="text-xs font-bold text-purple-300">Pilih Satuan Karya (Bisa multi-select) :</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
+                        <label className="text-xs font-bold text-gray-500">Pilih Satuan Karya (Bisa multi-select) :</label>
                         <div className="grid sm:grid-cols-2 gap-3">
                           {allSaka.map((sk) => {
                             const isChecked = angSakaIds.includes(sk.id);
@@ -2882,35 +3457,35 @@ export default function AdminPortal({
                                 }}
                                 className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs font-semibold transition-all duration-200 ${
                                   isChecked
-                                    ? 'bg-purple-950/40 border-[#D4AF37] text-white shadow-md'
-                                    : 'bg-black/40 border-white/5 text-purple-200/80 hover:border-white/15'
+                                    ? 'bg-green-50 border-green-500 text-green-900 shadow-sm'
+                                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                                 }`}
                               >
                                 <span>{sk.nama_saka}</span>
-                                {isChecked && <Check className="w-4 h-4 text-[#D4AF37]" />}
+                                {isChecked && <Check className="w-4 h-4 text-green-700" />}
                               </button>
                             );
                           })}
                         </div>
-                        <div className="text-[10px] text-amber-300 flex items-start gap-1 mt-2 font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
+                        <div className="text-[10px] text-gray-500 flex items-start gap-1 mt-2 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5 text-green-700 flex-shrink-0" />
                           <span>PENTING (PATH A): Pengisian dari Kwarran/Gudep akan masuk ke antrean persetujuan dewan saka yang bersangkutan terlebih dahulu sebelum resmi aktif.</span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-end space-x-4 border-t border-white/10 pt-6">
+                  <div className="flex items-center justify-end space-x-4 border-t border-gray-200 pt-6">
                     <button
                       type="button"
                       onClick={() => setFormMode('list')}
-                      className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-purple-200 font-bold text-xs uppercase transition"
+                      className="px-5 py-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold text-xs uppercase transition"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-600 hover:to-purple-800 text-white font-bold text-xs uppercase border border-purple-500/30 transition-all duration-200"
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 text-white font-bold text-xs uppercase border border-green-200 transition-all duration-200"
                     >
                       Simpan Data Anggota
                     </button>
@@ -2925,32 +3500,32 @@ export default function AdminPortal({
             <div className="space-y-6 animate-fade-in">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-white font-heading">Kelola Kartu Tanda Anggota</h2>
-                  <p className="text-sm text-purple-300">Konfigurasi KTA & Daftar Anggota</p>
+                  <h2 className="text-2xl font-bold text-gray-900 font-heading">Kelola Kartu Tanda Anggota</h2>
+                  <p className="text-sm text-gray-500">Konfigurasi KTA & Daftar Anggota</p>
                 </div>
               </div>
 
               {/* Konfigurasi KTA */}
-              <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg relative overflow-hidden">
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100 p-6 rounded-2xl border border-gray-200 shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-12 bg-[#D4AF37]/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
-                <h3 className="text-lg font-bold text-[#D4AF37] mb-4 border-b border-white/10 pb-2">Konfigurasi Pengesahan KTA</h3>
+                <h3 className="text-lg font-bold text-green-700 mb-4 border-b border-gray-200 pb-2">Konfigurasi Pengesahan KTA</h3>
                 <div className="grid sm:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-purple-300">Nama Ketua Kwarcab</label>
+                    <label className="text-xs font-bold text-gray-500">Nama Ketua Kwarcab</label>
                     <input
                       type="text"
-                      className="w-full bg-black/40 border border-purple-500/30 rounded-lg px-4 py-2.5 text-white placeholder-gray-600 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-colors outline-none"
+                      className="w-full bg-white border border-green-200 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-600 focus:border-green-500 focus:ring-1 focus:ring-green-400 transition-colors outline-none"
                       value={ktaConfig.nama_ketua}
                       onChange={(e) => setKtaConfig({...ktaConfig, nama_ketua: e.target.value})}
                       placeholder="Contoh: H. Agus Ridallah, S.H., M.H."
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-purple-300">Tanda Tangan (Transparan)</label>
+                    <label className="text-xs font-bold text-gray-500">Tanda Tangan (Transparan)</label>
                     <input
                       type="file"
                       accept="image/png"
-                      className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900/50 file:text-[#D4AF37] hover:file:bg-purple-800/80 cursor-pointer"
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-800/50 file:text-green-700 hover:file:bg-purple-800/80 cursor-pointer"
                       onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, tanda_tangan_url: url}), {
                         maxDimension: 700,
                         quality: 0.42,
@@ -2958,14 +3533,14 @@ export default function AdminPortal({
                         successMessage: 'Tanda tangan berhasil dikompresi maksimal dan diunggah!'
                       })}
                     />
-                    {ktaConfig.tanda_tangan_url && <img src={ktaConfig.tanda_tangan_url} alt="TTD" className="h-12 object-contain bg-white/5 border border-white/10 rounded-lg p-1" />}
+                    {ktaConfig.tanda_tangan_url && <img src={ktaConfig.tanda_tangan_url} alt="TTD" className="h-12 object-contain bg-white border border-gray-100 shadow-sm border border-gray-200 rounded-lg p-1" />}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-purple-300">Stempel Kwarcab (Transparan)</label>
+                    <label className="text-xs font-bold text-gray-500">Stempel Kwarcab (Transparan)</label>
                     <input
                       type="file"
                       accept="image/png"
-                      className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900/50 file:text-[#D4AF37] hover:file:bg-purple-800/80 cursor-pointer"
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-800/50 file:text-green-700 hover:file:bg-purple-800/80 cursor-pointer"
                       onChange={(e) => handleBase64Upload(e, (url) => setKtaConfig({...ktaConfig, stempel_url: url}), {
                         maxDimension: 700,
                         quality: 0.42,
@@ -2973,11 +3548,12 @@ export default function AdminPortal({
                         successMessage: 'Stempel berhasil dikompresi maksimal dan diunggah!'
                       })}
                     />
-                    {ktaConfig.stempel_url && <img src={ktaConfig.stempel_url} alt="Stempel" className="h-12 object-contain bg-white/5 border border-white/10 rounded-lg p-1" />}
+                    {ktaConfig.stempel_url && <img src={ktaConfig.stempel_url} alt="Stempel" className="h-12 object-contain bg-white border border-gray-100 shadow-sm border border-gray-200 rounded-lg p-1" />}
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end">
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         const res = await fetch('/api/admin/kta-config', {
@@ -2994,7 +3570,7 @@ export default function AdminPortal({
                         setErrorMsg(err.message);
                       }
                     }}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors flex items-center shadow-lg shadow-emerald-900/20"
+                    className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors flex items-center shadow-sm"
                   >
                     <Check className="w-4 h-4 mr-2" />
                     Simpan Konfigurasi
@@ -3003,17 +3579,19 @@ export default function AdminPortal({
               </div>
 
               {/* Tab Belum/Sudah Cetak */}
-              <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-                <div className="flex border-b border-white/10 bg-black/40">
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-2xl border border-gray-200 overflow-hidden shadow-2xl">
+                <div className="flex border-b border-gray-200 bg-white">
                   <button 
+                    type="button"
                     onClick={() => setKtaTab('belum')}
-                    className={`flex-1 py-4 text-center text-sm font-bold uppercase tracking-widest transition-all duration-300 ${ktaTab === 'belum' ? 'text-[#D4AF37] border-b-2 border-[#D4AF37] bg-white/[0.03]' : 'text-purple-400 hover:text-purple-300 hover:bg-white/[0.01]'}`}
+                    className={`flex-1 py-4 text-center text-sm font-bold uppercase tracking-widest transition-all duration-300 ${ktaTab === 'belum' ? 'text-green-700 border-b-2 border-[#D4AF37] bg-white/[0.03]' : 'text-gray-400 hover:text-gray-500 hover:bg-white/[0.01]'}`}
                   >
                     Belum Cetak KTA ({anggotaList.filter(a => !a.is_kta_printed).length})
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setKtaTab('sudah')}
-                    className={`flex-1 py-4 text-center text-sm font-bold uppercase tracking-widest transition-all duration-300 ${ktaTab === 'sudah' ? 'text-emerald-400 border-b-2 border-emerald-400 bg-white/[0.03]' : 'text-purple-400 hover:text-purple-300 hover:bg-white/[0.01]'}`}
+                    className={`flex-1 py-4 text-center text-sm font-bold uppercase tracking-widest transition-all duration-300 ${ktaTab === 'sudah' ? 'text-emerald-700 border-b-2 border-emerald-400 bg-white/[0.03]' : 'text-gray-400 hover:text-gray-500 hover:bg-white/[0.01]'}`}
                   >
                     Sudah Cetak KTA ({anggotaList.filter(a => a.is_kta_printed).length})
                   </button>
@@ -3021,14 +3599,14 @@ export default function AdminPortal({
                 
                 <div className="p-0 overflow-x-auto max-h-[600px]">
                   <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#160e26] z-10 shadow-md">
-                      <tr className="text-purple-300 text-xs font-bold uppercase tracking-wider border-b border-purple-500/30">
+                    <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm border-b border-gray-200">
+                      <tr className="text-gray-500 text-xs font-bold uppercase tracking-wider border-b border-green-200">
                         <th className="p-4 rounded-tl-xl whitespace-nowrap">Identitas Anggota</th>
                         <th className="p-4 whitespace-nowrap">Pangkalan / Gudep</th>
                         <th className="p-4 text-right rounded-tr-xl whitespace-nowrap">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="text-sm font-medium text-gray-200 divide-y divide-white/5">
+                    <tbody className="text-sm font-medium text-gray-800 divide-y divide-gray-100">
                       {anggotaList.filter(a => ktaTab === 'belum' ? !a.is_kta_printed : a.is_kta_printed).length === 0 ? (
                         <tr>
                           <td colSpan={3} className="p-12 text-center">
@@ -3040,33 +3618,34 @@ export default function AdminPortal({
                         </tr>
                       ) : (
                         anggotaList.filter(a => ktaTab === 'belum' ? !a.is_kta_printed : a.is_kta_printed).map(a => (
-                          <tr key={a.id} className="hover:bg-white/[0.02] transition-colors">
+                          <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                             <td className="p-4">
                               <div className="flex items-center space-x-3">
                                 {a.foto ? (
-                                  <img src={a.foto} className="w-12 h-16 rounded object-cover border border-white/10" alt="foto" />
+                                  <img src={a.foto} className="w-12 h-16 rounded object-cover border border-gray-200" alt="foto" />
                                 ) : (
-                                  <div className="w-12 h-16 rounded bg-white/10 border border-white/5 flex items-center justify-center">
+                                  <div className="w-12 h-16 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
                                     <User className="w-6 h-6 text-gray-500" />
                                   </div>
                                 )}
                                 <div>
-                                  <div className="font-black text-white uppercase tracking-wide">{a.nama_lengkap}</div>
-                                  <div className="text-xs text-[#D4AF37] font-mono mt-0.5 font-bold">NTA: 09.01.{a.id.replace('ang_','').padStart(5,'0')}</div>
-                                  <div className="text-[10px] text-purple-300 uppercase mt-1 px-2 py-0.5 bg-purple-900/50 rounded inline-block border border-purple-500/20">
+                                  <div className="font-black text-gray-900 uppercase tracking-wide">{a.nama_lengkap}</div>
+                                  <div className="text-xs text-green-700 font-mono mt-0.5 font-bold">NTA: 09.01.{a.id.replace('ang_','').padStart(5,'0')}</div>
+                                  <div className="text-[10px] text-gray-500 uppercase mt-1 px-2 py-0.5 bg-green-50 rounded inline-block border border-green-200">
                                     {a.golongan} - {a.tingkatan}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="p-4 align-top pt-5">
-                              <div className="font-bold text-gray-200">{a.pangkalan}</div>
-                              <div className="text-xs text-gray-400 mt-1">Kwarran: {a.kwartir_ranting_id}</div>
+                              <div className="font-bold text-gray-800">{a.pangkalan}</div>
+                              <div className="text-xs text-gray-500 mt-1">Kwarran: {a.kwartir_ranting_id}</div>
                             </td>
                             <td className="p-4 text-right align-middle">
                               <button
+                                type="button"
                                 onClick={() => exportToKTA(a)}
-                                className={`px-4 py-2 font-bold rounded-lg text-xs flex items-center justify-center ml-auto transition-all shadow-lg shadow-black/20 ${ktaTab === 'belum' ? 'bg-[#D4AF37] hover:bg-[#b0902c] text-black shadow-[#D4AF37]/20 hover:-translate-y-0.5' : 'bg-emerald-950/60 hover:bg-emerald-900 text-emerald-400 border border-emerald-500/30'}`}
+                                className={`px-4 py-2 font-bold rounded-lg text-xs flex items-center justify-center ml-auto transition-all ${ktaTab === 'belum' ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm hover:-translate-y-0.5' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300'}`}
                               >
                                 <Printer className="w-4 h-4 mr-2" />
                                 {ktaTab === 'belum' ? 'Cetak KTA Baru' : 'Cetak Ulang KTA'}
@@ -3088,28 +3667,30 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200">Kwartir Ranting se-Kabupaten</span>
-                    <button
-                      onClick={() => {
-                        setFormMode('add');
-                        setKwNama('');
-                        setKwKetua('');
-                        setKwSekretaris('');
-                        setKwBendahara('');
-                        setKwStatus('aktif');
-                      }}
-                      className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
-                    >
-                      <Plus className="w-4 h-4 text-[#D4AF37]" />
-                      <span>Tambah Kwarran</span>
-                    </button>
+                    <span className="text-xs text-gray-600">Kwartir Ranting se-Kabupaten</span>
+                    {canManage('kwarran') && (
+                      <button
+                        onClick={() => {
+                          setFormMode('add');
+                          setKwNama('');
+                          setKwKetua('');
+                          setKwSekretaris('');
+                          setKwBendahara('');
+                          setKwStatus('aktif');
+                        }}
+                        className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
+                      >
+                        <Plus className="w-4 h-4 text-white" />
+                        <span>Tambah Kwarran</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0F0A1A]/40 backdrop-blur-md">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
                     {/* Desktop Table View */}
                     <table className="hidden md:table w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-white/10 bg-purple-950/40 text-purple-200 font-extrabold uppercase tracking-wider text-[10px]">
+                        <tr className="border-b border-gray-200 bg-gray-100 text-gray-600 font-extrabold uppercase tracking-wider text-[10px]">
                           <th className="py-4 px-5">Kwartir Ranting</th>
                           <th className="py-4 px-5">Ketua Kwarran</th>
                           <th className="py-4 px-5">Sekretaris</th>
@@ -3121,37 +3702,39 @@ export default function AdminPortal({
                       <tbody className="divide-y divide-white/5">
                         {allKwarran.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="py-8 px-5 text-center text-purple-300 font-medium italic">
+                            <td colSpan={6} className="py-8 px-5 text-center text-gray-500 font-medium italic">
                               Belum ada Kwartir Ranting yang terdaftar.
                             </td>
                           </tr>
                         ) : (
-                          allKwarran.map((kw) => (
-                            <tr key={kw.id} className="hover:bg-white/[0.02] transition">
+                          allKwarran
+                            .filter(kw => isKwarcabAdmin || isKwarcabStaff || (user.role === 'kwarran' && kw.id === user.ref_id))
+                            .map((kw) => (
+                            <tr key={kw.id} className="hover:bg-gray-50 transition">
                               <td className="py-3.5 px-5">
                                 <div className="flex items-center space-x-3">
-                                  <div className="w-8 h-8 rounded-lg bg-purple-900/30 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-[#D4AF37]">
+                                  <div className="w-8 h-8 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center flex-shrink-0 text-green-700">
                                     <MapPin className="w-4 h-4" />
                                   </div>
-                                  <div className="font-bold text-white">
+                                  <div className="font-bold text-gray-900">
                                     Kecamatan {kw.nama_kecamatan}
                                   </div>
                                 </div>
                               </td>
-                              <td className="py-3.5 px-5 font-medium text-purple-100">
+                              <td className="py-3.5 px-5 font-medium text-gray-800">
                                 {kw.ketua}
                               </td>
-                              <td className="py-3.5 px-5 text-purple-200">
+                              <td className="py-3.5 px-5 text-gray-600">
                                 {kw.sekretaris}
                               </td>
-                              <td className="py-3.5 px-5 text-purple-200">
+                              <td className="py-3.5 px-5 text-gray-600">
                                 {kw.bendahara}
                               </td>
                               <td className="py-3.5 px-5 text-center">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
                                   kw.status === 'aktif' 
-                                    ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                    : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                    : 'bg-red-50 border border-red-200 text-red-700'
                                 }`}>
                                   {kw.status ? kw.status.toUpperCase() : 'AKTIF'}
                                 </span>
@@ -3160,10 +3743,10 @@ export default function AdminPortal({
                                 <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => setViewingKwarranDetail(kw)}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-200 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Lihat Detail"
                                   >
-                                    <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                    <Eye className="w-3.5 h-3.5 text-green-700" />
                                   </button>
                                   <button
                                     onClick={() => {
@@ -3175,7 +3758,7 @@ export default function AdminPortal({
                                       setKwBendahara(kw.bendahara);
                                       setKwStatus(kw.status);
                                     }}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-300 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Edit Kwarran"
                                   >
                                     <Edit className="w-3.5 h-3.5" />
@@ -3191,21 +3774,23 @@ export default function AdminPortal({
                     {/* Mobile Card List View */}
                     <div className="md:hidden divide-y divide-white/5">
                       {allKwarran.length === 0 ? (
-                        <div className="py-8 text-center text-purple-300 font-medium italic text-xs">
+                        <div className="py-8 text-center text-gray-500 font-medium italic text-xs">
                           Belum ada Kwartir Ranting yang terdaftar.
                         </div>
                       ) : (
-                        allKwarran.map((kw) => (
+                        allKwarran
+                          .filter(kw => isKwarcabAdmin || isKwarcabStaff || (user.role === 'kwarran' && kw.id === user.ref_id))
+                          .map((kw) => (
                           <div key={kw.id} className="p-4 space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="text-xs font-bold text-white">Kecamatan {kw.nama_kecamatan}</h4>
-                                <p className="text-[10px] text-purple-300/70 mt-0.5">Ketua: {kw.ketua}</p>
+                                <h4 className="text-xs font-bold text-gray-900">Kecamatan {kw.nama_kecamatan}</h4>
+                                <p className="text-[10px] text-gray-500/70 mt-0.5">Ketua: {kw.ketua}</p>
                               </div>
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold ${
                                 kw.status === 'aktif' 
-                                  ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                  : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                  : 'bg-red-50 border border-red-200 text-red-700'
                               }`}>
                                 {kw.status ? kw.status.toUpperCase() : 'AKTIF'}
                               </span>
@@ -3214,9 +3799,9 @@ export default function AdminPortal({
                             <div className="flex items-center justify-end space-x-2 pt-2 border-t border-white/5">
                               <button
                                 onClick={() => setViewingKwarranDetail(kw)}
-                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-200 transition"
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-600 transition"
                               >
-                                <Eye className="w-3 h-3 text-[#D4AF37]" />
+                                <Eye className="w-3 h-3 text-green-700" />
                                 <span>Detail</span>
                               </button>
                               <button
@@ -3229,7 +3814,7 @@ export default function AdminPortal({
                                   setKwBendahara(kw.bendahara);
                                   setKwStatus(kw.status);
                                 }}
-                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-300 transition"
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-500 transition"
                               >
                                 <Edit className="w-3 h-3" />
                                 <span>Edit</span>
@@ -3244,44 +3829,44 @@ export default function AdminPortal({
                   {/* Kwarran Detail Modal */}
                   {viewingKwarranDetail && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-                      <div className="glass-panel-heavy rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl relative p-6 sm:p-8 space-y-6">
+                      <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-6 sm:p-8 space-y-6">
                         <button
                           onClick={() => setViewingKwarranDetail(null)}
-                          className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white transition-all cursor-pointer"
+                          className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 transition-all cursor-pointer"
                         >
-                          <X className="w-5 h-5 text-[#D4AF37]" />
+                          <X className="w-5 h-5 text-green-700" />
                         </button>
 
-                        <div className="flex items-center space-x-3 border-b border-white/10 pb-4">
-                          <div className="w-12 h-12 rounded-xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center text-[#D4AF37]">
+                        <div className="flex items-center space-x-3 border-b border-gray-200 pb-4">
+                          <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-200 flex items-center justify-center text-green-700">
                             <Building className="w-6 h-6" />
                           </div>
                           <div>
-                            <h3 className="text-base font-extrabold text-white">Profil Kwartir Ranting</h3>
-                            <p className="text-xs text-purple-300">Kecamatan {viewingKwarranDetail.nama_kecamatan}</p>
+                            <h3 className="text-base font-extrabold text-gray-900">Profil Kwartir Ranting</h3>
+                            <p className="text-xs text-gray-500">Kecamatan {viewingKwarranDetail.nama_kecamatan}</p>
                           </div>
                         </div>
 
                         <div className="space-y-4 text-xs">
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Ketua Kwarran</span>
-                            <span className="col-span-2 font-bold text-white">{viewingKwarranDetail.ketua}</span>
+                            <span className="text-gray-500 font-medium">Ketua Kwarran</span>
+                            <span className="col-span-2 font-bold text-gray-900">{viewingKwarranDetail.ketua}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Sekretaris</span>
-                            <span className="col-span-2 text-purple-100">{viewingKwarranDetail.sekretaris}</span>
+                            <span className="text-gray-500 font-medium">Sekretaris</span>
+                            <span className="col-span-2 text-gray-800">{viewingKwarranDetail.sekretaris}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Bendahara</span>
-                            <span className="col-span-2 text-purple-100">{viewingKwarranDetail.bendahara}</span>
+                            <span className="text-gray-500 font-medium">Bendahara</span>
+                            <span className="col-span-2 text-gray-800">{viewingKwarranDetail.bendahara}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Status Layanan</span>
+                            <span className="text-gray-500 font-medium">Status Layanan</span>
                             <span className="col-span-2">
                               <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold ${
                                 viewingKwarranDetail.status === 'aktif' 
-                                  ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                  : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                  : 'bg-red-50 border border-red-200 text-red-700'
                               }`}>
                                 {viewingKwarranDetail.status ? viewingKwarranDetail.status.toUpperCase() : 'AKTIF'}
                               </span>
@@ -3301,14 +3886,14 @@ export default function AdminPortal({
                               setKwStatus(viewingKwarranDetail.status);
                               setViewingKwarranDetail(null);
                             }}
-                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center space-x-1"
+                            className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition flex items-center space-x-1"
                           >
                             <Edit className="w-3.5 h-3.5" />
                             <span>Sunting Data</span>
                           </button>
                           <button
                             onClick={() => setViewingKwarranDetail(null)}
-                            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 rounded-xl text-xs font-bold transition"
+                            className="px-4 py-2 bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold transition"
                           >
                             Tutup
                           </button>
@@ -3318,57 +3903,73 @@ export default function AdminPortal({
                   )}
                 </>
               ) : (
-                <form onSubmit={handleSaveKwarran} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveKwarran} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     {formMode === 'add' ? 'Registrasi Kwartir Ranting Baru' : 'Sunting Data Kwarran'}
                   </h3>
 
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Nama Kecamatan *</label>
+                      <label className="text-xs text-gray-600">Nama Kecamatan *</label>
                       <input
                         type="text"
                         required
+                        disabled={user.role === 'kwarran'}
                         value={kwNama}
                         onChange={(e) => setKwNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 disabled:bg-gray-100"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Ketua Kwarran *</label>
+                      <label className="text-xs text-gray-600">Ketua Kwarran {user.role === 'kwarcab' || user.role === 'staff_kwarcab' ? '(Opsional)' : '*'}</label>
                       <input
                         type="text"
-                        required
+                        required={user.role === 'kwarran'}
                         value={kwKetua}
                         onChange={(e) => setKwKetua(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Sekretaris *</label>
+                      <label className="text-xs text-gray-600">Sekretaris {user.role === 'kwarcab' || user.role === 'staff_kwarcab' ? '(Opsional)' : '*'}</label>
                       <input
                         type="text"
-                        required
+                        required={user.role === 'kwarran'}
                         value={kwSekretaris}
                         onChange={(e) => setKwSekretaris(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Bendahara *</label>
+                      <label className="text-xs text-gray-600">Bendahara {user.role === 'kwarcab' || user.role === 'staff_kwarcab' ? '(Opsional)' : '*'}</label>
                       <input
                         type="text"
-                        required
+                        required={user.role === 'kwarran'}
                         value={kwBendahara}
                         onChange={(e) => setKwBendahara(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
+                    {/* Status Kwarran (Hanya bisa diubah Kwarcab) */}
+                    {(user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'superadmin') && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-gray-600">Status Layanan *</label>
+                        <select
+                          value={kwStatus}
+                          onChange={(e) => setKwStatus(e.target.value as any)}
+                          className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 cursor-pointer"
+                        >
+                          <option value="aktif">AKTIF</option>
+                          <option value="transisi">TRANSISI</option>
+                          <option value="non-aktif">NON-AKTIF</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -3381,27 +3982,27 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200">Gugus Depan Pangkalan</span>
-                    {canManage('gudep') && (
+                    <span className="text-xs text-gray-600">Gugus Depan Pangkalan</span>
+                    {(canManage('gudep') || user.role === 'kwarran') && (
                       <button
                         onClick={() => {
                           setFormMode('add');
                           setGdNama('');
-                          setGdKwarran('');
+                          setGdKwarran(user.role === 'kwarran' ? (user.ref_id || '') : '');
                         }}
-                        className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
+                        className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
                       >
-                        <Plus className="w-4 h-4 text-[#D4AF37]" />
-                        <span>Tambah Gudep</span>
+                        <Plus className="w-4 h-4 text-white" />
+                      <span>Tambah Gudep</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0F0A1A]/40 backdrop-blur-md">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
                     {/* Desktop Table View */}
                     <table className="hidden md:table w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-white/10 bg-purple-950/40 text-purple-200 font-extrabold uppercase tracking-wider text-[10px]">
+                        <tr className="border-b border-gray-200 bg-gray-100 text-gray-600 font-extrabold uppercase tracking-wider text-[10px]">
                           <th className="py-4 px-5">Nama Pangkalan / Gugus Depan</th>
                           <th className="py-4 px-5">Kwartir Ranting Induk</th>
                           <th className="py-4 px-5 text-right">Aksi</th>
@@ -3410,7 +4011,7 @@ export default function AdminPortal({
                       <tbody className="divide-y divide-white/5">
                         {gudepList.length === 0 ? (
                           <tr>
-                            <td colSpan={3} className="py-8 px-5 text-center text-purple-300 font-medium italic">
+                            <td colSpan={3} className="py-8 px-5 text-center text-gray-500 font-medium italic">
                               Belum ada Gugus Depan yang terdaftar.
                             </td>
                           </tr>
@@ -3418,27 +4019,27 @@ export default function AdminPortal({
                           gudepList.map((gd) => {
                             const kw = allKwarran.find(x => x.id === gd.kwartir_ranting_id);
                             return (
-                              <tr key={gd.id} className="hover:bg-white/[0.02] transition">
+                              <tr key={gd.id} className="hover:bg-gray-50 transition">
                                 <td className="py-3.5 px-5">
                                   <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 rounded-lg bg-purple-900/30 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-[#D4AF37]">
+                                    <div className="w-8 h-8 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center flex-shrink-0 text-green-700">
                                       <Award className="w-4 h-4" />
                                     </div>
-                                    <div className="font-bold text-white">
+                                    <div className="font-bold text-gray-900">
                                       {gd.nama_pangkalan}
                                     </div>
                                   </div>
                                 </td>
-                                <td className="py-3.5 px-5 text-purple-100 font-medium">
+                                <td className="py-3.5 px-5 text-gray-800 font-medium">
                                   Kecamatan {kw ? kw.nama_kecamatan : 'Tasikmalaya'}
                                 </td>
                                 <td className="py-3.5 px-5 text-right">
                                   <button
                                     onClick={() => setViewingGudepDetail(gd)}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-200 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Lihat Detail"
                                   >
-                                    <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                    <Eye className="w-3.5 h-3.5 text-green-700" />
                                   </button>
                                 </td>
                               </tr>
@@ -3451,7 +4052,7 @@ export default function AdminPortal({
                     {/* Mobile Card List View */}
                     <div className="md:hidden divide-y divide-white/5">
                       {gudepList.length === 0 ? (
-                        <div className="py-8 text-center text-purple-300 font-medium italic text-xs">
+                        <div className="py-8 text-center text-gray-500 font-medium italic text-xs">
                           Belum ada Gugus Depan yang terdaftar.
                         </div>
                       ) : (
@@ -3461,8 +4062,8 @@ export default function AdminPortal({
                             <div key={gd.id} className="p-4 space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <h4 className="text-xs font-bold text-white">{gd.nama_pangkalan}</h4>
-                                  <p className="text-[10px] text-purple-300/70 mt-0.5">
+                                  <h4 className="text-xs font-bold text-gray-900">{gd.nama_pangkalan}</h4>
+                                  <p className="text-[10px] text-gray-500/70 mt-0.5">
                                     Kwarran: Kecamatan {kw ? kw.nama_kecamatan : 'Tasikmalaya'}
                                   </p>
                                 </div>
@@ -3471,9 +4072,9 @@ export default function AdminPortal({
                               <div className="flex items-center justify-end pt-2 border-t border-white/5">
                                 <button
                                   onClick={() => setViewingGudepDetail(gd)}
-                                  className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-200 transition"
+                                  className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-600 transition"
                                 >
-                                  <Eye className="w-3 h-3 text-[#D4AF37]" />
+                                  <Eye className="w-3 h-3 text-green-700" />
                                   <span>Detail</span>
                                 </button>
                               </div>
@@ -3489,44 +4090,44 @@ export default function AdminPortal({
                     const kw = allKwarran.find(x => x.id === viewingGudepDetail.kwartir_ranting_id);
                     return (
                       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-                        <div className="glass-panel-heavy rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl relative p-6 sm:p-8 space-y-6">
+                        <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-6 sm:p-8 space-y-6">
                           <button
                             onClick={() => setViewingGudepDetail(null)}
-                            className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white transition-all cursor-pointer"
+                            className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 transition-all cursor-pointer"
                           >
-                            <X className="w-5 h-5 text-[#D4AF37]" />
+                            <X className="w-5 h-5 text-green-700" />
                           </button>
 
-                          <div className="flex items-center space-x-3 border-b border-white/10 pb-4">
-                            <div className="w-12 h-12 rounded-xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center text-[#D4AF37]">
+                          <div className="flex items-center space-x-3 border-b border-gray-200 pb-4">
+                            <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-200 flex items-center justify-center text-green-700">
                               <Award className="w-6 h-6" />
                             </div>
                             <div>
-                              <h3 className="text-base font-extrabold text-white">Gugus Depan Pangkalan</h3>
-                              <p className="text-xs text-purple-300">{viewingGudepDetail.nama_pangkalan}</p>
+                              <h3 className="text-base font-extrabold text-gray-900">Gugus Depan Pangkalan</h3>
+                              <p className="text-xs text-gray-500">{viewingGudepDetail.nama_pangkalan}</p>
                             </div>
                           </div>
 
                           <div className="space-y-4 text-xs">
-                            <div className="bg-purple-950/20 rounded-xl p-4 border border-white/5 space-y-2.5">
-                              <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Kwartir Ranting Induk</h4>
+                            <div className="bg-gray-900/20 rounded-xl p-4 border border-gray-200 space-y-2.5">
+                              <h4 className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Kwartir Ranting Induk</h4>
                               <div className="grid grid-cols-3">
-                                <span className="text-purple-300">Kecamatan</span>
-                                <span className="col-span-2 font-bold text-white">{kw ? kw.nama_kecamatan : 'Tasikmalaya'}</span>
+                                <span className="text-gray-500">Kecamatan</span>
+                                <span className="col-span-2 font-bold text-gray-900">{kw ? kw.nama_kecamatan : 'Tasikmalaya'}</span>
                               </div>
                               {kw && (
                                 <>
                                   <div className="grid grid-cols-3">
-                                    <span className="text-purple-300">Ketua Kwarran</span>
-                                    <span className="col-span-2 text-purple-100">{kw.ketua}</span>
+                                    <span className="text-gray-500">Ketua Kwarran</span>
+                                    <span className="col-span-2 text-gray-800">{kw.ketua}</span>
                                   </div>
                                   <div className="grid grid-cols-3">
-                                    <span className="text-purple-300">Sekretaris</span>
-                                    <span className="col-span-2 text-purple-100">{kw.sekretaris}</span>
+                                    <span className="text-gray-500">Sekretaris</span>
+                                    <span className="col-span-2 text-gray-800">{kw.sekretaris}</span>
                                   </div>
                                   <div className="grid grid-cols-3">
-                                    <span className="text-purple-300">Bendahara</span>
-                                    <span className="col-span-2 text-purple-100">{kw.bendahara}</span>
+                                    <span className="text-gray-500">Bendahara</span>
+                                    <span className="col-span-2 text-gray-800">{kw.bendahara}</span>
                                   </div>
                                 </>
                               )}
@@ -3536,7 +4137,7 @@ export default function AdminPortal({
                           <div className="pt-2 flex justify-end">
                             <button
                               onClick={() => setViewingGudepDetail(null)}
-                              className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 rounded-xl text-xs font-bold transition"
+                              className="px-5 py-2 bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold transition"
                             >
                               Tutup
                             </button>
@@ -3547,34 +4148,36 @@ export default function AdminPortal({
                   })()}
                 </>
               ) : (
-                <form onSubmit={handleSaveGudep} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveGudep} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     Registrasi Gugus Depan Pangkalan Baru
                   </h3>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Nama Pangkalan / Gudep *</label>
+                      <label className="text-xs text-gray-600">Nama Pangkalan / Gudep *</label>
                       <input
                         type="text"
                         required
                         value={gdNama}
                         onChange={(e) => setGdNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Contoh: SMAN 1 Cisayong"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Kwartir Ranting Induk *</label>
+                      <label className="text-xs text-gray-600">Kwartir Ranting Induk *</label>
                       <select
                         required
                         value={gdKwarran}
                         onChange={(e) => setGdKwarran(e.target.value)}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       >
                         <option value="">-- Pilih Kwarran --</option>
-                        {allKwarran.map(kw => (
+                        {allKwarran
+                          .filter(kw => isKwarcabAdmin || (user.role === 'kwarran' && kw.id === user.ref_id))
+                          .map(kw => (
                           <option key={kw.id} value={kw.id}>Kecamatan {kw.nama_kecamatan}</option>
                         ))}
                       </select>
@@ -3582,8 +4185,8 @@ export default function AdminPortal({
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -3596,7 +4199,7 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200">Satuan Karya Pramuka se-Kabupaten</span>
+                    <span className="text-xs text-gray-600">Satuan Karya Pramuka se-Kabupaten</span>
                     <button
                       onClick={() => {
                         setFormMode('add');
@@ -3606,18 +4209,18 @@ export default function AdminPortal({
                         setSkBendahara('');
                         setSkStatus('aktif');
                       }}
-                      className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
+                      className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
                     >
-                      <Plus className="w-4 h-4 text-[#D4AF37]" />
+                      <Plus className="w-4 h-4 text-white" />
                       <span>Tambah Saka</span>
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0F0A1A]/40 backdrop-blur-md">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
                     {/* Desktop Table View */}
                     <table className="hidden md:table w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-white/10 bg-purple-950/40 text-purple-200 font-extrabold uppercase tracking-wider text-[10px]">
+                        <tr className="border-b border-gray-200 bg-gray-100 text-gray-600 font-extrabold uppercase tracking-wider text-[10px]">
                           <th className="py-4 px-5">Nama Satuan Karya</th>
                           <th className="py-4 px-5">Pamong / Ketua Harian</th>
                           <th className="py-4 px-5">Sekretaris</th>
@@ -3629,37 +4232,37 @@ export default function AdminPortal({
                       <tbody className="divide-y divide-white/5">
                         {allSaka.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="py-8 px-5 text-center text-purple-300 font-medium italic">
+                            <td colSpan={6} className="py-8 px-5 text-center text-gray-500 font-medium italic">
                               Belum ada Satuan Karya Pramuka yang terdaftar.
                             </td>
                           </tr>
                         ) : (
                           allSaka.map((sk) => (
-                            <tr key={sk.id} className="hover:bg-white/[0.02] transition">
+                            <tr key={sk.id} className="hover:bg-gray-50 transition">
                               <td className="py-3.5 px-5">
                                 <div className="flex items-center space-x-3">
-                                  <div className="w-8 h-8 rounded-lg bg-purple-900/30 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-[#D4AF37]">
+                                  <div className="w-8 h-8 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center flex-shrink-0 text-green-700">
                                     <Compass className="w-4 h-4" />
                                   </div>
-                                  <div className="font-bold text-white">
+                                  <div className="font-bold text-gray-900">
                                     {sk.nama_saka}
                                   </div>
                                 </div>
                               </td>
-                              <td className="py-3.5 px-5 font-medium text-purple-100">
+                              <td className="py-3.5 px-5 font-medium text-gray-800">
                                 {sk.ketua}
                               </td>
-                              <td className="py-3.5 px-5 text-purple-200">
+                              <td className="py-3.5 px-5 text-gray-600">
                                 {sk.sekretaris}
                               </td>
-                              <td className="py-3.5 px-5 text-purple-200">
+                              <td className="py-3.5 px-5 text-gray-600">
                                 {sk.bendahara}
                               </td>
                               <td className="py-3.5 px-5 text-center">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
                                   sk.status === 'aktif' 
-                                    ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                    : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                    : 'bg-red-50 border border-red-200 text-red-700'
                                 }`}>
                                   {sk.status ? sk.status.toUpperCase() : 'AKTIF'}
                                 </span>
@@ -3668,10 +4271,10 @@ export default function AdminPortal({
                                 <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => setViewingSakaDetail(sk)}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-200 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Lihat Detail"
                                   >
-                                    <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                    <Eye className="w-3.5 h-3.5 text-green-700" />
                                   </button>
                                   <button
                                     onClick={() => {
@@ -3683,7 +4286,7 @@ export default function AdminPortal({
                                       setSkBendahara(sk.bendahara);
                                       setSkStatus(sk.status);
                                     }}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-300 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Edit Saka"
                                   >
                                     <Edit className="w-3.5 h-3.5" />
@@ -3699,7 +4302,7 @@ export default function AdminPortal({
                     {/* Mobile Card List View */}
                     <div className="md:hidden divide-y divide-white/5">
                       {allSaka.length === 0 ? (
-                        <div className="py-8 text-center text-purple-300 font-medium italic text-xs">
+                        <div className="py-8 text-center text-gray-500 font-medium italic text-xs">
                           Belum ada Satuan Karya Pramuka yang terdaftar.
                         </div>
                       ) : (
@@ -3707,13 +4310,13 @@ export default function AdminPortal({
                           <div key={sk.id} className="p-4 space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="text-xs font-bold text-white">{sk.nama_saka}</h4>
-                                <p className="text-[10px] text-purple-300/70 mt-0.5">Pamong: {sk.ketua}</p>
+                                <h4 className="text-xs font-bold text-gray-900">{sk.nama_saka}</h4>
+                                <p className="text-[10px] text-gray-500/70 mt-0.5">Pamong: {sk.ketua}</p>
                               </div>
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold ${
                                 sk.status === 'aktif' 
-                                  ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                  : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                  : 'bg-red-50 border border-red-200 text-red-700'
                               }`}>
                                 {sk.status ? sk.status.toUpperCase() : 'AKTIF'}
                               </span>
@@ -3722,9 +4325,9 @@ export default function AdminPortal({
                             <div className="flex items-center justify-end space-x-2 pt-2 border-t border-white/5">
                               <button
                                 onClick={() => setViewingSakaDetail(sk)}
-                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-200 transition"
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-600 transition"
                               >
-                                <Eye className="w-3 h-3 text-[#D4AF37]" />
+                                <Eye className="w-3 h-3 text-green-700" />
                                 <span>Detail</span>
                               </button>
                               <button
@@ -3737,7 +4340,7 @@ export default function AdminPortal({
                                   setSkBendahara(sk.bendahara);
                                   setSkStatus(sk.status);
                                 }}
-                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-300 transition"
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-500 transition"
                               >
                                 <Edit className="w-3 h-3" />
                                 <span>Edit</span>
@@ -3752,44 +4355,44 @@ export default function AdminPortal({
                   {/* Saka Detail Modal */}
                   {viewingSakaDetail && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-                      <div className="glass-panel-heavy rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl relative p-6 sm:p-8 space-y-6">
+                      <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-6 sm:p-8 space-y-6">
                         <button
                           onClick={() => setViewingSakaDetail(null)}
-                          className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white transition-all cursor-pointer"
+                          className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 transition-all cursor-pointer"
                         >
-                          <X className="w-5 h-5 text-[#D4AF37]" />
+                          <X className="w-5 h-5 text-green-700" />
                         </button>
 
-                        <div className="flex items-center space-x-3 border-b border-white/10 pb-4">
-                          <div className="w-12 h-12 rounded-xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center text-[#D4AF37]">
+                        <div className="flex items-center space-x-3 border-b border-gray-200 pb-4">
+                          <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-200 flex items-center justify-center text-green-700">
                             <Compass className="w-6 h-6 animate-spin-slow" />
                           </div>
                           <div>
-                            <h3 className="text-base font-extrabold text-white">Profil Satuan Karya Pramuka</h3>
-                            <p className="text-xs text-purple-300">{viewingSakaDetail.nama_saka}</p>
+                            <h3 className="text-base font-extrabold text-gray-900">Profil Satuan Karya Pramuka</h3>
+                            <p className="text-xs text-gray-500">{viewingSakaDetail.nama_saka}</p>
                           </div>
                         </div>
 
                         <div className="space-y-4 text-xs">
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Pamong / Ketua Harian</span>
-                            <span className="col-span-2 font-bold text-white">{viewingSakaDetail.ketua}</span>
+                            <span className="text-gray-500 font-medium">Pamong / Ketua Harian</span>
+                            <span className="col-span-2 font-bold text-gray-900">{viewingSakaDetail.ketua}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Sekretaris</span>
-                            <span className="col-span-2 text-purple-100">{viewingSakaDetail.sekretaris}</span>
+                            <span className="text-gray-500 font-medium">Sekretaris</span>
+                            <span className="col-span-2 text-gray-800">{viewingSakaDetail.sekretaris}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Bendahara</span>
-                            <span className="col-span-2 text-purple-100">{viewingSakaDetail.bendahara}</span>
+                            <span className="text-gray-500 font-medium">Bendahara</span>
+                            <span className="col-span-2 text-gray-800">{viewingSakaDetail.bendahara}</span>
                           </div>
                           <div className="grid grid-cols-3 py-2 border-b border-white/5">
-                            <span className="text-purple-300 font-medium">Status</span>
+                            <span className="text-gray-500 font-medium">Status</span>
                             <span className="col-span-2">
                               <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold ${
                                 viewingSakaDetail.status === 'aktif' 
-                                  ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
-                                  : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                  : 'bg-red-50 border border-red-200 text-red-700'
                               }`}>
                                 {viewingSakaDetail.status ? viewingSakaDetail.status.toUpperCase() : 'AKTIF'}
                               </span>
@@ -3809,14 +4412,14 @@ export default function AdminPortal({
                               setSkStatus(viewingSakaDetail.status);
                               setViewingSakaDetail(null);
                             }}
-                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center space-x-1"
+                            className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition flex items-center space-x-1"
                           >
                             <Edit className="w-3.5 h-3.5" />
                             <span>Sunting Data</span>
                           </button>
                           <button
                             onClick={() => setViewingSakaDetail(null)}
-                            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 rounded-xl text-xs font-bold transition"
+                            className="px-4 py-2 bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold transition"
                           >
                             Tutup
                           </button>
@@ -3826,58 +4429,58 @@ export default function AdminPortal({
                   )}
                 </>
               ) : (
-                <form onSubmit={handleSaveSaka} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveSaka} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     {formMode === 'add' ? 'Registrasi Satuan Karya (Saka) Baru' : 'Sunting Data Saka'}
                   </h3>
 
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Nama Saka *</label>
+                      <label className="text-xs text-gray-600">Nama Saka *</label>
                       <input
                         type="text"
                         required
                         value={skNama}
                         onChange={(e) => setSkNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Contoh: Saka Bhayangkara"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Pamong / Ketua Harian *</label>
+                      <label className="text-xs text-gray-600">Pamong / Ketua Harian *</label>
                       <input
                         type="text"
                         required
                         value={skKetua}
                         onChange={(e) => setSkKetua(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Sekretaris *</label>
+                      <label className="text-xs text-gray-600">Sekretaris *</label>
                       <input
                         type="text"
                         required
                         value={skSekretaris}
                         onChange={(e) => setSkSekretaris(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Bendahara *</label>
+                      <label className="text-xs text-gray-600">Bendahara *</label>
                       <input
                         type="text"
                         required
                         value={skBendahara}
                         onChange={(e) => setSkBendahara(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -3890,7 +4493,7 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200 font-medium">Daftar warta berita kepramukaan se-kabupaten</span>
+                    <span className="text-xs text-gray-600 font-medium">Daftar warta berita kepramukaan se-kabupaten</span>
                     <button
                       onClick={() => {
                         setFormMode('add');
@@ -3899,37 +4502,37 @@ export default function AdminPortal({
                         setBerCover('');
                         setBerIsFeatured(false);
                       }}
-                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
                     >
-                      <Plus className="w-4.5 h-4.5 text-[#D4AF37]" />
+                      <Plus className="w-4.5 h-4.5 text-green-700" />
                       <span>Tulis Warta</span>
                     </button>
                   </div>
 
                   {/* Kwarcab superadmin Review section */}
                   {canManage('berita') && beritaList.some(b => b.status === 'pending') && (
-                    <div className="glass-panel rounded-2xl p-5 border border-amber-500/30 space-y-4">
-                      <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                        <AlertTriangle className="w-4 h-4 text-[#D4AF37] animate-pulse" />
+                    <div className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-2xl p-5 border border-amber-500/30 space-y-4">
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
+                        <AlertTriangle className="w-4 h-4 text-green-700 animate-pulse" />
                         <span>Pengajuan Warta Pending Menunggu Review (Superadmin Only)</span>
                       </h3>
                       <div className="space-y-3.5">
                         {beritaList.filter(b => b.status === 'pending').map((b) => (
-                          <div key={b.id} className="p-4 rounded-xl bg-black/30 border border-white/5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs">
+                          <div key={b.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs">
                             <div className="max-w-xl space-y-1">
-                              <span className="inline-block bg-purple-900 text-purple-200 text-[9px] font-bold px-2 py-0.5 rounded">
+                              <span className="inline-block bg-green-800 text-gray-600 text-[9px] font-bold px-2 py-0.5 rounded">
                                 Oleh: {b.author_nama} ({b.author_type.toUpperCase()})
                               </span>
-                              <h4 className="text-sm font-bold text-white">{b.judul}</h4>
-                              <p className="text-purple-300 font-light line-clamp-1 leading-relaxed">{b.konten}</p>
+                              <h4 className="text-sm font-bold text-gray-900">{b.judul}</h4>
+                              <p className="text-gray-500 font-light line-clamp-1 leading-relaxed">{b.konten}</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                               {/* 1. Lihat Detail before approve */}
                               <button
                                 onClick={() => setViewingBeritaDetail(b)}
-                                className="px-3 py-1.5 rounded-lg bg-purple-950/80 border border-purple-500/20 text-purple-300 hover:text-white font-bold uppercase text-[9px] tracking-wide flex items-center space-x-1 transition"
+                                className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-900 font-bold uppercase text-[9px] tracking-wide flex items-center space-x-1 transition"
                               >
-                                <Eye className="w-3 h-3 text-[#D4AF37]" />
+                                <Eye className="w-3 h-3 text-green-700" />
                                 <span>Lihat Detail</span>
                               </button>
                               
@@ -3951,13 +4554,13 @@ export default function AdminPortal({
 
                               <button
                                 onClick={() => handleReviewBerita(b.id, 'approve')}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-900 font-bold uppercase text-[9px] tracking-wide transition"
+                                className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-900 font-bold uppercase text-[9px] tracking-wide transition"
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => handleReviewBerita(b.id, 'reject')}
-                                className="px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-500/20 text-red-300 hover:bg-red-900 font-bold uppercase text-[9px] tracking-wide transition"
+                                className="px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-900 font-bold uppercase text-[9px] tracking-wide transition"
                               >
                                 Reject
                               </button>
@@ -3969,11 +4572,11 @@ export default function AdminPortal({
                   )}
 
                   {/* Clean List View (Row / Table style instead of cards) */}
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0F0A1A]/40 backdrop-blur-md">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
                      {/* Desktop Table View */}
                     <table className="hidden md:table w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-white/10 bg-purple-950/40 text-purple-200 font-extrabold uppercase tracking-wider text-[10px]">
+                        <tr className="border-b border-gray-200 bg-gray-100 text-gray-600 font-extrabold uppercase tracking-wider text-[10px]">
                           <th className="py-4 px-5">Warta Berita</th>
                           <th className="py-4 px-5">Penulis & Peran</th>
                           <th className="py-4 px-5">Tanggal Dibuat</th>
@@ -3985,42 +4588,42 @@ export default function AdminPortal({
                       <tbody className="divide-y divide-white/5">
                         {beritaList.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="py-8 px-5 text-center text-purple-300 font-medium italic">
+                            <td colSpan={6} className="py-8 px-5 text-center text-gray-500 font-medium italic">
                               Belum ada rilis berita kepramukaan yang dibuat.
                             </td>
                           </tr>
                         ) : (
                           beritaList.map((b) => (
-                            <tr key={b.id} className="hover:bg-white/[0.02] transition">
+                            <tr key={b.id} className="hover:bg-gray-50 transition">
                               <td className="py-3.5 px-5 max-w-xs lg:max-w-md">
                                 <div className="flex items-center space-x-3">
                                   {b.gambar_cover ? (
-                                    <img src={b.gambar_cover} alt="" className="w-10 h-10 object-cover rounded-lg border border-white/10 flex-shrink-0" />
+                                    <img src={b.gambar_cover} alt="" className="w-10 h-10 object-cover rounded-lg border border-gray-200 flex-shrink-0" />
                                   ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-purple-900/30 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-[#D4AF37]">
+                                    <div className="w-10 h-10 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center flex-shrink-0 text-green-700">
                                       <BookOpen className="w-5 h-5" />
                                     </div>
                                   )}
                                   <div className="min-w-0">
                                     <h4 
                                       onClick={() => setViewingBeritaDetail(b)}
-                                      className="font-bold text-white truncate hover:text-[#D4AF37] cursor-pointer transition"
+                                      className="font-bold text-gray-900 truncate hover:text-green-700 cursor-pointer transition"
                                     >
                                       {b.judul}
                                     </h4>
-                                    <p className="text-purple-300/60 font-light truncate mt-0.5">{b.konten}</p>
+                                    <p className="text-gray-400 font-light truncate mt-0.5">{b.konten}</p>
                                   </div>
                                 </div>
                               </td>
                               <td className="py-3.5 px-5">
                                 <div className="space-y-1">
-                                  <div className="font-semibold text-white">{b.author_nama}</div>
+                                  <div className="font-semibold text-gray-900">{b.author_nama}</div>
                                   <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold border ${getRoleBadge(b.author_type)}`}>
                                     {b.author_type.toUpperCase()}
                                   </span>
                                 </div>
                               </td>
-                              <td className="py-3.5 px-5 text-purple-200">
+                              <td className="py-3.5 px-5 text-gray-600">
                                 {new Date(b.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </td>
                               <td className="py-3.5 px-5 text-center">
@@ -4030,25 +4633,25 @@ export default function AdminPortal({
                                     onClick={() => handleToggleFeaturedBerita(b.id, b.is_featured)}
                                     className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
                                       b.is_featured
-                                        ? 'bg-purple-900/40 border-purple-400 text-purple-300 hover:bg-purple-900/60'
-                                        : 'bg-white/5 border-white/10 text-purple-200/50 hover:bg-white/10'
+                                        ? 'bg-green-50 border-purple-400 text-gray-500 hover:bg-green-100'
+                                        : 'bg-white border border-gray-100 shadow-sm border-gray-200 text-gray-600/50 hover:bg-gray-50'
                                     } ${canManage('berita') ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
                                     title={canManage('berita') ? 'Klik untuk mengubah status Tampil di Hero' : 'Hanya Kwarcab yang dapat menyetel Hero'}
                                   >
-                                    <Sparkles className={`w-3.5 h-3.5 ${b.is_featured ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-purple-300/30'}`} />
+                                    <Sparkles className={`w-3.5 h-3.5 ${b.is_featured ? 'text-green-700 fill-[#D4AF37]' : 'text-gray-500/30'}`} />
                                     <span>{b.is_featured ? 'Aktif' : 'Non-aktif'}</span>
                                   </button>
                                 ) : (
-                                  <span className="text-purple-200/30 text-[10px] font-light italic">Belum Approved</span>
+                                  <span className="text-gray-600/30 text-[10px] font-light italic">Belum Approved</span>
                                 )}
                               </td>
                               <td className="py-3.5 px-5 text-center">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
                                   b.status === 'approved' 
-                                    ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
+                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
                                     : b.status === 'pending'
                                     ? 'bg-amber-950/80 border border-amber-500/20 text-amber-300'
-                                    : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                    : 'bg-red-50 border border-red-200 text-red-700'
                                 }`}>
                                   {b.status.toUpperCase()}
                                 </span>
@@ -4058,10 +4661,10 @@ export default function AdminPortal({
                                   {/* Detail Button */}
                                   <button
                                     onClick={() => setViewingBeritaDetail(b)}
-                                    className="p-1.5 rounded-lg bg-white/5 text-purple-200 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                     title="Lihat Detail"
                                   >
-                                    <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                    <Eye className="w-3.5 h-3.5 text-green-700" />
                                   </button>
 
                                   {/* Edit/Hapus Actions */}
@@ -4076,7 +4679,7 @@ export default function AdminPortal({
                                           setBerCover(b.gambar_cover);
                                           setBerIsFeatured(b.is_featured);
                                         }}
-                                        className="p-1.5 rounded-lg bg-white/5 text-purple-300 hover:text-white hover:bg-white/10 border border-white/10 transition"
+                                        className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
                                         title="Edit Warta"
                                       >
                                         <Edit className="w-3.5 h-3.5" />
@@ -4101,7 +4704,7 @@ export default function AdminPortal({
                     {/* Mobile stacked row list layout */}
                     <div className="md:hidden divide-y divide-white/5">
                       {beritaList.length === 0 ? (
-                        <div className="py-8 text-center text-purple-300 font-medium italic text-xs">
+                        <div className="py-8 text-center text-gray-500 font-medium italic text-xs">
                           Belum ada rilis berita kepramukaan yang dibuat.
                         </div>
                       ) : (
@@ -4114,20 +4717,20 @@ export default function AdminPortal({
                                 </span>
                                 <h4 
                                   onClick={() => setViewingBeritaDetail(b)}
-                                  className="text-xs font-bold text-white hover:text-[#D4AF37]"
+                                  className="text-xs font-bold text-gray-900 hover:text-green-700"
                                 >
                                   {b.judul}
                                 </h4>
-                                <p className="text-[10px] text-purple-300/60 mt-0.5">
+                                <p className="text-[10px] text-gray-400 mt-0.5">
                                   Oleh: {b.author_nama} &mdash; {new Date(b.created_at).toLocaleDateString()}
                                 </p>
                               </div>
                               <span className={`flex-shrink-0 inline-block px-2 py-0.5 rounded text-[8px] font-bold ${
                                 b.status === 'approved' 
-                                  ? 'bg-emerald-950/80 border border-emerald-500/20 text-emerald-300' 
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
                                   : b.status === 'pending'
                                   ? 'bg-amber-950/80 border border-amber-500/20 text-amber-300'
-                                  : 'bg-red-950/80 border border-red-500/20 text-red-300'
+                                  : 'bg-red-50 border border-red-200 text-red-700'
                               }`}>
                                 {b.status.toUpperCase()}
                               </span>
@@ -4137,22 +4740,22 @@ export default function AdminPortal({
                             <div className="flex items-center justify-end space-x-2 pt-2 border-t border-white/5">
                               <button
                                 onClick={() => setViewingBeritaDetail(b)}
-                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-200 transition"
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-600 transition"
                               >
-                                <Eye className="w-3 h-3 text-[#D4AF37]" />
+                                <Eye className="w-3 h-3 text-green-700" />
                                 <span>Detail</span>
                               </button>
                               {b.status === 'approved' && (
                                 <button
                                   disabled={!canManage('berita')}
                                   onClick={() => handleToggleFeaturedBerita(b.id, b.is_featured)}
-                                  className={`flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border text-[10px] font-bold transition ${
+                                  className={`flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border text-[10px] font-bold transition ${
                                     b.is_featured
-                                      ? 'border-purple-400 text-[#D4AF37] bg-purple-900/20'
-                                      : 'border-white/10 text-purple-200/50'
+                                      ? 'border-purple-400 text-green-700 bg-green-800/20'
+                                      : 'border-gray-200 text-gray-600/50'
                                   } ${canManage('berita') ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                                 >
-                                  <Sparkles className={`w-3 h-3 ${b.is_featured ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-purple-300/30'}`} />
+                                  <Sparkles className={`w-3 h-3 ${b.is_featured ? 'text-green-700 fill-[#D4AF37]' : 'text-gray-500/30'}`} />
                                   <span>Hero: {b.is_featured ? 'On' : 'Off'}</span>
                                 </button>
                               )}
@@ -4167,7 +4770,7 @@ export default function AdminPortal({
                                       setBerCover(b.gambar_cover);
                                       setBerIsFeatured(b.is_featured);
                                     }}
-                                    className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-purple-300 transition"
+                                    className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-500 transition"
                                   >
                                     <Edit className="w-3 h-3" />
                                     <span>Edit</span>
@@ -4189,38 +4792,38 @@ export default function AdminPortal({
                   </div>
                 </>
               ) : (
-                <form onSubmit={handleSaveBerita} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveBerita} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     {formMode === 'add' ? 'Tulis Warta Baru' : 'Sunting Warta'}
                   </h3>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Judul Berita *</label>
+                      <label className="text-xs text-gray-600">Judul Berita *</label>
                       <input
                         type="text"
                         required
                         value={berJudul}
                         onChange={(e) => setBerJudul(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Contoh: Raimuna Cabang Tasikmalaya Berlangsung Semarak"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Konten / Isi Warta Lengkap *</label>
+                      <label className="text-xs text-gray-600">Konten / Isi Warta Lengkap *</label>
                       <textarea
                         required
                         value={berKonten}
                         onChange={(e) => setBerKonten(e.target.value)}
                         rows={6}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Ketik rilis berita kepramukaan lengkap di sini..."
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Gambar Cover (Opsional)</label>
+                      <label className="text-xs text-gray-600">Gambar Cover (Opsional)</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -4230,33 +4833,33 @@ export default function AdminPortal({
                           filenamePrefix: 'cover_',
                           successMessage: 'Cover berita berhasil dikompresi maksimal dan diunggah!'
                         })}
-                        className="w-full bg-black/40 text-xs text-white px-4 py-2 rounded-xl border border-white/10"
+                        className="w-full bg-white text-xs text-gray-900 px-4 py-2 rounded-xl border border-gray-200"
                       />
                       {berCover && (
-                        <img src={berCover} alt="Preview Cover" className="w-32 h-20 object-cover mt-2 rounded-lg border border-white/10" />
+                        <img src={berCover} alt="Preview Cover" className="w-32 h-20 object-cover mt-2 rounded-lg border border-gray-200" />
                       )}
                     </div>
 
                     {canManage('berita') && (
-                      <div className="flex items-start space-x-3 p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/10">
+                      <div className="flex items-start space-x-3 p-3.5 rounded-xl bg-gray-900/20 border border-green-500/10">
                         <input
                           id="is_featured"
                           type="checkbox"
                           checked={berIsFeatured}
                           onChange={(e) => setBerIsFeatured(e.target.checked)}
-                          className="w-4 h-4 mt-0.5 rounded border-purple-500/30 text-purple-600 focus:ring-purple-500/20 cursor-pointer bg-black/40"
+                          className="w-4 h-4 mt-0.5 rounded border-green-200 text-green-700 focus:ring-purple-500/20 cursor-pointer bg-white"
                         />
-                        <label htmlFor="is_featured" className="text-xs text-purple-200 select-none cursor-pointer">
-                          <span className="block font-bold text-white mb-0.5">Tampilkan di Hero Landing Page (Sorotan Utama)</span>
-                          <span className="text-purple-300/70 font-light block">Jika diaktifkan, warta berita ini akan menjadi slide banner utama di halaman beranda.</span>
+                        <label htmlFor="is_featured" className="text-xs text-gray-600 select-none cursor-pointer">
+                          <span className="block font-bold text-gray-900 mb-0.5">Tampilkan di Hero Landing Page (Sorotan Utama)</span>
+                          <span className="text-gray-500/70 font-light block">Jika diaktifkan, warta berita ini akan menjadi slide banner utama di halaman beranda.</span>
                         </label>
                       </div>
                     )}
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -4264,13 +4867,13 @@ export default function AdminPortal({
               {/* --- NEWS DETAIL MODAL --- */}
               {viewingBeritaDetail && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-                  <div className="glass-panel-heavy rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl relative p-5 sm:p-8 space-y-6">
+                  <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-5 sm:p-8 space-y-6">
                     {/* Close button */}
                     <button
                       onClick={() => setViewingBeritaDetail(null)}
-                      className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white transition-all cursor-pointer"
+                      className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 transition-all cursor-pointer"
                     >
-                      <X className="w-5 h-5 text-[#D4AF37]" />
+                      <X className="w-5 h-5 text-green-700" />
                     </button>
 
                     {/* Cover image */}
@@ -4278,12 +4881,12 @@ export default function AdminPortal({
                       <img 
                         src={viewingBeritaDetail.gambar_cover} 
                         alt="Cover Warta" 
-                        className="w-full h-56 sm:h-64 object-cover rounded-2xl border border-white/10 shadow-md"
+                        className="w-full h-56 sm:h-64 object-cover rounded-2xl border border-gray-200 shadow-md"
                       />
                     ) : (
-                      <div className="w-full h-40 bg-purple-950/40 border border-purple-500/20 rounded-2xl flex flex-col items-center justify-center text-purple-300">
-                        <BookOpen className="w-10 h-10 text-[#D4AF37] mb-2" />
-                        <span className="text-[10px] font-bold text-purple-200">Warta berita tidak memiliki gambar cover</span>
+                      <div className="w-full h-40 bg-gray-100 border border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-500">
+                        <BookOpen className="w-10 h-10 text-green-700 mb-2" />
+                        <span className="text-[10px] font-bold text-gray-600">Warta berita tidak memiliki gambar cover</span>
                       </div>
                     )}
 
@@ -4301,28 +4904,28 @@ export default function AdminPortal({
                       }`}>
                         {viewingBeritaDetail.status.toUpperCase()}
                       </span>
-                      <span className="text-purple-300 ml-auto font-medium">
+                      <span className="text-gray-500 ml-auto font-medium">
                         Dibuat: {new Date(viewingBeritaDetail.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                     </div>
 
                     {/* Title */}
                     <div className="space-y-1">
-                      <h3 className="text-lg sm:text-xl font-extrabold text-white leading-snug">
+                      <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-snug">
                         {viewingBeritaDetail.judul}
                       </h3>
-                      <p className="text-xs text-purple-300">
-                        Penulis: <span className="text-[#D4AF37] font-bold">{viewingBeritaDetail.author_nama}</span>
+                      <p className="text-xs text-gray-500">
+                        Penulis: <span className="text-green-700 font-bold">{viewingBeritaDetail.author_nama}</span>
                       </p>
                     </div>
 
                     {/* Content text */}
-                    <div className="text-xs sm:text-sm text-purple-100/90 leading-relaxed whitespace-pre-wrap border-t border-white/5 pt-4">
+                    <div className="text-xs sm:text-sm text-gray-800/90 leading-relaxed whitespace-pre-wrap border-t border-white/5 pt-4">
                       {viewingBeritaDetail.konten}
                     </div>
 
                     {/* Action buttons footer */}
-                    <div className="border-t border-white/10 pt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="border-t border-gray-200 pt-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap gap-2">
                         {canManage('berita') && viewingBeritaDetail.status === 'pending' && (
                           <>
@@ -4331,7 +4934,7 @@ export default function AdminPortal({
                                 handleReviewBerita(viewingBeritaDetail.id, 'approve');
                                 setViewingBeritaDetail(null);
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider transition"
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-gray-900 text-[10px] font-bold uppercase tracking-wider transition"
                             >
                               Approve
                             </button>
@@ -4340,7 +4943,7 @@ export default function AdminPortal({
                                 handleReviewBerita(viewingBeritaDetail.id, 'reject');
                                 setViewingBeritaDetail(null);
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider transition"
+                              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-gray-900 text-[10px] font-bold uppercase tracking-wider transition"
                             >
                               Reject
                             </button>
@@ -4358,7 +4961,7 @@ export default function AdminPortal({
                               setBerCover(viewingBeritaDetail.gambar_cover);
                               setViewingBeritaDetail(null);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/30 text-[10px] font-bold uppercase tracking-wider transition flex items-center space-x-1"
+                            className="px-3 py-1.5 rounded-lg bg-[#D4AF37]/20 border border-green-300 text-green-700 hover:bg-[#D4AF37]/30 text-[10px] font-bold uppercase tracking-wider transition flex items-center space-x-1"
                           >
                             <Edit className="w-3.5 h-3.5" />
                             <span>Sunting</span>
@@ -4368,7 +4971,7 @@ export default function AdminPortal({
 
                       <button
                         onClick={() => setViewingBeritaDetail(null)}
-                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white rounded-xl text-xs font-bold transition"
+                        className="px-4 py-2 bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 rounded-xl text-xs font-bold transition"
                       >
                         Tutup
                       </button>
@@ -4386,7 +4989,7 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200">Agenda Kegiatan</span>
+                    <span className="text-xs text-gray-600">Agenda Kegiatan</span>
                     <button
                       onClick={() => {
                         setFormMode('add');
@@ -4396,23 +4999,23 @@ export default function AdminPortal({
                         setAgeSelesai('');
                         setAgeKategori('mandiri');
                       }}
-                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
                     >
-                      <Plus className="w-4 h-4 text-[#D4AF37]" />
+                      <Plus className="w-4 h-4 text-green-700" />
                       <span>Buat Agenda</span>
                     </button>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     {agendaList.map((ag) => (
-                      <div key={ag.id} className="glass-panel rounded-2xl p-5 border border-white/5 flex flex-col justify-between">
+                      <div key={ag.id} className="bg-white shadow-sm rounded-2xl border border-gray-100 p-5 flex flex-col justify-between">
                         <div>
-                          <span className="text-[9px] font-extrabold text-[#D4AF37] uppercase tracking-wider">{ag.kategori}</span>
-                          <h3 className="text-sm font-bold text-white mt-1.5">{ag.judul}</h3>
-                          <p className="text-xs text-purple-300 font-light line-clamp-2 mt-1">{ag.deskripsi}</p>
+                          <span className="text-[9px] font-extrabold text-green-700 uppercase tracking-wider">{ag.kategori}</span>
+                          <h3 className="text-sm font-bold text-gray-900 mt-1.5">{ag.judul}</h3>
+                          <p className="text-xs text-gray-500 font-light line-clamp-2 mt-1">{ag.deskripsi}</p>
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-4 text-[10px] text-purple-300">
+                        <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-4 text-[10px] text-gray-500">
                           <span>Mulai: {ag.tanggal_mulai} s/d {ag.tanggal_selesai}</span>
                           <div className="flex space-x-1">
                             <button
@@ -4425,7 +5028,7 @@ export default function AdminPortal({
                                 setAgeSelesai(ag.tanggal_selesai);
                                 setAgeKategori(ag.kategori);
                               }}
-                              className="p-1 rounded bg-white/5"
+                              className="p-1 rounded bg-white border border-gray-100 shadow-sm"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
@@ -4439,60 +5042,60 @@ export default function AdminPortal({
                   </div>
                 </>
               ) : (
-                <form onSubmit={handleSaveAgenda} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveAgenda} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     {formMode === 'add' ? 'Buat Agenda Kegiatan Baru' : 'Sunting Agenda'}
                   </h3>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Judul Kegiatan *</label>
+                      <label className="text-xs text-gray-600">Judul Kegiatan *</label>
                       <input
                         type="text"
                         required
                         value={ageJudul}
                         onChange={(e) => setAgeJudul(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Deskripsi Agenda</label>
+                      <label className="text-xs text-gray-600">Deskripsi Agenda</label>
                       <textarea
                         value={ageDeskripsi}
                         onChange={(e) => setAgeDeskripsi(e.target.value)}
                         rows={3}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>
 
                     <div className="grid sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs text-purple-200">Tanggal Mulai *</label>
+                        <label className="text-xs text-gray-600">Tanggal Mulai *</label>
                         <input
                           type="date"
                           required
                           value={ageMulai}
                           onChange={(e) => setAgeMulai(e.target.value)}
-                          className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                          className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs text-purple-200">Tanggal Selesai *</label>
+                        <label className="text-xs text-gray-600">Tanggal Selesai *</label>
                         <input
                           type="date"
                           required
                           value={ageSelesai}
                           onChange={(e) => setAgeSelesai(e.target.value)}
-                          className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                          className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs text-purple-200">Kategori Agenda *</label>
+                        <label className="text-xs text-gray-600">Kategori Agenda *</label>
                         <select
                           value={ageKategori}
                           onChange={(e) => setAgeKategori(e.target.value as any)}
-                          className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                          className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         >
                           <option value="mandiri">Mandiri</option>
                           <option value="partisipasi_daerah">Partisipasi Daerah</option>
@@ -4504,8 +5107,8 @@ export default function AdminPortal({
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -4514,52 +5117,52 @@ export default function AdminPortal({
 
           {/* --- TAB CONTENT: CONFIG PROFILE (KWARCAB) --- */}
           {activeTab === 'config' && (
-            <form onSubmit={handleSaveConfig} className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/5 space-y-6 animate-fade-in">
-              <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+            <form onSubmit={handleSaveConfig} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 border border-gray-200 space-y-6 animate-fade-in">
+              <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                 Konfigurasi Profil Utama Kwartir Cabang Tasikmalaya
               </h3>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-purple-200">Visi Kwarcab *</label>
+                  <label className="text-xs text-gray-600">Visi Kwarcab *</label>
                   <textarea
                     required
                     value={confVisi}
                     onChange={(e) => setConfVisi(e.target.value)}
                     rows={2}
-                    className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                    className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-purple-200">Misi Kwarcab (Satu misi per baris) *</label>
+                  <label className="text-xs text-gray-600">Misi Kwarcab (Satu misi per baris) *</label>
                   <textarea
                     required
                     value={confMisi}
                     onChange={(e) => setConfMisi(e.target.value)}
                     rows={5}
-                    className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                    className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-purple-200">Sejarah Kwarcab *</label>
+                  <label className="text-xs text-gray-600">Sejarah Kwarcab *</label>
                   <textarea
                     required
                     value={confSejarah}
                     onChange={(e) => setConfSejarah(e.target.value)}
                     rows={6}
-                    className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                    className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                   />
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs text-purple-200">Mode Hero Landingpage *</label>
+                    <label className="text-xs text-gray-600">Mode Hero Landingpage *</label>
                     <select
                       value={confHeroMode}
                       onChange={(e) => setConfHeroMode(e.target.value as any)}
-                      className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                      className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                     >
                       <option value="statis">Statis (1 Banner Gambar)</option>
                       <option value="dinamis">Dinamis (Carousel Berita Featured)</option>
@@ -4567,12 +5170,12 @@ export default function AdminPortal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs text-purple-200">Banner Statis URL (Jika Mode Statis)</label>
+                    <label className="text-xs text-gray-600">Banner Statis URL (Jika Mode Statis)</label>
                     <input
                       type="text"
                       value={confBanner}
                       onChange={(e) => setConfBanner(e.target.value)}
-                      className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                      className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                     />
                   </div>
                 </div>
@@ -4580,16 +5183,140 @@ export default function AdminPortal({
 
               <div className="space-y-4 pt-2">
                 <div className="border-b border-white/5 pb-2">
-                  <h4 className="text-xs font-bold text-white uppercase">Media Sosial Kwarcab (Footer Landingpage)</h4>
-                  <p className="text-[11px] text-purple-300/70 mt-1">
+                  <h4 className="text-xs font-bold text-gray-900 uppercase">Media Sosial Kwarcab (Footer Landingpage)</h4>
+                  <p className="text-[11px] text-gray-500/70 mt-1">
                     Tempel link akun resmi Kwarcab. Yang dikosongkan tidak akan ditampilkan sebagai tombol di footer.
                   </p>
                 </div>
                 <SosmedFields value={confSosmed} onChange={setConfSosmed} />
               </div>
 
+              {/* CORE LEADERS PROFILES */}
+              <div className="space-y-4 pt-6 border-t border-gray-100">
+                <div className="border-b border-white/5 pb-2">
+                  <h4 className="text-xs font-bold text-gray-900 uppercase">Pimpinan Inti Kwartir Cabang</h4>
+                  <p className="text-[11px] text-gray-500/70 mt-1">
+                    Masukkan nama beserta gelar dan URL foto (opsional) untuk 4 Pimpinan Inti Kwarcab.
+                  </p>
+                </div>
+                
+                <div className="grid sm:grid-cols-2 gap-6">
+                  {/* Ketua */}
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h5 className="text-xs font-bold text-green-700">Ketua Kwarcab</h5>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Nama & Gelar Lengkap</label>
+                      <input type="text" value={confKetuaKwarcabNama} onChange={(e) => setConfKetuaKwarcabNama(e.target.value)} className="w-full bg-white text-sm px-3 py-2 rounded-lg border border-gray-300" placeholder="Cth: H. Cecep Nurul Yakin, S.Pd., M.A.P." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
+                      <div className="flex items-center gap-3">
+                        {confKetuaKwarcabFoto && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={confKetuaKwarcabFoto} alt="Ketua" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input type="file" accept="image/*" onChange={(e) => handleCompressedUpload(e, setConfKetuaKwarcabFoto)} className="w-full text-[11px] text-gray-700 bg-white border border-gray-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 transition-all cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ketua Harian */}
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h5 className="text-xs font-bold text-green-700">Ketua Harian</h5>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Nama & Gelar Lengkap</label>
+                      <input type="text" value={confKetuaHarianNama} onChange={(e) => setConfKetuaHarianNama(e.target.value)} className="w-full bg-white text-sm px-3 py-2 rounded-lg border border-gray-300" placeholder="Cth: Drs. H. Ahmad Saefudin, M.Pd." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
+                      <div className="flex items-center gap-3">
+                        {confKetuaHarianFoto && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={confKetuaHarianFoto} alt="Ketua Harian" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input type="file" accept="image/*" onChange={(e) => handleCompressedUpload(e, setConfKetuaHarianFoto)} className="w-full text-[11px] text-gray-700 bg-white border border-gray-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 transition-all cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sekretaris */}
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h5 className="text-xs font-bold text-green-700">Sekretaris Kwarcab</h5>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Nama & Gelar Lengkap</label>
+                      <input type="text" value={confSekretarisNama} onChange={(e) => setConfSekretarisNama(e.target.value)} className="w-full bg-white text-sm px-3 py-2 rounded-lg border border-gray-300" placeholder="Cth: Asep Supriadi, S.Sos." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
+                      <div className="flex items-center gap-3">
+                        {confSekretarisFoto && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={confSekretarisFoto} alt="Sekretaris" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input type="file" accept="image/*" onChange={(e) => handleCompressedUpload(e, setConfSekretarisFoto)} className="w-full text-[11px] text-gray-700 bg-white border border-gray-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 transition-all cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bendahara */}
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h5 className="text-xs font-bold text-green-700">Bendahara Kwarcab</h5>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Nama & Gelar Lengkap</label>
+                      <input type="text" value={confBendaharaNama} onChange={(e) => setConfBendaharaNama(e.target.value)} className="w-full bg-white text-sm px-3 py-2 rounded-lg border border-gray-300" placeholder="Cth: Hj. Neni Nuraeni, S.E." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
+                      <div className="flex items-center gap-3">
+                        {confBendaharaFoto && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={confBendaharaFoto} alt="Bendahara" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input type="file" accept="image/*" onChange={(e) => handleCompressedUpload(e, setConfBendaharaFoto)} className="w-full text-[11px] text-gray-700 bg-white border border-gray-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 transition-all cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pusdatin */}
+                <div className="mt-6 space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                  <h5 className="text-xs font-bold text-blue-700">Kepala Pusdatin (Khusus TTD Surat Legalitas)</h5>
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Nama & Gelar Lengkap</label>
+                      <input type="text" value={confKetuaPusdatinNama} onChange={(e) => setConfKetuaPusdatinNama(e.target.value)} className="w-full bg-white text-sm px-3 py-2 rounded-lg border border-blue-200" placeholder="Cth: Dadan Wildan, S.Kom., M.Kom." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-gray-600 font-semibold">Foto Profil / Stempel Digital</label>
+                      <div className="flex items-center gap-3">
+                        {confKetuaPusdatinFoto && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={confKetuaPusdatinFoto} alt="Kepala Pusdatin" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input type="file" accept="image/*" onChange={(e) => handleCompressedUpload(e, setConfKetuaPusdatinFoto)} className="w-full text-[11px] text-gray-700 bg-white border border-blue-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 transition-all cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end pt-4">
-                <button type="submit" className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
+                <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
                   Simpan Konfigurasi Profil
                 </button>
               </div>
@@ -4598,12 +5325,12 @@ export default function AdminPortal({
 
           {/* --- TAB CONTENT: MEDIA SOSIAL KWARRAN (ADMIN KWARRAN) --- */}
           {activeTab === 'kwarran_sosmed' && user.role === 'kwarran' && (
-            <form onSubmit={handleSaveKwarranSosmed} className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/5 space-y-6 animate-fade-in">
+            <form onSubmit={handleSaveKwarranSosmed} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 border border-gray-200 space-y-6 animate-fade-in">
               <div className="border-b border-white/5 pb-2">
-                <h3 className="text-sm font-bold text-white uppercase">
+                <h3 className="text-sm font-bold text-gray-900 uppercase">
                   Media Sosial Kwarran {ownKwarran ? ownKwarran.nama_kecamatan : ''}
                 </h3>
-                <p className="text-[11px] text-purple-300/70 mt-1">
+                <p className="text-[11px] text-gray-500/70 mt-1">
                   Link ini tampil sebagai tombol di halaman detail Kwarran pada landingpage. Kosongkan kolom yang tidak dipakai.
                 </p>
               </div>
@@ -4612,13 +5339,13 @@ export default function AdminPortal({
                 <>
                   <SosmedFields value={kwSosmed} onChange={setKwSosmed} />
                   <div className="flex justify-end pt-2">
-                    <button type="submit" className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold text-xs uppercase tracking-wider">
                       Simpan Media Sosial
                     </button>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-purple-300 italic">
+                <p className="text-xs text-gray-500 italic">
                   Akun ini belum terhubung ke data Kwartir Ranting. Hubungi Superadmin Kwarcab.
                 </p>
               )}
@@ -4628,11 +5355,11 @@ export default function AdminPortal({
           {/* --- TAB CONTENT: NOTIFICATIONS PANEL --- */}
           {activeTab === 'notif' && (
             <div className="space-y-4 animate-fade-in">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Antrean Notifikasi Aktivitas</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Antrean Notifikasi Aktivitas</h3>
               
               <div className="space-y-3">
                 {notifList.length === 0 ? (
-                  <div className="glass-panel rounded-2xl p-8 text-center text-purple-300/60 font-light">
+                  <div className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-2xl p-8 text-center text-gray-400 font-light">
                     Tidak ada notifikasi aktivitas baru.
                   </div>
                 ) : (
@@ -4641,21 +5368,21 @@ export default function AdminPortal({
                       key={n.id} 
                       className={`p-4 rounded-xl border flex items-start gap-3 transition-colors duration-200 ${
                         n.is_read 
-                          ? 'bg-black/10 border-white/5 text-purple-200/60' 
-                          : 'bg-purple-950/40 border-[#D4AF37]/30 text-white shadow-md'
+                          ? 'bg-black/10 border-white/5 text-gray-600/60' 
+                          : 'bg-gray-100 border-green-300 text-gray-900 shadow-md'
                       }`}
                     >
-                      <Bell className={`w-5 h-5 flex-shrink-0 mt-0.5 ${n.is_read ? 'text-purple-400/50' : 'text-[#D4AF37]'}`} />
+                      <Bell className={`w-5 h-5 flex-shrink-0 mt-0.5 ${n.is_read ? 'text-gray-400/50' : 'text-green-700'}`} />
                       <div className="flex-grow">
                         <p className="text-xs leading-relaxed font-light">{n.pesan}</p>
-                        <span className="text-[10px] text-purple-300/70 mt-1 block">
+                        <span className="text-[10px] text-gray-500/70 mt-1 block">
                           {new Date(n.created_at).toLocaleTimeString('id-ID')} &bull; {new Date(n.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       {!n.is_read && (
                         <button
                           onClick={() => handleMarkNotifRead(n.id)}
-                          className="text-[9px] font-bold text-[#D4AF37] hover:text-white uppercase px-2 py-1 bg-white/5 rounded border border-[#D4AF37]/25"
+                          className="text-[9px] font-bold text-green-700 hover:text-gray-900 uppercase px-2 py-1 bg-white border border-gray-100 shadow-sm rounded border border-[#D4AF37]/25"
                         >
                           Tandai Dibaca
                         </button>
@@ -4673,7 +5400,7 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-200">Manajemen Pengguna Aplikasi se-Kabupaten</span>
+                    <span className="text-xs text-gray-600">Manajemen Pengguna Aplikasi se-Kabupaten</span>
                     <button
                       onClick={() => {
                         setFormMode('add');
@@ -4685,17 +5412,17 @@ export default function AdminPortal({
                         setURefId('');
                         setUPermissions([]);
                       }}
-                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase transition"
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
                     >
-                      <Plus className="w-4 h-4 text-[#D4AF37]" />
+                      <Plus className="w-4 h-4 text-green-700" />
                       <span>Akun Baru</span>
                     </button>
                   </div>
 
-                  <div className="glass-panel rounded-3xl overflow-hidden border border-white/5">
+                  <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="bg-purple-950/40 text-purple-200 border-b border-white/5 uppercase text-[9px] font-bold tracking-wider">
+                        <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 uppercase text-[9px] font-bold tracking-wider">
                           <th className="p-4">Nama Pengguna</th>
                           <th className="p-4">Email / Login</th>
                           <th className="p-4">Peran (Role)</th>
@@ -4704,9 +5431,17 @@ export default function AdminPortal({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {userList.map((u) => (
+                        {userList
+                          .filter(u => {
+                            if (isKwarcabAdmin) return true;
+                            if (user.role === 'kwarran') {
+                              return u.role === 'gudep' && gudepList.some(g => g.id === u.ref_id && g.kwartir_ranting_id === user.ref_id);
+                            }
+                            return false;
+                          })
+                          .map((u) => (
                           <tr key={u.id} className="hover:bg-white/[0.01]">
-                            <td className="p-4 font-bold text-white text-sm">{u.nama}</td>
+                            <td className="p-4 font-bold text-gray-900 text-sm">{u.nama}</td>
                             <td className="p-4 font-light">{u.email}</td>
                             <td className="p-4">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${getRoleBadge(u.role)}`}>
@@ -4717,13 +5452,13 @@ export default function AdminPortal({
                               {u.role === 'staff_kwarcab' && u.permissions?.length ? (
                                 <div className="flex flex-wrap gap-1.5 max-w-xs">
                                   {u.permissions.map(permission => (
-                                    <span key={permission} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-purple-200">
+                                    <span key={permission} className="px-2 py-0.5 rounded-md bg-white border border-gray-100 shadow-sm border border-gray-200 text-[9px] font-bold text-gray-600">
                                       {getPermissionLabel(permission)}
                                     </span>
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-purple-300/50">Akses mengikuti role</span>
+                                <span className="text-[10px] text-gray-500/50">Akses mengikuti role</span>
                               )}
                             </td>
                             <td className="p-4">
@@ -4739,12 +5474,12 @@ export default function AdminPortal({
                                   setURefId(u.ref_id || '');
                                   setUPermissions(u.permissions || []);
                                 }}
-                                className="p-1.5 bg-white/5 text-purple-200 hover:text-white rounded-lg transition border border-white/10"
+                                className="p-1.5 bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 rounded-lg transition border border-gray-200"
                                 title="Edit akun"
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-red-950/40 text-red-400 hover:text-white rounded-lg transition" title="Hapus akun">
+                              <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-red-950/40 text-red-400 hover:text-gray-900 rounded-lg transition" title="Hapus akun">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                               </div>
@@ -4756,47 +5491,47 @@ export default function AdminPortal({
                   </div>
                 </>
               ) : (
-                <form onSubmit={handleSaveUser} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase border-b border-white/5 pb-2">
+                <form onSubmit={handleSaveUser} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                     {formMode === 'add' ? 'Buat Akun Pengguna Baru' : `Edit Akun: ${selectedItem?.nama}`}
                   </h3>
 
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Nama Lengkap Akun *</label>
+                      <label className="text-xs text-gray-600">Nama Lengkap Akun *</label>
                       <input
                         type="text"
                         required
                         value={uNama}
                         onChange={(e) => setUNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Contoh: Pamong Saka Wirakartika"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Email Login *</label>
+                      <label className="text-xs text-gray-600">Email Login *</label>
                       <input
                         type="email"
                         required
                         value={uEmail}
                         onChange={(e) => setUEmail(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="saka_wirakartika@kwarcabtasik.id"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Password Akses {formMode === 'add' ? '*' : '(kosongkan jika tidak diubah)'}</label>
+                      <label className="text-xs text-gray-600">Password Akses {formMode === 'add' ? '*' : '(kosongkan jika tidak diubah)'}</label>
                       <input
                         type="password"
                         required={formMode === 'add'}
                         value={uPassword}
                         onChange={(e) => setUPassword(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         placeholder="Ketik password rahasia"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200">Peran / Role Pengguna *</label>
+                      <label className="text-xs text-gray-600">Peran / Role Pengguna *</label>
                       <select
                         value={uRole}
                         onChange={(e) => {
@@ -4808,37 +5543,39 @@ export default function AdminPortal({
                             setUPermissions([]);
                           }
                         }}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                        className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       >
-                        <option value="staff_kwarcab">Staf Admin Kwarcab</option>
-                        <option value="kwarran">Kwartir Ranting</option>
+                        {isKwarcabAdmin && <option value="staff_kwarcab">Staf Admin Kwarcab</option>}
+                        {isKwarcabAdmin && <option value="kwarran">Kwartir Ranting</option>}
                         <option value="gudep">Gugus Depan</option>
-                        <option value="saka">Satuan Karya (Saka)</option>
+                        {isKwarcabAdmin && <option value="saka">Satuan Karya (Saka)</option>}
                       </select>
                     </div>
 
                     {uRole !== 'staff_kwarcab' && (
                       <div className="space-y-1.5">
-                        <label className="text-xs text-purple-200">Ref ID Organisasi Induk *</label>
+                        <label className="text-xs text-gray-600">Ref ID Organisasi Induk *</label>
                         <select
                           required
                           value={uRefId}
                           onChange={(e) => setURefId(e.target.value)}
-                          className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10"
+                          className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                         >
                           <option value="">-- Pilih Organisasi Referensi --</option>
                           {uRole === 'kwarran' && allKwarran.map(kw => <option key={kw.id} value={kw.id}>Kwarran Kecamatan {kw.nama_kecamatan}</option>)}
                           {uRole === 'saka' && allSaka.map(sk => <option key={sk.id} value={sk.id}>{sk.nama_saka}</option>)}
-                          {uRole === 'gudep' && gudepList.map(gd => <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>)}
+                          {uRole === 'gudep' && gudepList
+                            .filter(gd => isKwarcabAdmin || (user.role === 'kwarran' && gd.kwartir_ranting_id === user.ref_id))
+                            .map(gd => <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>)}
                         </select>
                       </div>
                     )}
 
                     {uRole === 'staff_kwarcab' && (
-                      <div className="space-y-3 sm:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="space-y-3 sm:col-span-2 rounded-2xl border border-gray-200 bg-black/20 p-4">
                         <div>
-                          <label className="text-xs text-purple-200 font-bold uppercase tracking-wider">Centang Akses Pengelolaan *</label>
-                          <p className="text-[10px] text-purple-300/70 mt-1">Staf hanya melihat dan mengelola modul yang dicentang di bawah ini.</p>
+                          <label className="text-xs text-gray-600 font-bold uppercase tracking-wider">Centang Akses Pengelolaan *</label>
+                          <p className="text-[10px] text-gray-500/70 mt-1">Staf hanya melihat dan mengelola modul yang dicentang di bawah ini.</p>
                         </div>
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {KWARCAB_ACCESS_OPTIONS.map(option => {
@@ -4848,8 +5585,8 @@ export default function AdminPortal({
                                 key={option.id}
                                 className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition ${
                                   checked
-                                    ? 'bg-purple-900/30 border-[#D4AF37]/50 text-white'
-                                    : 'bg-white/[0.03] border-white/10 text-purple-200 hover:border-white/20'
+                                    ? 'bg-green-800/30 border-green-400 text-gray-900'
+                                    : 'bg-white/[0.03] border-gray-200 text-gray-600 hover:border-gray-300'
                                 }`}
                               >
                                 <input
@@ -4861,11 +5598,11 @@ export default function AdminPortal({
                                       : prev.filter(permission => permission !== option.id)
                                     );
                                   }}
-                                  className="mt-0.5 w-4 h-4 rounded border-purple-500/30 text-purple-600 focus:ring-purple-500/20 bg-black/40"
+                                  className="mt-0.5 w-4 h-4 rounded border-green-200 text-green-700 focus:ring-purple-500/20 bg-white"
                                 />
                                 <span>
                                   <span className="block text-xs font-bold">{option.label}</span>
-                                  <span className="block text-[10px] text-purple-300/70 mt-0.5 leading-snug">{option.description}</span>
+                                  <span className="block text-[10px] text-gray-500/70 mt-0.5 leading-snug">{option.description}</span>
                                 </span>
                               </label>
                             );
@@ -4876,8 +5613,8 @@ export default function AdminPortal({
                   </div>
 
                   <div className="flex justify-end space-x-3">
-                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white/5 rounded-xl text-purple-200">Batal</button>
-                    <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold">Simpan</button>
+                    <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
+                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
                   </div>
                 </form>
               )}
@@ -4891,8 +5628,8 @@ export default function AdminPortal({
                 <>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">Kelola Sebaran Kampung Pramuka</h3>
-                      <p className="text-xs text-purple-300 font-light mt-0.5">Kelola titik sebaran, profil sejarah, dan keunggulan Kampung Pramuka se-Kabupaten Tasikmalaya</p>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Kelola Sebaran Kampung Pramuka</h3>
+                      <p className="text-xs text-gray-500 font-light mt-0.5">Kelola titik sebaran, profil sejarah, dan keunggulan Kampung Pramuka se-Kabupaten Tasikmalaya</p>
                     </div>
                     <button
                       onClick={() => {
@@ -4906,7 +5643,7 @@ export default function AdminPortal({
                         setKpSejarah('');
                         setKpKeunggulan('');
                       }}
-                      className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider transition-all"
+                      className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-wider transition-all"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Tambah Titik Baru</span>
@@ -4914,11 +5651,11 @@ export default function AdminPortal({
                   </div>
 
                   {/* List View */}
-                  <div className="glass-panel rounded-3xl overflow-hidden border border-white/5">
+                  <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-white/10 bg-black/25 text-purple-300 text-[10px] uppercase font-bold tracking-wider">
+                          <tr className="border-b border-gray-200 bg-black/25 text-gray-500 text-[10px] uppercase font-bold tracking-wider">
                             <th className="p-4">Nama Kampung</th>
                             <th className="p-4">Kecamatan</th>
                             <th className="p-4">Koordinat</th>
@@ -4926,19 +5663,19 @@ export default function AdminPortal({
                             <th className="p-4 text-right">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-xs text-purple-100 font-light">
+                        <tbody className="divide-y divide-gray-100 text-xs text-gray-800 font-light">
                           {kpList.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="p-8 text-center text-purple-300/60 font-light">
+                              <td colSpan={5} className="p-8 text-center text-gray-400 font-light">
                                 Belum ada data Kampung Pramuka. Silakan tambahkan titik baru.
                               </td>
                             </tr>
                           ) : (
                             kpList.map((kp) => (
-                              <tr key={kp.id} className="hover:bg-white/[0.02] transition-colors">
-                                <td className="p-4 font-bold text-white">{kp.nama}</td>
+                              <tr key={kp.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="p-4 font-bold text-gray-900">{kp.nama}</td>
                                 <td className="p-4">Kec. {kp.kecamatan}</td>
-                                <td className="p-4 font-mono text-[10px] text-[#D4AF37]">
+                                <td className="p-4 font-mono text-[10px] text-green-700">
                                   {kp.latitude?.toFixed?.(5) || kp.latitude}, {kp.longitude?.toFixed?.(5) || kp.longitude}
                                 </td>
                                 <td className="p-4">
@@ -4952,7 +5689,7 @@ export default function AdminPortal({
                                         referrerPolicy="no-referrer"
                                       />
                                     )) || (
-                                      <span className="text-[10px] text-purple-300/40 font-light">Tidak ada foto</span>
+                                      <span className="text-[10px] text-gray-300 font-light">Tidak ada foto</span>
                                     )}
                                   </div>
                                 </td>
@@ -4969,14 +5706,14 @@ export default function AdminPortal({
                                       setKpSejarah(kp.sejarah);
                                       setKpKeunggulan(kp.keunggulan);
                                     }}
-                                    className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-purple-400 hover:bg-purple-950/20 text-purple-200 hover:text-white transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm border border-gray-200 hover:border-purple-400 hover:bg-gray-900/20 text-gray-600 hover:text-gray-900 transition"
                                     title="Edit"
                                   >
                                     <Edit className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteKampungPramuka(kp.id)}
-                                    className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-red-500 hover:bg-red-950/20 text-red-400 hover:text-white transition"
+                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm border border-gray-200 hover:border-red-500 hover:bg-red-950/20 text-red-400 hover:text-gray-900 transition"
                                     title="Hapus"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -4991,32 +5728,32 @@ export default function AdminPortal({
                   </div>
                 </>
               ) : (
-                <form onSubmit={handleSaveKampungPramuka} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-                  <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-[#D4AF37]" />
+                <form onSubmit={handleSaveKampungPramuka} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <h3 className="text-base font-bold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-3 flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-green-700" />
                     <span>{formMode === 'add' ? 'Tambah Kampung Pramuka Baru' : `Edit Kampung Pramuka: ${selectedItem?.nama}`}</span>
                   </h3>
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Nama Kampung Pramuka *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Nama Kampung Pramuka *</label>
                       <input
                         type="text"
                         required
                         value={kpNama}
                         onChange={(e) => setKpNama(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
                         placeholder="Contoh: Kampung Pramuka Cisayong"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Kecamatan *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Kecamatan *</label>
                       <select
                         required
                         value={kpKecamatan}
                         onChange={(e) => setKpKecamatan(e.target.value)}
-                        className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
                       >
                         <option value="">-- Pilih Kecamatan --</option>
                         {allKwarran.map(kw => (
@@ -5026,80 +5763,80 @@ export default function AdminPortal({
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Garis Lintang (Latitude) *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Garis Lintang (Latitude) *</label>
                       <input
                         type="number"
                         step="any"
                         required
                         value={kpLatitude}
                         onChange={(e) => setKpLatitude(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
                         placeholder="Contoh: -7.2858"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Garis Bujur (Longitude) *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Garis Bujur (Longitude) *</label>
                       <input
                         type="number"
                         step="any"
                         required
                         value={kpLongitude}
                         onChange={(e) => setKpLongitude(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
                         placeholder="Contoh: 108.1472"
                       />
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Foto Kampung Pramuka (URLs, pisahkan dengan koma) *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Foto Kampung Pramuka (URLs, pisahkan dengan koma) *</label>
                       <input
                         type="text"
                         required
                         value={kpFoto}
                         onChange={(e) => setKpFoto(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
                         placeholder="https://images.unsplash.com/...,https://images.unsplash.com/..."
                       />
-                      <span className="text-[10px] text-purple-300/60 block">Sediakan minimal satu atau dua URL foto pemandangan kampung yang representatif.</span>
+                      <span className="text-[10px] text-gray-400 block">Sediakan minimal satu atau dua URL foto pemandangan kampung yang representatif.</span>
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Sejarah Pendirian *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Sejarah Pendirian *</label>
                       <textarea
                         required
                         rows={5}
                         value={kpSejarah}
                         onChange={(e) => setKpSejarah(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37] leading-relaxed font-light"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 leading-relaxed font-light"
                         placeholder="Tuliskan sejarah berdirinya Kampung Pramuka ini secara lengkap..."
                       />
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs text-purple-200 font-semibold uppercase tracking-wider block">Keunggulan &amp; Potensi Utama *</label>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Keunggulan &amp; Potensi Utama *</label>
                       <textarea
                         required
                         rows={4}
                         value={kpKeunggulan}
                         onChange={(e) => setKpKeunggulan(e.target.value)}
-                        className="w-full bg-black/40 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37] leading-relaxed font-light"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 leading-relaxed font-light"
                         placeholder="Sebutkan keunggulan, program, potensi agrowisata, bumi perkemahan, atau kerajinan tangan yang menonjol..."
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                     <button
                       type="button"
                       onClick={() => setFormMode('list')}
-                      className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-wider text-purple-200 hover:text-white transition"
+                      className="px-5 py-2.5 rounded-xl bg-white border border-gray-100 shadow-sm border border-gray-200 hover:bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 hover:text-gray-900 transition"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider transition"
+                      className="px-6 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-wider transition"
                     >
                       Simpan Titik Kampung
                     </button>
@@ -5109,24 +5846,25 @@ export default function AdminPortal({
             </div>
           )}
         </div>
-      </div>
+      </main>
+    </div>
 
       {/* --- PATH B: DIRECT SAKA PULL ANGGOTA MODAL --- */}
       {showPullModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="glass-panel-heavy rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-white/20 shadow-2xl relative p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in">
+          <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-6">
             <button
               onClick={() => setShowPullModal(false)}
-              className="absolute top-4 right-4 z-50 p-2 rounded-xl bg-black/60 border border-white/10 text-white"
+              className="absolute top-4 right-4 z-50 p-2 rounded-xl bg-black/60 border border-gray-200 text-gray-900"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-lg font-bold text-white font-heading mb-2 flex items-center gap-1.5">
-              <Award className="w-5 h-5 text-[#D4AF37]" />
+            <h3 className="text-lg font-bold text-gray-900 font-heading mb-2 flex items-center gap-1.5">
+              <Award className="w-5 h-5 text-green-700" />
               <span>Tarik Anggota Penegak/Pandega Langsung ke Saka (Path B)</span>
             </h3>
-            <p className="text-xs text-purple-300 font-light mb-6">
+            <p className="text-xs text-gray-500 font-light mb-6">
               Sesuai arahan, sebagai Pamong Saka Anda bisa menarik anggota golongan Penegak atau Pandega se-kabupaten secara langsung tanpa memerlukan antrean persetujuan. Keputusan bersifat FINAL dan instan.
             </p>
 
@@ -5136,7 +5874,7 @@ export default function AdminPortal({
                 placeholder="Saring nama atau pangkalan..."
                 value={pullSearchTerm}
                 onChange={(e) => setPullSearchTerm(e.target.value)}
-                className="w-full bg-black/40 text-xs text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-white text-xs text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
               />
             </div>
 
@@ -5145,10 +5883,10 @@ export default function AdminPortal({
                 .filter(c => c.nama_lengkap.toLowerCase().includes(pullSearchTerm.toLowerCase()) || c.pangkalan.toLowerCase().includes(pullSearchTerm.toLowerCase()))
                 .filter(c => !anggotaList.find(x => x.id === c.id)?.saka_list?.some((j: any) => j.saka_id === user.ref_id)) // not yet affiliated
                 .map((c) => (
-                  <div key={c.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs hover:border-white/10 transition-colors">
+                  <div key={c.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-gray-200 flex items-center justify-between text-xs hover:border-gray-200 transition-colors">
                     <div>
-                      <div className="font-bold text-white">{c.nama_lengkap}</div>
-                      <div className="text-[10px] text-purple-300 font-light mt-0.5">
+                      <div className="font-bold text-gray-900">{c.nama_lengkap}</div>
+                      <div className="text-[10px] text-gray-500 font-light mt-0.5">
                         Pangkalan: {c.pangkalan} &bull; Golongan: {c.golongan.toUpperCase()}
                       </div>
                     </div>
@@ -5162,7 +5900,7 @@ export default function AdminPortal({
                 ))}
 
               {candidatesList.length === 0 && (
-                <p className="text-center text-xs text-purple-300/60 font-light py-6">Tidak ada kandidat Penegak/Pandega tersedia.</p>
+                <p className="text-center text-xs text-gray-400 font-light py-6">Tidak ada kandidat Penegak/Pandega tersedia.</p>
               )}
             </div>
           </div>
@@ -5172,39 +5910,39 @@ export default function AdminPortal({
       {/* --- EXPORT DATA ANGGOTA MODAL --- */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="glass-panel-heavy rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl relative p-5 sm:p-8">
+          <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-2xl relative p-5 sm:p-8">
             <button
               onClick={() => setShowExportModal(false)}
-              className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 hover:text-white transition-all"
+              className="absolute top-5 right-5 z-50 p-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 transition-all"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-purple-900/40 border border-purple-500/30 rounded-2xl text-[#D4AF37]">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-2xl text-green-700">
                 <Download className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Ekspor Data Anggota</span>
-                <h3 className="text-xl font-black text-white font-heading mt-0.5">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Ekspor Data Anggota</span>
+                <h3 className="text-xl font-black text-gray-900 font-heading mt-0.5">
                   Pusat Ekspor &amp; Cetak Dokumen Profesional
                 </h3>
               </div>
             </div>
 
-            <p className="text-xs text-purple-200/80 font-light mb-6 leading-relaxed">
+            <p className="text-xs text-gray-500 font-light mb-6 leading-relaxed">
               Silakan saring golongan pramuka dan pilih jenis keluaran yang diinginkan. Fitur ekspor menyertakan semua kolom identitas secara lengkap untuk keperluan administrasi resmi Kwartir Cabang Kabupaten Tasikmalaya.
             </p>
 
             {/* Form Filter */}
-            <div className="mb-8 p-4 rounded-2xl bg-black/30 border border-white/5 space-y-3">
-              <label className="text-xs font-bold text-purple-200 uppercase tracking-wider block">
+            <div className="mb-8 p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block">
                 Saring Berdasarkan Golongan Anggota:
               </label>
               <select
                 value={exportFilterGolongan}
                 onChange={(e) => setExportFilterGolongan(e.target.value)}
-                className="w-full bg-purple-950/80 text-sm text-white px-4 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
               >
                 <option value="all">Semua Golongan (Siaga, Penggalang, Penegak, Pandega, Dewasa)</option>
                 <option value="siaga">Golongan Siaga</option>
@@ -5221,13 +5959,13 @@ export default function AdminPortal({
               {/* Card 1: Excel CSV */}
               <button
                 onClick={exportToExcel}
-                className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-white/5 hover:border-emerald-500/30 text-left hover:bg-emerald-950/20 group transition-all duration-300 cursor-pointer"
+                className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-gray-200 hover:border-emerald-500/30 text-left hover:bg-emerald-950/20 group transition-all duration-300 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-900/30 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-900/30 border border-emerald-500/20 flex items-center justify-center text-emerald-700 mb-4 group-hover:scale-110 transition-transform">
                   <Download className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">Format Excel (CSV)</h4>
-                <p className="text-[10px] text-purple-300/80 mt-2 font-light leading-normal">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Format Excel (CSV)</h4>
+                <p className="text-[10px] text-gray-500/80 mt-2 font-light leading-normal">
                   Ekspor data lengkap (Nama, TTL, Alamat, Pangkalan, Saka) ke lembar kerja yang kompatibel dengan Microsoft Excel.
                 </p>
               </button>
@@ -5235,13 +5973,13 @@ export default function AdminPortal({
               {/* Card 2: PDF / Printable document */}
               <button
                 onClick={exportToPDF}
-                className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-white/5 hover:border-purple-500/30 text-left hover:bg-purple-950/20 group transition-all duration-300 cursor-pointer"
+                className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-gray-200 hover:border-green-200 text-left hover:bg-gray-900/20 group transition-all duration-300 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-900/30 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-green-800/30 border border-gray-200 flex items-center justify-center text-gray-400 mb-4 group-hover:scale-110 transition-transform">
                   <Printer className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">Laporan Cetak &amp; PDF</h4>
-                <p className="text-[10px] text-purple-300/80 mt-2 font-light leading-normal">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Laporan Cetak &amp; PDF</h4>
+                <p className="text-[10px] text-gray-500/80 mt-2 font-light leading-normal">
                   Hasilkan berkas laporan resmi A4 lengkap dengan Kop Surat Kwarcab, tabel rapi, dan kolom pengesahan tanda tangan.
                 </p>
               </button>
@@ -5250,13 +5988,13 @@ export default function AdminPortal({
               {canManage('kta') && (
                 <button
                   onClick={() => exportToSuratLegalitas()}
-                  className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-white/5 hover:border-amber-500/30 text-left hover:bg-amber-950/20 group transition-all duration-300 cursor-pointer"
+                  className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-purple-900/10 border border-gray-200 hover:border-amber-500/30 text-left hover:bg-amber-950/20 group transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-10 h-10 rounded-xl bg-amber-900/30 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                     <FileText className="w-5 h-5" />
                   </div>
-                  <h4 className="text-xs font-black text-white uppercase tracking-wider">Surat Legalitas (SKL)</h4>
-                  <p className="text-[10px] text-purple-300/80 mt-2 font-light leading-normal">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Surat Legalitas (SKL)</h4>
+                  <p className="text-[10px] text-gray-500/80 mt-2 font-light leading-normal">
                     Cetak Surat Keterangan Legalitas resmi ukuran A4 lengkap dengan Kop Surat Kwarcab, barcode QR verifikasi real-time, dan stempel digital.
                   </p>
                 </button>
@@ -5265,7 +6003,7 @@ export default function AdminPortal({
             </div>
 
             <div className="mt-6 text-center">
-              <span className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest">
+              <span className="text-[9px] text-green-700 font-bold uppercase tracking-widest">
                 Gerakan Pramuka Indonesia Kwartir Cabang Tasikmalaya
               </span>
             </div>
@@ -5276,15 +6014,15 @@ export default function AdminPortal({
       {/* --- PREVIEW KTA MODAL --- */}
       {previewKtaHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="bg-zinc-900 rounded-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Printer className="w-4 h-4 text-[#D4AF37]" />
+          <div className="bg-zinc-900 rounded-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden border border-gray-200 shadow-2xl relative">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                <Printer className="w-4 h-4 text-green-700" />
                 Preview Cetak KTA
               </h3>
               <button
                 onClick={() => setPreviewKtaHtml(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-100 shadow-sm hover:bg-red-500/20 text-gray-900/50 hover:text-red-400 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -5299,6 +6037,122 @@ export default function AdminPortal({
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around pb-safe pt-2 px-2 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <button
+          onClick={() => { setActiveTab('overview'); setFormMode('list'); setSelectedItem(null); }}
+          className={`flex flex-col items-center justify-center w-full py-1.5 ${activeTab === 'overview' ? 'text-green-700' : 'text-gray-500 hover:text-green-700'}`}
+        >
+          <Home className={`w-5 h-5 mb-1 ${activeTab === 'overview' ? 'fill-current' : ''}`} />
+          <span className="text-[10px] font-bold">Beranda</span>
+          {activeTab === 'overview' && <div className="w-8 h-1 bg-green-700 rounded-t-md absolute bottom-0"></div>}
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('agenda'); setFormMode('list'); setSelectedItem(null); }}
+          className={`flex flex-col items-center justify-center w-full py-1.5 ${activeTab === 'agenda' ? 'text-green-700' : 'text-gray-500 hover:text-green-700'}`}
+        >
+          <Calendar className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-bold">Kegiatan</span>
+          {activeTab === 'agenda' && <div className="w-8 h-1 bg-green-700 rounded-t-md absolute bottom-0"></div>}
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('anggota'); setFormMode('list'); setSelectedItem(null); }}
+          className={`flex flex-col items-center justify-center w-full py-1.5 ${activeTab === 'anggota' ? 'text-green-700' : 'text-gray-500 hover:text-green-700'}`}
+        >
+          <Users className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-bold">Anggota</span>
+          {activeTab === 'anggota' && <div className="w-8 h-1 bg-green-700 rounded-t-md absolute bottom-0"></div>}
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('berita'); setFormMode('list'); setSelectedItem(null); }}
+          className={`flex flex-col items-center justify-center w-full py-1.5 ${activeTab === 'berita' ? 'text-green-700' : 'text-gray-500 hover:text-green-700'}`}
+        >
+          <FileText className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-bold">Berita</span>
+          {activeTab === 'berita' && <div className="w-8 h-1 bg-green-700 rounded-t-md absolute bottom-0"></div>}
+        </button>
+
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="flex flex-col items-center justify-center w-full py-1.5 text-gray-500 hover:text-green-700"
+        >
+          <MoreHorizontal className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-bold">Lainnya</span>
+        </button>
+      </div>
+      
+
+      {/* Change Password Modal (Self) */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <form onSubmit={handleSelfChangePassword} className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden relative border border-gray-100 flex flex-col">
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="flex justify-between items-start border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">Ganti Password</h3>
+                  <p className="text-xs text-gray-500 mt-1">Perbarui password akses akun Anda.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Password Baru *</label>
+                  <input
+                    type="password"
+                    required
+                    value={selfNewPassword}
+                    onChange={(e) => setSelfNewPassword(e.target.value)}
+                    className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:bg-white transition-all"
+                    placeholder="Minimal 6 karakter"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Konfirmasi Password *</label>
+                  <input
+                    type="password"
+                    required
+                    value={selfConfirmPassword}
+                    onChange={(e) => setSelfConfirmPassword(e.target.value)}
+                    className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:bg-white transition-all"
+                    placeholder="Ketik ulang password baru"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="px-6 py-2.5 bg-green-600 text-white font-bold text-xs rounded-xl hover:bg-green-700 disabled:opacity-70 transition-colors flex items-center justify-center min-w-[120px]"
+                >
+                  {isChangingPassword ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : 'Simpan'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
     </div>
   );
 }

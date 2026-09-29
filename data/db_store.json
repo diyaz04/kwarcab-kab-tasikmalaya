@@ -21,14 +21,14 @@
       "permissions": []
     },
     {
-      "id": "u_dyn_1784518120031",
-      "nama": "Cisayong (Admin)",
-      "email": "cisayong@kwarcabtasik.id",
-      "password_hash": "scout123",
-      "role": "kwarcab",
-      "ref_id": null,
-      "created_at": "2026-07-20T03:28:40.031+00:00",
-      "permissions": null
+      "id": "u_1790648717073",
+      "nama": "admin Kwaran Ciawi",
+      "email": "kwaranciawi@gmail.com",
+      "password_hash": "$2a$10$user123hashsimulation",
+      "role": "kwarran",
+      "ref_id": "kwarran_3",
+      "created_at": "2026-09-29T02:25:17.073+00:00",
+      "permissions": []
     }
   ],
   "kwartir_ranting": [
@@ -159,70 +159,6 @@
   ],
   "anggota": [
     {
-      "id": "ang_4",
-      "nama_lengkap": "Rizki Aditya",
-      "tempat_lahir": "Tasikmalaya",
-      "tanggal_lahir": "2015-05-10",
-      "golongan": "siaga",
-      "tingkatan": "Bantu",
-      "alamat_asal": "Kp. Cantigi, Cisayong",
-      "pangkalan": "SDN 1 Cisayong",
-      "kwartir_ranting_id": "kwarran_1",
-      "gudep_id": null,
-      "foto": "",
-      "is_kta_printed": true,
-      "created_by": "u_2",
-      "created_at": "2026-03-05T09:00:00+00:00"
-    },
-    {
-      "id": "ang_5",
-      "nama_lengkap": "Budi Santoso",
-      "tempat_lahir": "Tasikmalaya",
-      "tanggal_lahir": "2008-01-20",
-      "golongan": "penegak",
-      "tingkatan": "Bantara",
-      "alamat_asal": "Desa Ciawi, Kecamatan Ciawi",
-      "pangkalan": "SMAN 1 Ciawi",
-      "kwartir_ranting_id": "kwarran_3",
-      "gudep_id": null,
-      "foto": "",
-      "is_kta_printed": true,
-      "created_by": "u_1",
-      "created_at": "2026-03-10T14:00:00+00:00"
-    },
-    {
-      "id": "ang_1",
-      "nama_lengkap": "Ahmad Fauzi",
-      "tempat_lahir": "Tasikmalaya",
-      "tanggal_lahir": "2008-08-15",
-      "golongan": "penegak",
-      "tingkatan": "Bantara",
-      "alamat_asal": "Kp. Sindangsari RT 02 RW 05, Desa Cisayong, Kecamatan Cisayong",
-      "pangkalan": "SMAN 1 Cisayong",
-      "kwartir_ranting_id": "kwarran_1",
-      "gudep_id": "gudep_1",
-      "foto": "",
-      "is_kta_printed": true,
-      "created_by": "u_2",
-      "created_at": "2026-02-15T08:00:00+00:00"
-    },
-    {
-      "id": "ang_2",
-      "nama_lengkap": "Siti Rahmawati",
-      "tempat_lahir": "Tasikmalaya",
-      "tanggal_lahir": "2009-04-12",
-      "golongan": "penegak",
-      "tingkatan": "Laksana",
-      "alamat_asal": "Jl. Raya Singaparna No. 45, Singaparna",
-      "pangkalan": "SMAN 1 Singaparna",
-      "kwartir_ranting_id": "kwarran_2",
-      "gudep_id": "gudep_3",
-      "foto": "",
-      "is_kta_printed": true,
-      "created_by": "u_1",
-      "created_at": "2026-02-20T10:00:00+00:00"
-    },
-    {
       "id": "ang_3",
       "nama_lengkap": "Dadan Wildan",
       "tempat_lahir": "Tasikmalaya",
@@ -237,26 +173,25 @@
       "is_kta_printed": true,
       "created_by": "u_1",
       "created_at": "2026-03-01T11:00:00+00:00"
-    }
-  ],
-  "anggota_saka": [
-    {
-      "id": "as_1",
-      "anggota_id": "ang_1",
-      "saka_id": "saka_1",
-      "status": "approved",
-      "sumber": "diajukan",
-      "created_at": "2026-03-15T00:00:00+00:00"
     },
     {
-      "id": "as_2",
-      "anggota_id": "ang_2",
-      "saka_id": "saka_2",
-      "status": "pending",
-      "sumber": "diajukan",
-      "created_at": "2026-04-01T00:00:00+00:00"
+      "id": "ang_4",
+      "nama_lengkap": "Rizki Aditya",
+      "tempat_lahir": "Tasikmalaya",
+      "tanggal_lahir": "2015-05-10",
+      "golongan": "siaga",
+      "tingkatan": "Bantu",
+      "alamat_asal": "Kp. Cantigi, Cisayong",
+      "pangkalan": "SDN 1 Cisayong",
+      "kwartir_ranting_id": "kwarran_1",
+      "gudep_id": null,
+      "foto": "",
+      "is_kta_printed": true,
+      "created_by": "u_2",
+      "created_at": "2026-03-05T09:00:00+00:00"
     }
   ],
+  "anggota_saka": [],
   "berita": [
     {
       "id": "berita_4",
@@ -390,7 +325,16 @@
       "misi": "1. Meningkatkan kualitas pembinaan mental, spiritual, jasmani, dan moral anggota Gerakan Pramuka se-Kabupaten Tasikmalaya.",
       "sejarah": "Gerakan Pramuka di Kabupaten Tasikmalaya memiliki sejarah panjang yang mengakar kuat sejak masa kepanduan sebelum kemerdekaan Indonesia.",
       "hero_mode": "dinamis",
-      "banner_statis_url": "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop"
+      "banner_statis_url": "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop",
+      "sosmed": {},
+      "ketua_kwarcab_nama": "",
+      "ketua_kwarcab_foto": "",
+      "ketua_harian_nama": "",
+      "ketua_harian_foto": "",
+      "sekretaris_nama": "",
+      "sekretaris_foto": "",
+      "bendahara_nama": "",
+      "bendahara_foto": ""
     }
   ],
   "kampung_pramuka": [

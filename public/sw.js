@@ -7,7 +7,7 @@
 // berita/agenda/anggota selalu ambil versi terbaru dari server.
 // =============================================================================
 
-const CACHE_NAME = 'dkc-tasikmalaya-shell-v1';
+const CACHE_NAME = 'dkc-tasikmalaya-shell-v2';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -41,7 +41,35 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Hanya tangani permintaan same-origin (biarkan Cloudinary dll. apa adanya).
-  if (new URL(request.url).origin !== self.location.origin) {
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Jangan pernah menyentuh modul dev Vite (versi lama & baru bisa bercampur
+  // dan merusak React/CSS).
+  if (
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/')
+  ) {
+    return;
+  }
+
+  // Halaman (navigasi): utamakan jaringan supaya index.html tidak basi
+  // dan tidak menunjuk ke file hasil build lama yang sudah terhapus.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/'))
+    );
     return;
   }
 

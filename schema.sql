@@ -130,11 +130,29 @@ CREATE TABLE IF NOT EXISTS profil_kwarcab (
   misi TEXT NOT NULL,
   sejarah TEXT NOT NULL,
   hero_mode TEXT DEFAULT 'dinamis' CHECK (hero_mode IN ('statis', 'dinamis')),
-  banner_statis_url TEXT DEFAULT ''
+  banner_statis_url TEXT DEFAULT '',
+  ketua_kwarcab_nama TEXT DEFAULT '',
+  ketua_kwarcab_foto TEXT DEFAULT '',
+  ketua_harian_nama TEXT DEFAULT '',
+  ketua_harian_foto TEXT DEFAULT '',
+  sekretaris_nama TEXT DEFAULT '',
+  sekretaris_foto TEXT DEFAULT '',
+  bendahara_nama TEXT DEFAULT '',
+  bendahara_foto TEXT DEFAULT '',
+  ketua_pusdatin_nama TEXT DEFAULT '',
+  ketua_pusdatin_foto TEXT DEFAULT ''
 );
 
 -- Link media sosial Kwarcab (tampil di footer landingpage)
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sosmed JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_kwarcab_nama TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_kwarcab_foto TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_harian_nama TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_harian_foto TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sekretaris_nama TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sekretaris_foto TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS bendahara_nama TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS bendahara_foto TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS kampung_pramuka (
   id TEXT PRIMARY KEY,

@@ -15,12 +15,12 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // all, kwarcab, kwarran, gudep, saka
   const [copied, setCopied] = useState(false);
 
-  // Paginasi daftar berita: 10 berita terbaru per halaman
-  const PAGE_SIZE = 10;
+  // Paginasi daftar berita
+  const [pageSize, setPageSize] = useState<number>(4);
   const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory, pageSize]);
 
   // Pamflet Berita (poster siap unduh/bagikan dengan QR)
   const [pamfletLoading, setPamfletLoading] = useState(false);
@@ -47,9 +47,9 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   const sorted = [...filtered].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(sorted.length / pageSize));
   const activePage = Math.min(currentPage, totalPages);
-  const pageItems = sorted.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
+  const pageItems = pageSize === Infinity ? sorted : sorted.slice((activePage - 1) * pageSize, activePage * pageSize);
 
   // Nomor halaman ringkas: 1 ... 4 5 6 ... 12
   const pageNumbers: Array<number | 'gap'> = [];
@@ -68,11 +68,11 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
 
   const getAuthorBadgeColor = (type: string) => {
     switch (type) {
-      case 'kwarcab': return 'bg-purple-900/60 text-purple-200 border-purple-500/40';
-      case 'kwarran': return 'bg-blue-900/60 text-blue-200 border-blue-500/40';
-      case 'gudep': return 'bg-emerald-900/60 text-emerald-200 border-emerald-500/40';
-      case 'saka': return 'bg-amber-900/60 text-[#D4AF37] border-amber-500/40';
-      default: return 'bg-slate-900/60 text-slate-200 border-slate-500/40';
+      case 'kwarcab': return 'bg-green-100 text-green-800 border-green-200';
+      case 'kwarran': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'gudep': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'saka': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -95,8 +95,6 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   };
 
   // Share Handlers
-  // Link spesifik ke berita ini (?berita=<id>), bukan sekadar URL halaman saat ini,
-  // supaya siapa pun yang membuka link langsung diarahkan ke berita yang dimaksud.
   const shareUrl = (() => {
     const url = new URL(window.location.href);
     if (selectedBerita) {
@@ -172,23 +170,23 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   // DEDICATED ARTICLE DETAILS VIEW (Not a popup, rendering as a standalone special page)
   if (selectedBerita) {
     return (
-      <div className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="pt-32 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="absolute top-10 left-10 glow-spot-primary opacity-20 pointer-events-none"></div>
 
         {/* Back Button & Breadcrumbs */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <button
             onClick={() => setSelectedBerita(null)}
-            className="group flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-purple-200 hover:text-white border border-white/5 transition-all duration-200"
+            className="group flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-600 hover:text-green-700 border border-gray-200 shadow-sm transition-all duration-200"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="text-xs font-semibold uppercase tracking-wider">Kembali ke Warta</span>
           </button>
 
-          <div className="flex items-center space-x-2 text-xs text-purple-300 font-medium">
-            <span className="cursor-pointer hover:text-white" onClick={() => setSelectedBerita(null)}>Warta</span>
+          <div className="flex items-center space-x-2 text-xs text-gray-500 font-medium">
+            <span className="cursor-pointer hover:text-green-700" onClick={() => setSelectedBerita(null)}>Warta</span>
             <span>/</span>
-            <span className="text-[#D4AF37] max-w-[200px] truncate">{selectedBerita.judul}</span>
+            <span className="text-green-700 max-w-[200px] truncate">{selectedBerita.judul}</span>
           </div>
         </div>
 
@@ -201,15 +199,15 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
         >
           {/* Main Reading Column (2/3 width) */}
           <article className="lg:col-span-2 space-y-6">
-            <div className="glass-panel rounded-3xl overflow-hidden border border-white/5 p-6 sm:p-10 shadow-2xl relative">
+            <div className="bg-white rounded-3xl overflow-hidden border border-gray-100 p-6 sm:p-10 shadow-sm hover:shadow-md transition-shadow relative">
               
               {/* Category, Date & Read Time */}
-              <div className="flex flex-wrap items-center gap-3 text-xs text-purple-300 mb-4">
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border backdrop-blur-md ${getAuthorBadgeColor(selectedBerita.author_type)}`}>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-4">
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${getAuthorBadgeColor(selectedBerita.author_type)}`}>
                   {getAuthorLabel(selectedBerita.author_type)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <Calendar className="w-3.5 h-3.5 text-green-600" />
                   <span>
                     {new Date(selectedBerita.created_at).toLocaleDateString('id-ID', {
                       weekday: 'long',
@@ -220,30 +218,30 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                   </span>
                 </span>
                 <span>&bull;</span>
-                <span className="flex items-center gap-1 text-purple-300/85">
-                  <Clock className="w-3.5 h-3.5 text-purple-400" />
+                <span className="flex items-center gap-1 text-gray-500">
+                  <Clock className="w-3.5 h-3.5 text-green-600" />
                   <span>{getReadingTime(selectedBerita.konten)}</span>
                 </span>
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white font-heading leading-tight tracking-tight mb-6">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-green-900 font-heading leading-tight tracking-tight mb-6">
                 {selectedBerita.judul}
               </h1>
 
               {/* Author Card Info */}
-              <div className="flex items-center gap-3 py-4 border-y border-white/5 mb-8">
-                <div className="w-10 h-10 rounded-full bg-purple-950/80 border border-[#D4AF37]/35 flex items-center justify-center text-white text-sm font-bold shadow-inner">
+              <div className="flex items-center gap-3 py-4 border-y border-gray-100 mb-8">
+                <div className="w-10 h-10 rounded-full bg-green-50 border border-green-200 flex items-center justify-center text-green-700 text-sm font-bold shadow-inner">
                   {selectedBerita.author_nama ? selectedBerita.author_nama.substring(0, 2).toUpperCase() : 'AD'}
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-white">{selectedBerita.author_nama || 'Administrator'}</div>
-                  <div className="text-[10px] text-[#D4AF37] font-medium uppercase tracking-wider">{getAuthorLabel(selectedBerita.author_type)} Sinergi</div>
+                  <div className="text-xs font-bold text-gray-900">{selectedBerita.author_nama || 'Administrator'}</div>
+                  <div className="text-[10px] text-green-600 font-medium uppercase tracking-wider">{getAuthorLabel(selectedBerita.author_type)} Sinergi</div>
                 </div>
               </div>
 
               {/* Big Featured Image */}
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[16/9] mb-8 bg-black/40">
+              <div className="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm aspect-[16/9] mb-8 bg-gray-50">
                 <img
                   src={selectedBerita.gambar_cover}
                   alt={selectedBerita.judul}
@@ -252,7 +250,7 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               </div>
 
               {/* News Body Paragraphs */}
-              <div className="text-purple-100 font-light text-base sm:text-lg leading-relaxed whitespace-pre-line space-y-6 text-justify">
+              <div className="text-gray-600 font-light text-base sm:text-lg leading-relaxed whitespace-pre-line space-y-6 text-justify">
                 {selectedBerita.konten}
               </div>
             </div>
@@ -262,15 +260,15 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
           <aside className="lg:col-span-1 space-y-6">
             
             {/* Share Panel (Aksesoris Fitur Bagikan Berita) */}
-            <div className="glass-panel-heavy rounded-3xl p-6 border border-[#D4AF37]/30 shadow-xl relative overflow-hidden">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm relative overflow-hidden hover:shadow-md transition-shadow">
               <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                <Share2 className="w-16 h-16 text-white" />
+                <Share2 className="w-16 h-16 text-green-700" />
               </div>
-              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-heading flex items-center gap-2 mb-4">
-                <Share2 className="w-4 h-4 text-[#D4AF37]" />
+              <h3 className="text-sm font-extrabold text-green-900 uppercase tracking-wider font-heading flex items-center gap-2 mb-4">
+                <Share2 className="w-4 h-4 text-green-600" />
                 <span>Bagikan Warta Ini</span>
               </h3>
-              <p className="text-xs text-purple-200/80 mb-5 leading-relaxed font-light">
+              <p className="text-xs text-gray-500 mb-5 leading-relaxed font-light">
                 Sebarkan informasi resmi kepramukaan ini ke pangkalan gugus depan, kwartir ranting, atau jejaring sosial lainnya.
               </p>
 
@@ -279,30 +277,30 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                 {/* Whatsapp */}
                 <button
                   onClick={shareToWhatsApp}
-                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition active:scale-95 cursor-pointer"
+                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
                   title="Bagikan ke WhatsApp"
                 >
-                  <Send className="w-4 h-4 text-emerald-400" />
+                  <Send className="w-4 h-4" />
                   <span>WhatsApp</span>
                 </button>
 
                 {/* Facebook */}
                 <button
                   onClick={shareToFacebook}
-                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 border border-blue-500/30 text-xs font-semibold transition active:scale-95 cursor-pointer"
+                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
                   title="Bagikan ke Facebook"
                 >
-                  <Facebook className="w-4 h-4 text-blue-400" />
+                  <Facebook className="w-4 h-4" />
                   <span>Facebook</span>
                 </button>
 
                 {/* Twitter / X */}
                 <button
                   onClick={shareToTwitter}
-                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-500/30 text-xs font-semibold transition active:scale-95 cursor-pointer"
+                  className="flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
                   title="Bagikan ke X"
                 >
-                  <Twitter className="w-4 h-4 text-purple-400" />
+                  <Twitter className="w-4 h-4" />
                   <span>X (Twitter)</span>
                 </button>
 
@@ -311,12 +309,12 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                   onClick={handleCopyLink}
                   className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl transition border text-xs font-semibold active:scale-95 cursor-pointer ${
                     copied 
-                      ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
-                      : 'bg-white/5 hover:bg-white/10 text-purple-200 border-white/10'
+                      ? 'bg-green-600 text-white border-green-600 shadow-md' 
+                      : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200'
                   }`}
                   title="Salin Tautan Berita"
                 >
-                  {copied ? <Check className="w-4 h-4 text-white" /> : <Link className="w-4 h-4 text-purple-300" />}
+                  {copied ? <Check className="w-4 h-4 text-white" /> : <Link className="w-4 h-4 text-gray-500" />}
                   <span>{copied ? 'Tersalin' : 'Copy Link'}</span>
                 </button>
               </div>
@@ -325,7 +323,7 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               {navigator.share && (
                 <button
                   onClick={handleNativeShare}
-                  className="w-full mt-4 py-2.5 rounded-xl bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0F0A1A] font-bold text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer"
+                  className="w-full mt-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer"
                 >
                   Bagikan Secara Native
                 </button>
@@ -334,36 +332,36 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               {/* Buat Pamflet Berita (poster dengan QR, siap diunduh/dibagikan) */}
               <button
                 onClick={handleGeneratePamflet}
-                className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-400/30 text-purple-100 font-bold text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer"
+                className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-50 hover:bg-green-100 border border-green-200 text-green-700 font-bold text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer"
               >
-                <ImageIcon className="w-4 h-4 text-[#D4AF37]" />
+                <ImageIcon className="w-4 h-4" />
                 Buat Pamflet Berita
               </button>
             </div>
 
             {/* Related/Latest Stories Sidebar Widget */}
-            <div className="glass-panel rounded-3xl p-6 border border-white/5">
-              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-heading mb-4 flex items-center justify-between">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="text-sm font-extrabold text-green-900 uppercase tracking-wider font-heading mb-4 flex items-center justify-between">
                 <span>Berita Lainnya</span>
-                <span className="text-[10px] text-[#D4AF37] font-semibold">{relatedStories.length} Warta</span>
+                <span className="text-[10px] text-green-600 font-semibold">{relatedStories.length} Warta</span>
               </h3>
 
               <div className="space-y-4">
                 {relatedStories.length === 0 ? (
-                  <p className="text-xs text-purple-300/60 font-light">Belum ada warta kepanduan lainnya.</p>
+                  <p className="text-xs text-gray-500 font-light">Belum ada warta kepanduan lainnya.</p>
                 ) : (
                   relatedStories.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => setSelectedBerita(item)}
-                      className="group flex gap-3 cursor-pointer bg-white/[0.01] hover:bg-white/[0.04] p-2 rounded-2xl border border-transparent hover:border-purple-500/10 transition-all duration-200"
+                      className="group flex gap-3 cursor-pointer bg-white hover:bg-gray-50 p-2 rounded-2xl border border-transparent hover:border-green-200 transition-all duration-200"
                     >
-                      <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-black/40 border border-white/5">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                         <img src={item.gambar_cover} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       </div>
                       <div className="flex-grow flex flex-col justify-center min-w-0">
-                        <h4 className="text-xs font-semibold text-white line-clamp-2 leading-snug group-hover:text-[#D4AF37] transition-colors">{item.judul}</h4>
-                        <span className="text-[9px] text-purple-300/80 mt-1 uppercase font-semibold">{getAuthorLabel(item.author_type)}</span>
+                        <h4 className="text-xs font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-green-700 transition-colors">{item.judul}</h4>
+                        <span className="text-[9px] text-gray-500 mt-1 uppercase font-semibold">{getAuthorLabel(item.author_type)}</span>
                       </div>
                     </div>
                   ))
@@ -372,8 +370,8 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
             </div>
 
             {/* Sinergi Information box */}
-            <div className="glass-panel rounded-3xl p-6 border border-white/5 text-xs text-purple-200/80 font-light leading-relaxed">
-              <div className="font-semibold text-white mb-2 font-heading">Sinergitas Publikasi</div>
+            <div className="bg-green-50 rounded-3xl p-6 border border-green-100 text-xs text-green-800 font-light leading-relaxed">
+              <div className="font-semibold text-green-900 mb-2 font-heading">Sinergitas Publikasi</div>
               Semua konten rilis berita merupakan informasi resmi gerakan pramuka di wilayah Kwartir Cabang Kabupaten Tasikmalaya yang telah melalui tahap kurasi serta verifikasi admin penanggung jawab.
             </div>
           </aside>
@@ -382,33 +380,33 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
         {/* Modal Preview Pamflet Berita */}
         {showPamfletModal && (
           <div
-            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setShowPamfletModal(false)}
           >
             <div
-              className="glass-panel-heavy rounded-3xl p-6 border border-[#D4AF37]/30 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl p-6 border border-gray-100 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-heading flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-[#D4AF37]" />
+                <h3 className="text-sm font-extrabold text-green-900 uppercase tracking-wider font-heading flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-green-600" />
                   Pamflet Berita
                 </h3>
-                <button onClick={() => setShowPamfletModal(false)} className="text-purple-300 hover:text-white p-1">
+                <button onClick={() => setShowPamfletModal(false)} className="text-gray-400 hover:text-gray-900 p-1">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {pamfletLoading && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-purple-200">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-500">
+                  <Loader2 className="w-8 h-8 animate-spin text-green-600" />
                   <p className="text-xs font-light">Sedang membuat pamflet...</p>
                 </div>
               )}
 
               {!pamfletLoading && pamfletError && (
                 <div className="py-8 text-center">
-                  <p className="text-xs text-red-300 leading-relaxed">{pamfletError}</p>
+                  <p className="text-xs text-red-500 leading-relaxed">{pamfletError}</p>
                 </div>
               )}
 
@@ -417,19 +415,19 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                   <img
                     src={pamfletDataUrl}
                     alt={`Pamflet - ${selectedBerita.judul}`}
-                    className="w-full rounded-2xl border border-white/10 mb-4"
+                    className="w-full rounded-2xl border border-gray-100 mb-4"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={handleDownloadPamflet}
-                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-purple-100 font-semibold text-xs transition active:scale-95"
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-semibold text-xs transition active:scale-95"
                     >
-                      <Download className="w-4 h-4 text-purple-300" />
+                      <Download className="w-4 h-4 text-gray-500" />
                       Unduh
                     </button>
                     <button
                       onClick={handleSharePamflet}
-                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0F0A1A] font-bold text-xs transition active:scale-95"
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-xs transition active:scale-95"
                     >
                       <Share2 className="w-4 h-4" />
                       Bagikan
@@ -445,38 +443,36 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   }
 
   return (
-    <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-      <div className="absolute top-10 left-10 glow-spot-primary opacity-20"></div>
-
+    <div className="pt-32 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
       {/* Header */}
       <div className="text-center mb-12">
-        <h2 className="text-3xl sm:text-5xl font-extrabold text-white font-heading">
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-green-900 font-heading">
           Warta Kepramukaan
         </h2>
-        <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-[#D4AF37] mx-auto mt-4 rounded-full"></div>
-        <p className="text-sm text-purple-300 mt-2 font-medium">
+        <div className="w-20 h-1 bg-gradient-to-r from-green-500 to-green-700 mx-auto mt-4 rounded-full"></div>
+        <p className="text-sm text-green-700 mt-2 font-medium">
           Daftar berita, informasi, dan rilis pers resmi ter-update
         </p>
       </div>
 
       {/* Filters & Search */}
-      <div className="glass-panel rounded-2xl p-6 mb-10 border border-white/5 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
+      <div className="bg-white rounded-2xl p-6 mb-10 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between relative z-20 hover:shadow-md transition-shadow">
         {/* Search */}
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-purple-300" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
           <input
             type="text"
             placeholder="Cari berita atau warta..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-black/40 text-sm text-white placeholder-purple-300/50 pl-11 pr-4 py-2.5 rounded-xl border border-white/10 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] transition-all duration-200 shadow-inner"
+            className="w-full bg-gray-50 text-sm text-gray-900 placeholder-gray-400 pl-11 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 transition-all duration-200"
           />
         </div>
 
         {/* Categories filters */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <span className="text-xs text-purple-300/80 mr-2 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5 text-[#D4AF37]" /> Saring:
+          <span className="text-xs text-gray-500 mr-2 flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5 text-green-600" /> Saring:
           </span>
           {[
             { id: 'all', label: 'Semua Sumber' },
@@ -490,8 +486,8 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 ${
                 selectedCategory === cat.id
-                  ? 'bg-purple-600/30 text-white border-purple-500 shadow-md shadow-purple-500/10'
-                  : 'bg-black/20 text-purple-200/80 border-white/5 hover:text-white hover:bg-white/5'
+                  ? 'bg-green-100 text-green-800 border-green-300 shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:text-green-700 hover:bg-green-50 hover:border-green-200'
               }`}
             >
               {cat.label}
@@ -503,16 +499,16 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
       {/* Grid List */}
       <div id="daftar-berita" className="scroll-mt-28"></div>
       {filtered.length === 0 ? (
-        <div className="glass-panel rounded-2xl p-12 text-center text-purple-300/70">
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-12 text-center text-gray-500">
           Tidak ditemukan berita yang cocok dengan kriteria pencarian Anda.
         </div>
       ) : (
-        <div className="grid md:grid-cols-3 gap-8 relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-8 relative z-10">
           {pageItems.map((news) => (
             <div
               key={news.id}
               onClick={() => setSelectedBerita(news)}
-              className="glass-panel glass-panel-interactive rounded-2xl overflow-hidden flex flex-col h-full border border-white/5 group cursor-pointer"
+              className="bg-white rounded-2xl overflow-hidden flex flex-col h-full border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 group cursor-pointer transition-all duration-300"
             >
               {/* Cover image */}
               <div className="relative h-48 overflow-hidden">
@@ -521,8 +517,8 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                   alt={news.judul}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F0A1A]/80 via-transparent to-transparent"></div>
-                <span className={`absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-md border backdrop-blur-md ${getAuthorBadgeColor(news.author_type)}`}>
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/50 via-transparent to-transparent"></div>
+                <span className={`absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-md border ${getAuthorBadgeColor(news.author_type)}`}>
                   {getAuthorLabel(news.author_type)}
                 </span>
               </div>
@@ -530,8 +526,8 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
               {/* Card Body */}
               <div className="p-5 flex-grow flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center space-x-2 text-xs text-purple-300/80 mb-3">
-                    <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
+                    <Calendar className="w-3.5 h-3.5 text-green-600" />
                     <span>
                       {new Date(news.created_at).toLocaleDateString('id-ID', {
                         day: 'numeric',
@@ -540,20 +536,20 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                       })}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-white leading-snug line-clamp-2 mb-3 group-hover:text-[#D4AF37] transition-colors duration-200">
+                  <h3 className="text-base font-bold text-gray-900 leading-snug line-clamp-2 mb-3 group-hover:text-green-700 transition-colors duration-200">
                     {news.judul}
                   </h3>
-                  <p className="text-xs text-purple-200/70 font-light line-clamp-3 leading-relaxed mb-4">
+                  <p className="text-xs text-gray-600 font-light line-clamp-3 leading-relaxed mb-4">
                     {news.konten}
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs font-semibold text-purple-300 group-hover:text-white transition-colors duration-200">
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-500 group-hover:text-green-700 transition-colors duration-200">
                   <span className="flex items-center space-x-1">
-                    <User className="w-3.5 h-3.5 text-purple-400" />
+                    <User className="w-3.5 h-3.5 text-green-600" />
                     <span className="truncate max-w-[140px] font-light">{news.author_nama || 'Admin'}</span>
                   </span>
-                  <span className="flex items-center space-x-1 text-[#D4AF37] text-[11px] uppercase tracking-wide">
+                  <span className="flex items-center space-x-1 text-green-700 text-[11px] uppercase tracking-wide">
                     <span>Baca</span>
                     <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </span>
@@ -565,35 +561,51 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
       )}
 
       {sorted.length > 0 && (
-        <div className="mt-10 flex flex-col items-center gap-4">
-          <span className="text-xs text-purple-300/70">
-            Menampilkan {(activePage - 1) * PAGE_SIZE + 1}&ndash;{Math.min(activePage * PAGE_SIZE, sorted.length)} dari {sorted.length} berita
-          </span>
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 pt-6">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 font-medium">Tampilkan:</span>
+            <select
+              value={pageSize === Infinity ? 'all' : pageSize}
+              onChange={(e) => setPageSize(e.target.value === 'all' ? Infinity : Number(e.target.value))}
+              className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 cursor-pointer shadow-sm"
+            >
+              <option value={4}>4 Data</option>
+              <option value={10}>10 Data</option>
+              <option value={20}>20 Data</option>
+              <option value="all">Semua</option>
+            </select>
+          </div>
 
-          {totalPages > 1 && (
+          {pageSize !== Infinity && (
+            <span className="text-xs text-gray-500 hidden md:block">
+              Menampilkan {(activePage - 1) * pageSize + 1}&ndash;{Math.min(activePage * pageSize, sorted.length)} dari {sorted.length} berita
+            </span>
+          )}
+
+          {totalPages > 1 && pageSize !== Infinity && (
             <nav aria-label="Paginasi berita" className="flex flex-wrap items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={() => goToPage(activePage - 1)}
                 disabled={activePage === 1}
-                className="px-3.5 py-2 rounded-xl glass-panel border border-white/10 text-xs font-bold text-purple-100 hover:text-white hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+                className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-300 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shadow-sm"
               >
                 Sebelumnya
               </button>
 
               {pageNumbers.map((n, idx) =>
                 n === 'gap' ? (
-                  <span key={`gap-${idx}`} className="px-1 text-purple-300/60 text-xs">&hellip;</span>
+                  <span key={`gap-${idx}`} className="px-1 text-gray-400 text-xs">&hellip;</span>
                 ) : (
                   <button
                     key={n}
                     type="button"
                     onClick={() => goToPage(n)}
                     aria-current={n === activePage ? 'page' : undefined}
-                    className={`min-w-[36px] px-2.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 ${
+                    className={`min-w-[36px] px-2.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 shadow-sm ${
                       n === activePage
-                        ? 'bg-purple-600/40 text-white border-[#D4AF37]/60 shadow-md shadow-purple-500/10'
-                        : 'glass-panel text-purple-200 border-white/10 hover:text-white hover:border-white/30'
+                        ? 'bg-green-700 text-white border-green-800'
+                        : 'bg-white text-gray-600 border-gray-200 hover:text-green-700 hover:border-green-300'
                     }`}
                   >
                     {n}
@@ -605,7 +617,7 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
                 type="button"
                 onClick={() => goToPage(activePage + 1)}
                 disabled={activePage === totalPages}
-                className="px-3.5 py-2 rounded-xl glass-panel border border-white/10 text-xs font-bold text-purple-100 hover:text-white hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+                className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-300 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shadow-sm"
               >
                 Selanjutnya
               </button>
@@ -616,4 +628,3 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
     </div>
   );
 }
-

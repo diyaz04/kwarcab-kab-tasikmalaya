@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, BookOpen, Compass, Calendar, MapPin, Users, Award, Bell, Sun, Moon, Menu, X, ChevronDown, Globe } from 'lucide-react';
-import { User } from '../types';
+import { Shield, BookOpen, Compass, Calendar, MapPin, Users, Award, Bell, Menu, X, ChevronDown, Globe, User as UserIcon } from 'lucide-react';
+import type { User } from '../types';
 
 interface NavbarProps {
   currentTab: string;
@@ -10,8 +10,6 @@ interface NavbarProps {
   onOpenLogin: () => void;
   unreadCount: number;
   onOpenNotif: () => void;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
 }
 
 export default function Navbar({
@@ -21,9 +19,7 @@ export default function Navbar({
   onLogout,
   onOpenLogin,
   unreadCount,
-  onOpenNotif,
-  theme,
-  onToggleTheme
+  onOpenNotif
 }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -59,31 +55,34 @@ export default function Navbar({
   const isDropdownActive = dropdownTabs.some(tab => tab.id === currentTab);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/10 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <div className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 sm:px-6 lg:px-8 pointer-events-none">
+      <nav className="max-w-7xl mx-auto bg-white rounded-full shadow-lg border border-gray-100 pointer-events-auto">
+        <div className="flex items-center justify-between h-14 sm:h-16 px-2 sm:px-6 gap-1 sm:gap-2">
           {/* Logo & Brand */}
-          <div className="flex items-center space-x-3 cursor-pointer shrink-0" onClick={() => setCurrentTab('home')}>
-            <div className="relative flex items-center justify-center w-11 h-11 rounded-full bg-white/10 border border-purple-500/30 overflow-hidden shadow-lg p-1 hover:border-[#D4AF37]/50 transition-colors duration-300">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 cursor-pointer shrink-0" onClick={() => setCurrentTab('home')}>
+            <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 overflow-hidden shadow-sm shrink-0">
               <img 
                 src="https://lh3.googleusercontent.com/d/1LprUBW33eBc7zyJak0e8LkBfF8F1_b-z" 
-                alt="Logo Kwarcab Kab. Tasikmalaya" 
-                className="w-full h-full object-contain rounded-full transition-all duration-300"
+                alt="Logo Kwarcab" 
+                className="w-full h-full object-cover scale-110"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div className="flex flex-col">
-              <div className="text-xs sm:text-sm font-bold tracking-wider text-white uppercase font-heading whitespace-nowrap">
-                Kwartir Cabang <span className="text-[#D4AF37]">Kab. Tasikmalaya</span>
+              <div className="text-[10px] sm:text-sm font-black tracking-wide text-gray-900 uppercase font-heading whitespace-nowrap">
+                Kwartir Cabang
               </div>
-              <div className="text-[9px] sm:text-[10px] text-purple-300 font-medium tracking-wide whitespace-nowrap">
+              <div className="text-[8px] sm:text-[10px] text-green-700 font-bold tracking-wide whitespace-nowrap leading-none mt-0.5">
+                KAB. TASIKMALAYA
+              </div>
+              <div className="hidden sm:block text-[8px] text-gray-500 font-medium tracking-wide whitespace-nowrap leading-tight mt-0.5">
                 Gerakan Pramuka Indonesia
               </div>
             </div>
           </div>
 
-          {/* Navigation Tabs (Public) - Hidden on smaller screens to prevent wrapping */}
-          <div className="hidden lg:flex items-center space-x-1">
+          {/* Navigation Tabs (Public) */}
+          <div className="hidden lg:flex items-center space-x-2">
             {currentTab === 'admin' ? null : (
               <>
                 {visibleTabs.map((tab) => {
@@ -93,39 +92,36 @@ export default function Navbar({
                     <button
                       key={tab.id}
                       onClick={() => handleTabClick(tab.id)}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                      className={`flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                         isActive
-                          ? 'bg-purple-600/30 text-white border-b-2 border-[#D4AF37] shadow-lg shadow-purple-500/10'
-                          : 'text-purple-200/80 hover:text-white hover:bg-white/5'
+                          ? 'bg-green-700 text-white shadow-md'
+                          : 'text-gray-600 hover:text-green-700 hover:bg-gray-100'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-[#D4AF37]' : 'text-purple-300'}`} />
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                       <span>{tab.label}</span>
                     </button>
                   );
                 })}
 
-                {/* Dropdown Menu "Lainnya" for Kwarran & Saka */}
+                {/* Dropdown Menu "Lainnya" */}
                 <div className="relative">
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                    className={`flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                       isDropdownActive
-                        ? 'bg-purple-600/30 text-white border-b-2 border-[#D4AF37] shadow-lg shadow-purple-500/10'
-                        : 'text-purple-200/80 hover:text-white hover:bg-white/5'
+                        ? 'bg-green-700 text-white shadow-md'
+                        : 'text-gray-600 hover:text-green-700 hover:bg-gray-100'
                     }`}
                   >
                     <span>Lainnya</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-[#D4AF37]' : 'text-purple-300'}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {isDropdownOpen && (
                     <>
-                      {/* Transparent Click-away overlay */}
                       <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)}></div>
-                      
-                      {/* Dropdown menu list */}
-                      <div className="absolute right-0 mt-2 w-48 rounded-xl glass-panel border border-white/20 bg-[#0F0A1A]/95 shadow-2xl py-1.5 z-50 animate-in fade-in slide-in-from-top-1 duration-100">
+                      <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-48 rounded-2xl bg-white shadow-xl border border-gray-100 py-2 z-50">
                         {dropdownTabs.map((tab) => {
                           const Icon = tab.icon;
                           const isActive = currentTab === tab.id;
@@ -133,13 +129,13 @@ export default function Navbar({
                             <button
                               key={tab.id}
                               onClick={() => handleTabClick(tab.id)}
-                              className={`flex items-center space-x-2.5 w-full px-4 py-2.5 text-left text-xs font-medium transition-colors cursor-pointer ${
+                              className={`flex items-center space-x-2.5 w-full px-5 py-2.5 text-left text-xs font-bold transition-colors cursor-pointer ${
                                 isActive
-                                  ? 'bg-purple-600/20 text-[#D4AF37]'
-                                  : 'text-purple-200 hover:text-white hover:bg-white/5'
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-green-700'
                               }`}
                             >
-                              <Icon className={`w-4 h-4 ${isActive ? 'text-[#D4AF37]' : 'text-purple-300'}`} />
+                              <Icon className={`w-4 h-4 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
                               <span>{tab.label}</span>
                             </button>
                           );
@@ -153,27 +149,13 @@ export default function Navbar({
           </div>
 
           {/* Right Action / Auth */}
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-            {/* Theme Toggle Button */}
-            <button
-              onClick={onToggleTheme}
-              className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-200 flex items-center justify-center text-purple-200 hover:text-white"
-              title={theme === 'dark' ? 'Mode Terang (Putih)' : 'Mode Gelap (Malam)'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-[#D4AF37]" />
-              ) : (
-                <Moon className="w-5 h-5 text-purple-600" />
-              )}
-            </button>
-
+          <div className="flex items-center space-x-3 shrink-0">
             {/* Desktop Auth Section */}
             {user ? (
               <div className="hidden lg:flex items-center space-x-3">
-                {/* Notification Bell */}
                 <button 
                   onClick={onOpenNotif}
-                  className="relative p-2 rounded-lg text-purple-200 hover:text-white hover:bg-white/5 transition-all duration-200"
+                  className="relative p-2 rounded-full text-gray-500 hover:text-green-700 hover:bg-gray-100 transition-all duration-200"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
@@ -185,62 +167,56 @@ export default function Navbar({
                 </button>
 
                 <div className="text-right hidden xl:block">
-                  <div className="text-xs font-semibold text-white whitespace-nowrap">{user.nama}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-[#D4AF37] font-semibold whitespace-nowrap">{user.role}</div>
+                  <div className="text-xs font-bold text-gray-900">{user.nama}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-green-600 font-bold">{user.role}</div>
                 </div>
 
                 <button
                   onClick={() => setCurrentTab('admin')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${
                     currentTab === 'admin'
-                      ? 'bg-[#D4AF37] text-[#0F0A1A] border-[#D4AF37] hover:bg-[#D4AF37]/90'
-                      : 'bg-purple-900/40 text-purple-200 border-purple-500/30 hover:bg-purple-900/60'
+                      ? 'bg-green-700 text-white'
+                      : 'bg-green-50 text-green-700 hover:bg-green-100'
                   }`}
                 >
-                  Portal Dashboard
+                  Dashboard
                 </button>
 
                 <button
                   onClick={onLogout}
-                  className="text-xs font-medium text-purple-300 hover:text-red-400 px-2 py-1 bg-white/5 rounded hover:bg-red-500/10 transition-all duration-200 whitespace-nowrap"
+                  className="text-xs font-bold text-gray-500 hover:text-red-600 px-3 py-2 rounded-full hover:bg-red-50 transition-all duration-200"
                 >
                   Keluar
                 </button>
               </div>
             ) : (
-              <div className="hidden lg:block">
+              <div className="flex items-center">
                 <button
                   onClick={onOpenLogin}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-700 to-purple-950 hover:from-purple-600 hover:to-purple-900 text-white font-semibold text-xs tracking-wider uppercase border border-purple-500/40 hover:border-purple-400/60 shadow-lg shadow-purple-900/30 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-6 py-1.5 sm:py-2.5 rounded-full bg-green-700 hover:bg-green-800 text-white font-bold text-[8px] sm:text-xs tracking-wide uppercase shadow-md hover:shadow-lg transition-all duration-200 shrink-0"
                 >
+                  <UserIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span>Masuk Portal</span>
                 </button>
               </div>
             )}
 
-            {/* Mobile Actions: Notification bell if logged in */}
+            {/* Mobile Actions */}
             {user && (
               <div className="lg:hidden flex items-center">
                 <button 
                   onClick={onOpenNotif}
-                  className="relative p-2 rounded-lg text-purple-200 hover:text-white hover:bg-white/5 transition-all duration-200"
+                  className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100"
                 >
                   <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                  )}
                 </button>
               </div>
             )}
 
-            {/* Hamburger Button (Strip 3) */}
+            {/* Hamburger Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-200 flex items-center justify-center text-purple-200 hover:text-white"
-              title="Menu Utama"
+              className="lg:hidden p-2 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-700"
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -250,13 +226,12 @@ export default function Navbar({
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Collapsible Mobile Menu Panel */}
+      {/* Mobile Menu Panel */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-white/10 bg-[#0F0A1A]/95 backdrop-blur-xl animate-in slide-in-from-top-2 duration-150 shadow-2xl">
-          <div className="px-4 pt-3 pb-5 space-y-1">
-            {/* Nav Links in Mobile */}
+        <div className="lg:hidden mt-2 rounded-2xl bg-white shadow-xl border border-gray-100 pointer-events-auto overflow-hidden animate-in slide-in-from-top-2 duration-150 mx-auto max-w-md">
+          <div className="px-4 py-3 space-y-1">
             {currentTab === 'admin' ? null : (
               [
                 { id: 'home', label: 'Beranda', icon: Compass },
@@ -276,71 +251,64 @@ export default function Navbar({
                       handleTabClick(tab.id);
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
                       isActive
-                        ? 'bg-purple-600/30 text-white border-l-4 border-[#D4AF37] font-semibold'
-                        : 'text-purple-200/80 hover:text-white hover:bg-white/5'
+                        ? 'bg-green-50 text-green-700'
+                        : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-purple-300'}`} />
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
                     <span>{tab.label}</span>
                   </button>
                 );
               })
             )}
 
-            <div className="border-t border-white/10 my-3 pt-3"></div>
+            <div className="border-t border-gray-100 my-2"></div>
 
-            {/* Auth / Profile Actions in Mobile */}
             {user ? (
-              <div className="space-y-3 px-2">
-                <div className="py-1">
-                  <div className="text-sm font-semibold text-white">{user.nama}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#D4AF37] font-semibold">{user.role}</div>
+              <div className="space-y-2 p-2">
+                <div className="mb-2">
+                  <div className="text-sm font-bold text-gray-900">{user.nama}</div>
+                  <div className="text-[10px] uppercase text-green-600 font-bold">{user.role}</div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => {
                       setCurrentTab('admin');
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all duration-200 ${
-                      currentTab === 'admin'
-                        ? 'bg-[#D4AF37] text-[#0F0A1A] border-[#D4AF37]'
-                        : 'bg-purple-900/40 text-purple-200 border-purple-500/30 hover:bg-purple-900/60'
-                    }`}
+                    className="py-2.5 px-3 rounded-xl text-xs font-bold bg-green-50 text-green-700"
                   >
-                    Portal Dashboard
+                    Dashboard
                   </button>
-
                   <button
                     onClick={() => {
                       onLogout();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="py-2 px-3 text-xs font-medium text-center text-red-200 bg-red-950/40 hover:bg-red-900/40 border border-red-500/20 rounded-xl transition-all duration-200"
+                    className="py-2.5 px-3 rounded-xl text-xs font-bold text-red-600 bg-red-50"
                   >
                     Keluar
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="px-2 pt-1">
+              <div className="p-2">
                 <button
                   onClick={() => {
                     onOpenLogin();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-purple-950 hover:from-purple-600 hover:to-purple-900 text-white font-semibold text-xs tracking-wider uppercase border border-purple-500/40 shadow-lg transition-all duration-200"
+                  className="w-full py-3 rounded-xl bg-green-700 text-white font-bold text-sm tracking-wide uppercase shadow-md"
                 >
-                  <span>Masuk Portal</span>
+                  Masuk Portal
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
-    </nav>
+    </div>
   );
 }

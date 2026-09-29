@@ -9,7 +9,8 @@ import {
 
 const IS_SERVERLESS_RUNTIME = process.env.NETLIFY === 'true'
   || process.env.NETLIFY_DEV === 'true'
-  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+  || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
+  || process.env.VERCEL === '1';
 const STORE_PATH = IS_SERVERLESS_RUNTIME
   ? path.join('/tmp', 'kwarcab-db-store.json')
   : path.join(process.cwd(), 'data', 'db_store.json');
@@ -86,8 +87,19 @@ const DEFAULT_PROFIL: ProfilKwarcab = {
   misi: '1. Meningkatkan kualitas pembinaan mental, spiritual, jasmani, dan moral anggota Gerakan Pramuka se-Kabupaten Tasikmalaya.\n2. Mengoptimalkan tata kelola organisasi kwartir secara modern, transparan, dan akuntabel.\n3. Meningkatkan kompetensi pembina, pelatih, dan pamong saka secara berkelanjutan.\n4. Menyelenggarakan kegiatan kepramukaan yang inovatif, menarik, menantang, dan berbasis kearifan lokal.\n5. Memperkuat kolaborasi dengan pemerintah daerah, masyarakat, dan mitra gerakan kepramukaan dalam pembangunan pemuda.',
   sejarah: 'Gerakan Pramuka di Kabupaten Tasikmalaya memiliki sejarah panjang yang mengakar kuat sejak masa kepanduan sebelum kemerdekaan Indonesia. Melalui peleburan berbagai organisasi kepanduan pada tahun 1961 berdasarkan Keputusan Presiden No. 238 Tahun 1961, Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya resmi berdiri.\n\nSebagai salah satu kwartir cabang terbesar di wilayah Jawa Barat, Kwarcab Kabupaten Tasikmalaya secara konsisten melahirkan kader-kader pemimpin bangsa yang tangguh dan religius. Kantor Kwarcab Tasikmalaya yang saat ini berpusat di Singaparna terus menjadi episentrum pendidikan karakter non-formal bagi puluhan ribu peserta didik dari golongan Siaga, Penggalang, Penegak, hingga Pandega.',
   hero_mode: 'dinamis',
-  banner_statis_url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop'
+  banner_statis_url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop',
+  ketua_kwarcab_nama: 'H. Cecep Nurul Yakin, S.Pd., M.A.P.',
+  ketua_kwarcab_foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop',
+  ketua_harian_nama: 'Drs. H. Ahmad Saefudin, M.Pd.',
+  ketua_harian_foto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop',
+  sekretaris_nama: 'Asep Supriadi, S.Sos.',
+  sekretaris_foto: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop',
+  bendahara_nama: 'Hj. Neni Nuraeni, S.E.',
+  bendahara_foto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop',
+  ketua_pusdatin_nama: 'Dadan Wildan, S.Kom., M.Kom.',
+  ketua_pusdatin_foto: ''
 };
+
 
 const DEFAULT_PIMPINAN: PimpinanKwarcab[] = [
   {

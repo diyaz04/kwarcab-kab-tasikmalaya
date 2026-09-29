@@ -16,7 +16,11 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        // db_store.json ditulis server tiap ada perubahan data (mis. cetak KTA).
+        // Tanpa ini Vite mengira itu perubahan source dan me-reload seluruh halaman.
+        ignored: [path.posix.join(__dirname.replace(/\\/g, '/'), 'data/**')],
+      },
     },
     build: {
       rollupOptions: {

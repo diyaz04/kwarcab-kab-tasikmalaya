@@ -142,6 +142,16 @@ export interface ProfilKwarcab {
   hero_mode: 'statis' | 'dinamis';
   banner_statis_url: string;
   sosmed?: SosmedLinks;
+  ketua_kwarcab_nama?: string;
+  ketua_kwarcab_foto?: string;
+  ketua_harian_nama?: string;
+  ketua_harian_foto?: string;
+  sekretaris_nama?: string;
+  sekretaris_foto?: string;
+  bendahara_nama?: string;
+  bendahara_foto?: string;
+  ketua_pusdatin_nama?: string;
+  ketua_pusdatin_foto?: string;
 }
 
 export interface KampungPramuka {
