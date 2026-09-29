@@ -132,13 +132,13 @@ export default function App() {
   const loadPublicData = async () => {
     try {
       const [pRes, pimRes, bRes, agRes, kwRes, skRes, kpRes] = await Promise.all([
-        fetch('/api/public/profil'),
-        fetch('/api/public/pimpinan'),
-        fetch('/api/public/berita'),
-        fetch('/api/public/agenda'),
-        fetch('/api/public/kwarran'),
-        fetch('/api/public/saka'),
-        fetch('/api/public/kampung-pramuka')
+        fetch('/api/public/profil', { cache: 'no-store' }),
+        fetch('/api/public/pimpinan', { cache: 'no-store' }),
+        fetch('/api/public/berita', { cache: 'no-store' }),
+        fetch('/api/public/agenda', { cache: 'no-store' }),
+        fetch('/api/public/kwarran', { cache: 'no-store' }),
+        fetch('/api/public/saka', { cache: 'no-store' }),
+        fetch('/api/public/kampung-pramuka', { cache: 'no-store' })
       ]);
 
       const [profilData, pimpinanData, beritaData, agendaData, kwarranData, sakaData, kpData] = await Promise.all([

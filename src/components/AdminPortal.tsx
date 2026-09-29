@@ -1636,6 +1636,7 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess(`Status berita berhasil diubah ke ${action === 'approve' ? 'Disetujui & Unggulan' : 'Ditolak'}`);
         loadDashboardData();
+        onRefreshData();
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1652,6 +1653,7 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess('Berita berhasil dihapus');
         loadDashboardData();
+        onRefreshData(); // sinkronkan hero/landing page agar tidak menampilkan berita yang sudah dihapus
       } else {
         const d = await res.json().catch(() => ({} as any));
         showError(d.error || `Gagal menghapus berita (HTTP ${res.status})`);
@@ -1674,6 +1676,7 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess(`Status Hero Landing Page berita berhasil ${!currentFeatured ? 'diaktifkan' : 'dinonaktifkan'}`);
         loadDashboardData();
+        onRefreshData();
       } else {
         const data = await res.json();
         setErrorMsg(data.error || 'Gagal mengubah status Hero');

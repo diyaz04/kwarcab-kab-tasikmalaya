@@ -60,7 +60,13 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await db.ready;
 
+    // Response API tidak boleh di-cache (browser/CDN) — data berita/hero harus selalu terbaru.
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+
     if (isServerlessRuntime && isSupabaseConfigured) {
+      // 0) Kalau bootstrap Supabase sebelumnya gagal, coba sambungkan lagi.
+      await db.reconnectIfNeeded();
+
       // 1) State instance ini bisa basi (instance lain mungkin sudah mengubah data) -> muat ulang.
       const publicRead = req.method === 'GET' && req.path.startsWith('/public/');
       await db.refreshFromSupabase(publicRead ? 5000 : 0);
@@ -1405,7 +1411,7 @@ app.put('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Response)
   res.json({ message: 'Berita updated' });
 });
 
-app.delete('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Response) => {
+app.delete('/api/admin/berita/:id', authenticate, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
   const current = db.getBerita().find(x => x.id === id);
@@ -1420,8 +1426,13 @@ app.delete('/api/admin/berita/:id', authenticate, (req: AuthRequest, res: Respon
     return;
   }
 
-  db.deleteBerita(id);
-  res.json({ message: 'Berita deleted' });
+  try {
+    await db.deleteBeritaPersist(id);
+    res.json({ message: 'Berita deleted' });
+  } catch (err: any) {
+    console.error('[Berita] Gagal menghapus:', err);
+    res.status(500).json({ error: err?.message || 'Gagal menghapus berita' });
+  }
 });
 
 

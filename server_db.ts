@@ -323,56 +323,10 @@ const DEFAULT_USERS: User[] = [
   }
 ];
 
-const DEFAULT_BERITA: Berita[] = [
-  {
-    id: 'berita_1',
-    judul: 'Raimuna Cabang Kabupaten Tasikmalaya 2026 Berlangsung Semarak di Cisayong',
-    konten: 'Cisayong, Tasikmalaya — Ribuan Pramuka Penegak dan Pandega se-Kabupaten Tasikmalaya memadati Bumi Perkemahan Cisayong dalam rangka Raimuna Cabang (Raicab) 2026. Kegiatan ini dibuka langsung oleh Ketua Kwartir Cabang Gerakan Pramuka Kabupaten Tasikmalaya, Kak H. Cecep Nurul Yakin.\n\nDalam sambutannya, Kak Cecep menekankan pentingnya peran pramuka sebagai garda terdepan dalam menjaga keutuhan NKRI dan menjadi teladan moral yang mulia di tengah perkembangan era digital. "Adik-adik sekalian adalah pemimpin masa depan. Gunakan momen Raimuna ini untuk mengasah keterampilan, memperluas persaudaraan, dan menanamkan nilai luhur Pancasila dalam sanubari," ujarnya.\n\nBerbagai kegiatan menarik dilaksanakan selama lima hari, mulai dari workshop teknologi digital, bakti sosial masyarakat, simulasi tanggap bencana oleh Saka Bhayangkara, hingga festival kebudayaan lokal Tasikmalaya yang sangat dinamis.',
-    gambar_cover: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=800&auto=format&fit=crop',
-    author_type: 'kwarcab',
-    author_id: 'u_1',
-    author_nama: 'Admin Kwarcab',
-    status: 'approved',
-    is_featured: true,
-    created_at: '2026-06-28T09:00:00Z'
-  },
-  {
-    id: 'berita_2',
-    judul: 'Pelatihan Tanggap Darurat Bencana Saka Bhayangkara Bersama Polres Tasikmalaya',
-    konten: 'Singaparna — Satuan Karya Pramuka (Saka) Bhayangkara Kwarcab Tasikmalaya menyelenggarakan Pelatihan Krida Penanggulangan Bencana alam bersama jajaran Satbinmas Polres Tasikmalaya di Lapangan Hitam Mapolres.\n\nKegiatan ini diikuti oleh 60 anggota perwakilan dari berbagai Kwartir Ranting. Materi utama yang disampaikan meliputi evakuasi korban bencana air (SAR), pertolongan pertama pada kecelakaan (PPPK), dan manajemen posko pengungsian. Instruktur pelatih dari Polres Tasikmalaya mengapresiasi semangat juang dan kedisiplinan yang ditunjukkan oleh adik-adik Saka Bhayangkara.',
-    gambar_cover: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800&auto=format&fit=crop',
-    author_type: 'saka',
-    author_id: 'saka_1',
-    author_nama: 'Saka Bhayangkara',
-    status: 'approved',
-    is_featured: false,
-    created_at: '2026-07-02T14:30:00Z'
-  },
-  {
-    id: 'berita_3',
-    judul: 'Gugus Depan SMAN 1 Cisayong Adakan Gelar Senopati dan Karya Pramuka',
-    konten: 'Cisayong — Pangkalan Kian Santang - Dyah Pitaloka Gugus Depan SMAN 1 Cisayong menyelenggarakan kegiatan tahunan Gelar Senopati. Kegiatan ini diisi dengan pameran hasta karya daur ulang sampah organik, lomba ketangkasan baris-berbaris (LKBB), serta bakti bersih lingkungan di sekitar Kecamatan Cisayong.\n\nKegiatan ini mendapat apresiasi penuh dari Kwartir Ranting Cisayong yang turut hadir memonitoring jalannya acara.',
-    gambar_cover: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=800&auto=format&fit=crop',
-    author_type: 'gudep',
-    author_id: 'gudep_1',
-    author_nama: 'SMAN 1 Cisayong',
-    status: 'approved',
-    is_featured: false,
-    created_at: '2026-07-04T08:00:00Z'
-  },
-  {
-    id: 'berita_4',
-    judul: 'Pengajuan Agenda Sehat Bersama Saka Bakti Husada Tasikmalaya',
-    konten: 'Saka Bakti Husada berencana menyelenggarakan sosialisasi pola hidup bersih dan sehat (PHBS) serta pembagian masker medis di lingkungan pasar tradisional Singaparna. Kegiatan ini diinisiasi untuk mengedukasi masyarakat pasar akan pentingnya kesehatan pasca-pandemi.',
-    gambar_cover: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop',
-    author_type: 'saka',
-    author_id: 'saka_2',
-    author_nama: 'Saka Bakti Husada',
-    status: 'pending',
-    is_featured: false,
-    created_at: '2026-07-05T01:00:00Z'
-  }
-];
+// Sengaja kosong: berita contoh TIDAK boleh di-seed. Di serverless (/tmp kosong saat cold start) atau
+// saat Supabase belum tersambung, state awal berasal dari default ini — kalau berisi berita contoh,
+// berita yang sudah dihapus admin akan muncul lagi di hero landing page.
+const DEFAULT_BERITA: Berita[] = [];
 
 const DEFAULT_AGENDA: Agenda[] = [
   {
@@ -562,7 +516,7 @@ export class DatabaseSim {
   private syncTimer: NodeJS.Timeout | null = null;
   private supabaseConnected = false;
   private supabaseLastError = '';
-  public readonly ready: Promise<void>;
+  public ready: Promise<void>;
 
   constructor() {
     this.state = this.load();
@@ -698,14 +652,40 @@ export class DatabaseSim {
 
   // Tulis perubahan ke Supabase SEKARANG (dipakai serverless: function dibekukan begitu response
   // terkirim, jadi timer 150ms di queueSupabaseSync tidak pernah sempat jalan).
-  public async syncNow(): Promise<void> {
-    if (!supabase || !this.supabaseConnected) return;
+  public async syncNow(): Promise<string[]> {
+    if (!supabase || !this.supabaseConnected) return [];
     if (this.syncTimer) {
       clearTimeout(this.syncTimer);
       this.syncTimer = null;
     }
-    await this.flushToSupabase();
+    const errors = await this.flushToSupabase();
     this.lastRefreshAt = Date.now();
+    return errors;
+  }
+
+  // Coba sambungkan ulang ke Supabase kalau bootstrap sebelumnya gagal (mis. gangguan sesaat saat cold
+  // start). Tanpa ini, instance serverless nyangkut selamanya di data lokal/default dan perubahan admin
+  // (termasuk hapus berita) tidak pernah tersimpan ke Supabase.
+  private lastReconnectAt = 0;
+  public async reconnectIfNeeded(): Promise<void> {
+    if (!supabase || this.supabaseConnected) return;
+    if (Date.now() - this.lastReconnectAt < 5000) return;
+    this.lastReconnectAt = Date.now();
+    this.ready = this.bootstrapSupabase();
+    await this.ready;
+  }
+
+  // Hapus berita: ubah state, simpan lokal, lalu hapus baris itu di Supabase secara langsung
+  // (bukan lewat diff) dan BERHENTI dengan error kalau gagal, supaya admin tidak dikira sukses.
+  public async deleteBeritaPersist(id: string): Promise<void> {
+    this.state.berita = this.state.berita.filter(b => b.id !== id);
+    this.persistLocalOnly();
+    if (!supabase) return;
+    if (!this.supabaseConnected) {
+      throw new Error('Supabase belum tersambung, penghapusan belum tersimpan permanen. Coba lagi beberapa detik lagi.');
+    }
+    const { error } = await supabase.from('berita').delete().eq('id', id);
+    if (error) throw new Error(`Gagal menghapus di Supabase: ${error.message}`);
   }
 
   private persistLocalOnly(): void {
@@ -729,26 +709,38 @@ export class DatabaseSim {
     }, 150);
   }
 
-  private async flushToSupabase(): Promise<void> {
-    if (!supabase) return;
+  private async flushToSupabase(): Promise<string[]> {
+    const errors: string[] = [];
+    if (!supabase) return errors;
 
-    try {
-      for (const table of ARRAY_TABLES) {
+    // Fase 1: upsert. Tiap tabel dibungkus sendiri-sendiri — error di satu tabel (mis. kolom belum ada
+    // di Supabase) TIDAK boleh menggagalkan tabel lain maupun fase penghapusan di bawah.
+    for (const table of ARRAY_TABLES) {
+      try {
         const rows = this.state[table] as any[];
         if (rows.length > 0) {
           const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
           if (error) throw new Error(`${table} upsert: ${error.message}`);
         }
+      } catch (e: any) {
+        errors.push(e?.message || String(e));
       }
+    }
 
+    try {
       const { error: ktaError } = await supabase.from('kta_config').upsert({
         id: 'kta_1',
         ...this.state.kta_config,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
       if (ktaError) throw new Error(`kta_config upsert: ${ktaError.message}`);
+    } catch (e: any) {
+      errors.push(e?.message || String(e));
+    }
 
-      for (const table of DELETE_ORDER) {
+    // Fase 2: hapus baris di Supabase yang sudah tidak ada di state lokal.
+    for (const table of DELETE_ORDER) {
+      try {
         const localIds = new Set((this.state[table] as any[]).map(row => row.id));
         const { data: remoteRows, error } = await supabase.from(table).select('id');
         if (error) throw new Error(`${table} select ids: ${error.message}`);
@@ -760,10 +752,16 @@ export class DatabaseSim {
           const { error: deleteError } = await supabase.from(table).delete().in('id', staleIds);
           if (deleteError) throw new Error(`${table} delete stale: ${deleteError.message}`);
         }
+      } catch (e: any) {
+        errors.push(e?.message || String(e));
       }
-    } catch (e) {
-      console.error('[Database] Supabase sync failed.', e);
     }
+
+    if (errors.length > 0) {
+      this.supabaseLastError = errors.join(' | ');
+      console.error('[Database] Supabase sync ada error:', errors);
+    }
+    return errors;
   }
 
   public save(): void {
