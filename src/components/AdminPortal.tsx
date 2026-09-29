@@ -12,6 +12,22 @@ import {
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import { sanitizeSosmed } from '../utils/sosmed';
+import { notify, confirmDialog } from '../utils/dialog';
+
+// Semua respon aksi (sukses / gagal / konfirmasi) tampil sebagai popup di dalam aplikasi,
+// bukan alert/confirm bawaan browser. Wrapper di level modul supaya identitasnya stabil.
+const setErrorMsg = (msg: string) => { if (msg) notify.error(msg); };
+const setSuccessMsg = (msg: string) => { if (msg) notify.success(msg); };
+
+// Tampilkan popup error dari response API yang gagal (status bukan 2xx).
+const reportApiError = async (res: Response, fallback: string) => {
+  let detail = '';
+  try {
+    const data = await res.json();
+    detail = data?.error || data?.message || '';
+  } catch (_) {}
+  notify.error(detail || `${fallback} (HTTP ${res.status})`);
+};
 
 // Logo resmi website (sama dengan Navbar & landing page).
 const LOGO_KWARCAB = 'https://lh3.googleusercontent.com/d/1LprUBW33eBc7zyJak0e8LkBfF8F1_b-z';
@@ -55,8 +71,6 @@ export default function AdminPortal({
   });
 
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [viewingBeritaDetail, setViewingBeritaDetail] = useState<Berita | null>(null);
   const [viewingKwarranDetail, setViewingKwarranDetail] = useState<KwartirRanting | null>(null);
@@ -205,7 +219,7 @@ export default function AdminPortal({
       : anggotaList.filter(a => a.golongan === exportFilterGolongan);
 
     if (filtered.length === 0) {
-      alert('Tidak ada data anggota untuk diekspor.');
+      notify.warning('Tidak ada data anggota untuk diekspor.', 'Data Kosong');
       return;
     }
 
@@ -263,13 +277,13 @@ export default function AdminPortal({
       : anggotaList.filter(a => a.golongan === exportFilterGolongan);
 
     if (filtered.length === 0) {
-      alert('Tidak ada data anggota untuk dicetak.');
+      notify.warning('Tidak ada data anggota untuk dicetak.', 'Data Kosong');
       return;
     }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Pop-up terblokir oleh browser. Harap izinkan pop-up untuk mencetak.');
+      notify.warning('Pop-up terblokir oleh browser. Harap izinkan pop-up untuk mencetak.', 'Pop-up Diblokir');
       return;
     }
 
@@ -659,7 +673,7 @@ export default function AdminPortal({
 
   const exportToSuratLegalitas = (singleAnggota?: Anggota) => {
     if (!canManage('kta')) {
-      alert('Maaf, Surat Keterangan Legalitas hanya dapat diterbitkan oleh Kwartir Cabang (Kwarcab).');
+      notify.warning('Surat Keterangan Legalitas hanya dapat diterbitkan oleh Kwartir Cabang (Kwarcab).', 'Akses Ditolak');
       return;
     }
 
@@ -670,13 +684,13 @@ export default function AdminPortal({
           : anggotaList.filter(a => a.golongan === exportFilterGolongan));
 
     if (filtered.length === 0) {
-      alert('Tidak ada data anggota untuk mencetak surat legalitas.');
+      notify.warning('Tidak ada data anggota untuk mencetak surat legalitas.', 'Data Kosong');
       return;
     }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Pop-up terblokir oleh browser. Harap izinkan pop-up untuk mencetak surat keterangan.');
+      notify.warning('Pop-up terblokir oleh browser. Harap izinkan pop-up untuk mencetak surat keterangan.', 'Pop-up Diblokir');
       return;
     }
 
@@ -1343,15 +1357,8 @@ export default function AdminPortal({
     loadDashboardData();
   }, [activeTab, user.id, token]);
 
-  const showSuccess = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 4000);
-  };
-
-  const showError = (msg: string) => {
-    setErrorMsg(msg);
-    setTimeout(() => setErrorMsg(''), 5000);
-  };
+  const showSuccess = (msg: string) => notify.success(msg);
+  const showError = (msg: string) => notify.error(msg);
 
   type CompressionOptions = {
     maxDimension?: number;
@@ -1518,7 +1525,7 @@ export default function AdminPortal({
   };
 
   const handleDeleteAnggota = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus anggota ini?')) return;
+    if (!(await confirmDialog({ title: 'Hapus Anggota', message: 'Apakah Anda yakin ingin menghapus anggota ini? Tindakan ini tidak dapat dibatalkan.', danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/anggota/${id}`, {
         method: 'DELETE',
@@ -1528,6 +1535,8 @@ export default function AdminPortal({
         showSuccess('Anggota berhasil dihapus');
         loadDashboardData();
         onRefreshData();
+      } else {
+        await reportApiError(res, 'Gagal menghapus anggota');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1617,6 +1626,8 @@ export default function AdminPortal({
         showSuccess(canManage('berita') ? 'Berita berhasil dipublish!' : 'Pengajuan berita berhasil dikirim, menunggu peninjauan Kwarcab.');
         setFormMode('list');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan berita');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1637,6 +1648,8 @@ export default function AdminPortal({
         showSuccess(`Status berita berhasil diubah ke ${action === 'approve' ? 'Disetujui & Unggulan' : 'Ditolak'}`);
         loadDashboardData();
         onRefreshData();
+      } else {
+        await reportApiError(res, 'Gagal memproses review berita');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1644,7 +1657,7 @@ export default function AdminPortal({
   };
 
   const handleDeleteBerita = async (id: string) => {
-    if (!window.confirm('Yakin hapus berita?')) return;
+    if (!(await confirmDialog({ title: 'Hapus Berita', message: 'Yakin ingin menghapus berita ini? Berita akan hilang dari landing page.', danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/berita/${id}`, {
         method: 'DELETE',
@@ -1710,6 +1723,8 @@ export default function AdminPortal({
         showSuccess('Agenda kegiatan berhasil disimpan!');
         setFormMode('list');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan agenda');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1717,7 +1732,7 @@ export default function AdminPortal({
   };
 
   const handleDeleteAgenda = async (id: string) => {
-    if (!window.confirm('Yakin hapus agenda?')) return;
+    if (!(await confirmDialog({ title: 'Hapus Agenda', message: 'Yakin ingin menghapus agenda ini?', danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/agenda/${id}`, {
         method: 'DELETE',
@@ -1726,6 +1741,8 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess('Agenda berhasil dihapus');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menghapus agenda');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1765,6 +1782,8 @@ export default function AdminPortal({
         setConfSosmed(sanitizeSosmed(confSosmed));
         showSuccess('Konfigurasi Profil Kwarcab berhasil disimpan!');
         onRefreshData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan konfigurasi');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1775,7 +1794,7 @@ export default function AdminPortal({
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uRole === 'staff_kwarcab' && uPermissions.length === 0) {
-      setErrorMsg('Pilih minimal satu akses pengelolaan untuk Staf Admin Kwarcab.');
+      notify.warning('Pilih minimal satu akses pengelolaan untuk Staf Admin Kwarcab.', 'Form Belum Lengkap');
       return;
     }
     try {
@@ -1804,6 +1823,8 @@ export default function AdminPortal({
         showSuccess('Akun user berhasil disimpan!');
         setFormMode('list');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan akun user');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1812,10 +1833,10 @@ export default function AdminPortal({
 
   const handleDeleteUser = async (id: string) => {
     if (id === user.id) {
-      setErrorMsg('Anda tidak bisa menghapus akun Anda sendiri.');
+      notify.warning('Anda tidak bisa menghapus akun Anda sendiri.', 'Tidak Diizinkan');
       return;
     }
-    if (!window.confirm('Yakin hapus akun user ini?')) return;
+    if (!(await confirmDialog({ title: 'Hapus Akun', message: 'Yakin ingin menghapus akun user ini? Pengguna tidak akan bisa masuk lagi.', danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
@@ -1824,6 +1845,8 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess('Akun berhasil dihapus');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menghapus akun user');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -1899,7 +1922,7 @@ export default function AdminPortal({
   };
 
   const handleDeleteKampungPramuka = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus Kampung Pramuka ini?')) return;
+    if (!(await confirmDialog({ title: 'Hapus Kampung Pramuka', message: 'Yakin ingin menghapus Kampung Pramuka ini?', danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/kampung-pramuka/${id}`, {
         method: 'DELETE',
@@ -1995,6 +2018,8 @@ export default function AdminPortal({
         showSuccess('Gugus Depan berhasil disimpan!');
         setFormMode('list');
         loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan Gugus Depan');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -2026,6 +2051,8 @@ export default function AdminPortal({
         setFormMode('list');
         loadDashboardData();
         onRefreshData();
+      } else {
+        await reportApiError(res, 'Gagal menyimpan Satuan Karya');
       }
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -2180,21 +2207,6 @@ export default function AdminPortal({
 
   return (
     <div className="flex h-screen bg-[#F4F7F6] font-sans relative">
-      {/* Toast Messages */}
-      {successMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-green-50 text-green-800 border border-green-200 shadow-2xl animate-slide-up">
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
-          <span className="text-sm font-semibold">{successMsg}</span>
-        </div>
-      )}
-      {errorMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-5 py-3.5 rounded-2xl bg-red-50 text-red-800 border border-red-200 shadow-2xl animate-slide-up">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <span className="text-sm font-semibold">{errorMsg}</span>
-          <button onClick={() => setErrorMsg('')} className="text-xs font-bold pl-2 underline text-red-900">Tutup</button>
-        </div>
-      )}
-
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>

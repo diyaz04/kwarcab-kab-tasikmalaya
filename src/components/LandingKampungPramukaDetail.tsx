@@ -5,6 +5,7 @@ import {
   Globe, Info, ChevronLeft, ChevronRight, Share2 
 } from 'lucide-react';
 import { KampungPramuka } from '../types';
+import { notify } from '../utils/dialog';
 
 interface LandingKampungPramukaDetailProps {
   kp: KampungPramuka;
@@ -244,9 +245,13 @@ export default function LandingKampungPramukaDetail({ kp, onBack }: LandingKampu
                 </p>
               </div>
               <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert('Tautan halaman Kampung Pramuka ini berhasil disalin ke clipboard!');
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    notify.success('Tautan halaman Kampung Pramuka ini berhasil disalin ke clipboard!', 'Tautan Disalin');
+                  } catch (_) {
+                    notify.error('Tautan tidak bisa disalin otomatis. Salin manual dari address bar browser.', 'Gagal Menyalin');
+                  }
                 }}
                 className="shrink-0 flex items-center space-x-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white font-extrabold text-[11px] uppercase transition cursor-pointer shadow-sm"
               >

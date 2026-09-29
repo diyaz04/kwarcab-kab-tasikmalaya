@@ -3,6 +3,7 @@ import { Search, Calendar, User, Eye, X, Filter, Compass, ChevronRight, ArrowLef
 import { motion } from 'motion/react';
 import { Berita } from '../types';
 import { generateBeritaPamflet, downloadPamflet, sharePamflet } from '../utils/beritaPamflet';
+import { notify } from '../utils/dialog';
 
 interface LandingBeritaProps {
   berita: Berita[];
@@ -104,10 +105,15 @@ export default function LandingBerita({ berita, selectedBerita, setSelectedBerit
   })();
   const shareText = selectedBerita ? `Baca warta Pramuka terbaru: "${selectedBerita.judul}" di Kwarcab Kabupaten Tasikmalaya` : '';
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+      notify.success('Tautan berita berhasil disalin ke clipboard!', 'Tautan Disalin');
+    } catch (_) {
+      notify.error('Tautan tidak bisa disalin otomatis. Salin manual dari address bar browser.', 'Gagal Menyalin');
+    }
   };
 
   const shareToWhatsApp = () => {
