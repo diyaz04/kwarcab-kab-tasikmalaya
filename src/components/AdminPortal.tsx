@@ -1652,9 +1652,12 @@ export default function AdminPortal({
       if (res.ok) {
         showSuccess('Berita berhasil dihapus');
         loadDashboardData();
+      } else {
+        const d = await res.json().catch(() => ({} as any));
+        showError(d.error || `Gagal menghapus berita (HTTP ${res.status})`);
       }
     } catch (err: any) {
-      setErrorMsg(err.message);
+      showError(err.message || 'Gagal menghapus berita');
     }
   };
 

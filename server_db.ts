@@ -615,7 +615,7 @@ export class DatabaseSim {
     }
 
     try {
-      await this.pullFromSupabase();
+      await this.pullFromSupabase('bootstrap');
       await this.flushToSupabase();
       this.persistLocalOnly();
       this.supabaseConnected = true;
@@ -636,15 +636,24 @@ export class DatabaseSim {
     return this.supabaseLastError;
   }
 
-  private async pullFromSupabase(): Promise<void> {
+  // mode 'bootstrap': DB Supabase kosong total (belum ada user) => pakai data default lokal lalu di-seed.
+  // Selain itu SELALU ikuti isi Supabase apa adanya (termasuk tabel kosong), supaya data yang
+  // sudah dihapus tidak "hidup lagi" dari data default.
+  private async pullFromSupabase(mode: 'bootstrap' | 'refresh' = 'bootstrap'): Promise<void> {
     if (!supabase) return;
 
+    const remote = {} as Record<ArrayTableName, any[]>;
     for (const table of ARRAY_TABLES) {
       const { data, error } = await supabase.from(table).select('*');
       if (error) throw new Error(`${table}: ${error.message}`);
-      if (data && data.length > 0) {
-        (this.state[table] as any[]) = data;
-      }
+      remote[table] = data || [];
+    }
+
+    const freshDb = mode === 'bootstrap' && remote.users.length === 0;
+    for (const table of ARRAY_TABLES) {
+      if (freshDb && remote[table].length === 0) continue; // biarkan default untuk di-seed
+      if (table === 'profil_kwarcab' && remote[table].length === 0) continue; // profil harus selalu ada
+      (this.state[table] as any[]) = remote[table];
     }
 
     const { data: ktaRows, error: ktaError } = await supabase
@@ -660,6 +669,43 @@ export class DatabaseSim {
         stempel_url: ktaRows[0].stempel_url || ''
       };
     }
+  }
+
+  private lastRefreshAt = 0;
+  private refreshing: Promise<void> | null = null;
+
+  // Serverless (Vercel): tiap instance punya memori sendiri & bisa basi. Sebelum melayani
+  // request, muat ulang state dari Supabase (maxAgeMs = toleransi umur cache).
+  public async refreshFromSupabase(maxAgeMs = 0): Promise<void> {
+    if (!supabase || !this.supabaseConnected) return;
+    if (this.refreshing) return this.refreshing;
+    if (maxAgeMs > 0 && Date.now() - this.lastRefreshAt < maxAgeMs) return;
+
+    this.refreshing = (async () => {
+      try {
+        await this.pullFromSupabase('refresh');
+        this.lastRefreshAt = Date.now();
+      } catch (e: any) {
+        // Gagal refresh: lanjut pakai state yang ada, jangan bikin request mati
+        this.supabaseLastError = e?.message || String(e);
+        console.error('[Database] Refresh dari Supabase gagal:', e);
+      } finally {
+        this.refreshing = null;
+      }
+    })();
+    return this.refreshing;
+  }
+
+  // Tulis perubahan ke Supabase SEKARANG (dipakai serverless: function dibekukan begitu response
+  // terkirim, jadi timer 150ms di queueSupabaseSync tidak pernah sempat jalan).
+  public async syncNow(): Promise<void> {
+    if (!supabase || !this.supabaseConnected) return;
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+      this.syncTimer = null;
+    }
+    await this.flushToSupabase();
+    this.lastRefreshAt = Date.now();
   }
 
   private persistLocalOnly(): void {

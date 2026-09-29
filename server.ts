@@ -56,9 +56,31 @@ try {
 // Serve uploaded files statically
 app.use('/uploads', express.static(uploadsDir));
 
-app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
+app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await db.ready;
+
+    if (isServerlessRuntime && isSupabaseConfigured) {
+      // 1) State instance ini bisa basi (instance lain mungkin sudah mengubah data) -> muat ulang.
+      const publicRead = req.method === 'GET' && req.path.startsWith('/public/');
+      await db.refreshFromSupabase(publicRead ? 5000 : 0);
+
+      // 2) Untuk request yang mengubah data: pastikan tersimpan ke Supabase SEBELUM response
+      //    dikirim, karena Vercel membekukan function begitu response selesai.
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        const originalEnd = res.end.bind(res) as (...a: any[]) => Response;
+        let ended = false;
+        (res as any).end = (...args: any[]) => {
+          if (ended) return res;
+          ended = true;
+          db.syncNow()
+            .catch(err => console.error('[API] syncNow gagal:', err))
+            .finally(() => originalEnd(...args));
+          return res;
+        };
+      }
+    }
+
     next();
   } catch (error: any) {
     res.status(503).json({ error: error?.message || 'Database belum siap' });
