@@ -41,12 +41,16 @@ const normalizePermissions = (permissions: unknown): AdminPermission[] => {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Ensure uploads folder exists
+// Ensure uploads folder exists (safe for serverless)
 const uploadsDir = isServerlessRuntime
   ? path.join('/tmp', 'kwarcab-uploads')
   : path.join(process.cwd(), 'data', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (e) {
+  console.warn('[Server] Could not create uploads dir:', e);
 }
 
 // Serve uploaded files statically

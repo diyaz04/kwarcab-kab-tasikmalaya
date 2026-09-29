@@ -570,7 +570,7 @@ export class DatabaseSim {
           modified = true;
         }
         if (modified) {
-          fs.writeFileSync(STORE_PATH, JSON.stringify(parsed, null, 2), 'utf-8');
+          try { fs.writeFileSync(STORE_PATH, JSON.stringify(parsed, null, 2), 'utf-8'); } catch (_) {}
         }
         return parsed;
       }
@@ -578,15 +578,19 @@ export class DatabaseSim {
       console.error('Error loading database, reinitializing...', e);
     }
 
-    // Default Initialization
-    const dir = path.dirname(STORE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
     const defaultState: DbState = createDefaultState();
 
-    fs.writeFileSync(STORE_PATH, JSON.stringify(defaultState, null, 2), 'utf-8');
+    // Try to persist to disk, but don't crash if the filesystem is read-only
+    try {
+      const dir = path.dirname(STORE_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(STORE_PATH, JSON.stringify(defaultState, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('[Database] Could not persist default state to disk (read-only fs?):', e);
+    }
+
     return defaultState;
   }
 
