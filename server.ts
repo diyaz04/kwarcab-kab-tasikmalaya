@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { DatabaseSim, isSupabaseConfigured, supabase } from './server_db';
+import { DatabaseSim, isSupabaseConfigured, supabase, getSupabaseInitError } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 import { sanitizeSosmed } from './src/utils/sosmed';
 
@@ -209,8 +209,9 @@ const deleteSupabaseAuthUserByEmail = async (email: string) => {
 };
 
 const validateSupabaseAuthPassword = async (email: string, password: string): Promise<boolean> => {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  const clean = (v?: string) => (v || '').trim().replace(/^['"]+|['"]+$/g, '').trim();
+  const supabaseUrl = clean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL).replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+  const supabaseKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY);
   if (!supabaseUrl || !supabaseKey) return false;
 
   const authClient = createClient(supabaseUrl, supabaseKey, {
@@ -509,11 +510,12 @@ app.get('/api/public/runtime', (req: Request, res: Response) => {
   res.json({
     supabaseConfigured: isSupabaseConfigured,
     supabaseConnected,
-    supabaseLastError: db.getSupabaseLastError(),
+    supabaseLastError: db.getSupabaseLastError() || getSupabaseInitError(),
+    vercelRuntime: Boolean(process.env.VERCEL),
     supabaseUrlPresent: Boolean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
     supabaseKeyPresent: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY),
     usingServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    netlifyRuntime: Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME),
+    netlifyRuntime: Boolean(process.env.NETLIFY || (process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.VERCEL)),
     devPanelEnabled: !supabaseConnected
   });
 });

@@ -1348,6 +1348,11 @@ export default function AdminPortal({
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
+  const showError = (msg: string) => {
+    setErrorMsg(msg);
+    setTimeout(() => setErrorMsg(''), 5000);
+  };
+
   type CompressionOptions = {
     maxDimension?: number;
     quality?: number;
@@ -3951,7 +3956,7 @@ export default function AdminPortal({
                       />
                     </div>
                     {/* Status Kwarran (Hanya bisa diubah Kwarcab) */}
-                    {(user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'superadmin') && (
+                    {(user.role === 'kwarcab' || user.role === 'staff_kwarcab') && (
                       <div className="space-y-1.5">
                         <label className="text-xs text-gray-600">Status Layanan *</label>
                         <select

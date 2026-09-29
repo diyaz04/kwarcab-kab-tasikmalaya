@@ -14,18 +14,32 @@ const IS_SERVERLESS_RUNTIME = process.env.NETLIFY === 'true'
 const STORE_PATH = IS_SERVERLESS_RUNTIME
   ? path.join('/tmp', 'kwarcab-db-store.json')
   : path.join(process.cwd(), 'data', 'db_store.json');
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+// Bersihkan value env dari Vercel (spasi, kutip, trailing slash, path /rest/v1)
+const cleanEnv = (v?: string): string => (v || '').trim().replace(/^['"]+|['"]+$/g, '').trim();
+const cleanSupabaseUrl = (v?: string): string =>
+  cleanEnv(v).replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
 
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null;
+const SUPABASE_URL = cleanSupabaseUrl(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
+const SUPABASE_KEY = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY);
+
+let supabaseInitError = '';
+const buildSupabaseClient = (): SupabaseClient | null => {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+  } catch (e: any) {
+    // JANGAN crash saat import — kalau createClient throw di top-level, seluruh function Vercel mati (500 non-JSON)
+    supabaseInitError = e?.message || String(e);
+    console.error('[Database] createClient gagal (cek SUPABASE_URL):', supabaseInitError);
+    return null;
+  }
+};
+
+export const supabase: SupabaseClient | null = buildSupabaseClient();
+export const isSupabaseConfigured = Boolean(supabase);
+export const getSupabaseInitError = () => supabaseInitError;
 
 export interface DbState {
   users: User[];

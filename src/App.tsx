@@ -29,7 +29,7 @@ const readApiJson = async (res: Response) => {
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error('Server API tidak mengembalikan JSON yang valid. Cek apakah backend Express sedang berjalan.');
+    throw new Error('Server API tidak mengembalikan JSON yang valid. Kalau di Vercel, cek Functions Logs dan buka /api/public/runtime untuk diagnosa.');
   }
 };
 

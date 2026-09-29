@@ -10,6 +10,8 @@ interface NavbarProps {
   onOpenLogin: () => void;
   unreadCount: number;
   onOpenNotif: () => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 export default function Navbar({

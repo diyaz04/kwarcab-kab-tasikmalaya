@@ -473,7 +473,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
             <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end">
               <button
                 onClick={() => {
-                  setSelectedId(null);
+                  doSetSelectedId(null);
                   setDetailData(null);
                 }}
                 className="px-6 py-2.5 rounded-xl bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:text-green-700 hover:border-green-300 font-semibold text-xs tracking-wider uppercase transition-all duration-200 shadow-sm"
