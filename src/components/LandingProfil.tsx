@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { BookOpen, Award, Shield, Compass, Eye, ListOrdered, Calendar } from 'lucide-react';
 import { PimpinanKwarcab, ProfilKwarcab } from '../types';
@@ -22,31 +22,6 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
     .split('\n')
     .map((m) => m.trim())
     .filter((m) => m.length > 0);
-
-  const [pageSize, setPageSize] = useState<number>(4);
-  const [currentPage, setCurrentPage] = useState(1);
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [pageSize]);
-
-  const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(pimpinan.length / pageSize));
-  const activePage = Math.min(currentPage, totalPages);
-  const pageItems = pageSize === Infinity ? pimpinan : pimpinan.slice((activePage - 1) * pageSize, activePage * pageSize);
-
-  const pageNumbers: Array<number | 'gap'> = [];
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || Math.abs(i - activePage) <= 1) {
-      pageNumbers.push(i);
-    } else if (pageNumbers[pageNumbers.length - 1] !== 'gap') {
-      pageNumbers.push('gap');
-    }
-  }
-
-  const goToPage = (p: number) => {
-    if (p >= 1 && p <= totalPages) {
-      setCurrentPage(p);
-    }
-  };
 
   return (
     <div className="pt-32 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -140,113 +115,6 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
             )
           ))}
         </div>
-      </div>
-
-      {/* Pimpinan Kwarcab - Dynamic Grid */}
-      <div className="mb-20">
-        <div className="flex items-center justify-center space-x-3 mb-10 text-center">
-          <Shield className="w-6 h-6 text-blue-700" />
-          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">Andalan & Pengurus Kwartir Cabang</h3>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {pageItems.map((p) => (
-            <div 
-              key={p.id} 
-              className="bg-white rounded-2xl overflow-hidden flex flex-col h-full border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-300"
-            >
-              <div className="relative h-64 overflow-hidden group">
-                <img 
-                  src={fotoOrDefault(p.foto)} 
-                  onError={onFotoError}
-                  alt={p.nama} 
-                  className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </div>
-              <div className="p-5 flex-grow flex flex-col justify-between bg-white border-t border-gray-50">
-                <div>
-                  <h4 className="text-sm font-bold text-gray-900 tracking-wide leading-snug line-clamp-2">
-                    {p.nama}
-                  </h4>
-                  <p className="text-xs text-green-600 font-semibold tracking-wider uppercase mt-2">
-                    {p.jabatan}
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-gray-100 mt-4 flex items-center justify-between text-[10px] text-gray-500">
-                  <span>Pramuka Tasikmalaya</span>
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {pimpinan.length > 0 && (
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 pt-6">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 font-medium">Tampilkan:</span>
-              <select
-                value={pageSize === Infinity ? 'all' : pageSize}
-                onChange={(e) => setPageSize(e.target.value === 'all' ? Infinity : Number(e.target.value))}
-                className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 cursor-pointer shadow-sm"
-              >
-                <option value={4}>4 Data</option>
-                <option value={10}>10 Data</option>
-                <option value={20}>20 Data</option>
-                <option value="all">Semua</option>
-              </select>
-            </div>
-
-            {pageSize !== Infinity && (
-              <span className="text-xs text-gray-500 hidden md:block">
-                Menampilkan {(activePage - 1) * pageSize + 1}&ndash;{Math.min(activePage * pageSize, pimpinan.length)} dari {pimpinan.length} pimpinan
-              </span>
-            )}
-
-            {totalPages > 1 && pageSize !== Infinity && (
-              <nav aria-label="Paginasi pimpinan" className="flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => goToPage(activePage - 1)}
-                  disabled={activePage === 1}
-                  className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-300 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shadow-sm"
-                >
-                  Sebelumnya
-                </button>
-
-                {pageNumbers.map((n, idx) =>
-                  n === 'gap' ? (
-                    <span key={`gap-${idx}`} className="px-1 text-gray-400 text-xs">&hellip;</span>
-                  ) : (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => goToPage(n)}
-                      aria-current={n === activePage ? 'page' : undefined}
-                      className={`min-w-[36px] px-2.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 shadow-sm ${
-                        n === activePage
-                          ? 'bg-green-700 text-white border-green-800'
-                          : 'bg-white text-gray-600 border-gray-200 hover:text-green-700 hover:border-green-300'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => goToPage(activePage + 1)}
-                  disabled={activePage === totalPages}
-                  className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-300 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shadow-sm"
-                >
-                  Selanjutnya
-                </button>
-              </nav>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Sejarah Kwarcab */}
