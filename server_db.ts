@@ -597,11 +597,18 @@ export class DatabaseSim {
     if (!supabase) return;
 
     const remote = {} as Record<ArrayTableName, any[]>;
-    for (const table of ARRAY_TABLES) {
-      const { data, error } = await supabase.from(table).select('*');
+    const [results, ktaResult] = await Promise.all([
+      Promise.all(ARRAY_TABLES.map(table => supabase!.from(table).select('*'))),
+      supabase.from('kta_config')
+        .select('nama_ketua,tanda_tangan_url,stempel_url')
+        .eq('id', 'kta_1')
+        .limit(1)
+    ]);
+    ARRAY_TABLES.forEach((table, i) => {
+      const { data, error } = results[i];
       if (error) throw new Error(`${table}: ${error.message}`);
       remote[table] = data || [];
-    }
+    });
 
     const freshDb = mode === 'bootstrap' && remote.users.length === 0;
     for (const table of ARRAY_TABLES) {
@@ -610,11 +617,7 @@ export class DatabaseSim {
       (this.state[table] as any[]) = remote[table];
     }
 
-    const { data: ktaRows, error: ktaError } = await supabase
-      .from('kta_config')
-      .select('nama_ketua,tanda_tangan_url,stempel_url')
-      .eq('id', 'kta_1')
-      .limit(1);
+    const { data: ktaRows, error: ktaError } = ktaResult;
     if (ktaError) throw new Error(`kta_config: ${ktaError.message}`);
     if (ktaRows && ktaRows.length > 0) {
       this.state.kta_config = {
@@ -715,7 +718,7 @@ export class DatabaseSim {
 
     // Fase 1: upsert. Tiap tabel dibungkus sendiri-sendiri — error di satu tabel (mis. kolom belum ada
     // di Supabase) TIDAK boleh menggagalkan tabel lain maupun fase penghapusan di bawah.
-    for (const table of ARRAY_TABLES) {
+    await Promise.all(ARRAY_TABLES.map(async table => {
       try {
         const rows = this.state[table] as any[];
         if (rows.length > 0) {
@@ -725,7 +728,7 @@ export class DatabaseSim {
       } catch (e: any) {
         errors.push(e?.message || String(e));
       }
-    }
+    }));
 
     try {
       const { error: ktaError } = await supabase.from('kta_config').upsert({
@@ -739,12 +742,14 @@ export class DatabaseSim {
     }
 
     // Fase 2: hapus baris di Supabase yang sudah tidak ada di state lokal.
-    for (const table of DELETE_ORDER) {
+    const remoteIds = await Promise.all(DELETE_ORDER.map(async table => {
+      const { data, error } = await supabase.from(table).select('id');
+      return { table, data, error };
+    }));
+    for (const { table, data: remoteRows, error } of remoteIds) {
       try {
-        const localIds = new Set((this.state[table] as any[]).map(row => row.id));
-        const { data: remoteRows, error } = await supabase.from(table).select('id');
         if (error) throw new Error(`${table} select ids: ${error.message}`);
-
+        const localIds = new Set((this.state[table] as any[]).map(row => row.id));
         const staleIds = (remoteRows || [])
           .map((row: any) => row.id)
           .filter((id: string) => !localIds.has(id));

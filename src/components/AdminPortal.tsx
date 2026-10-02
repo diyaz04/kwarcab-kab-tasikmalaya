@@ -141,6 +141,7 @@ export default function AdminPortal({
   const [berJudul, setBerJudul] = useState('');
   const [berKonten, setBerKonten] = useState('');
   const [berCover, setBerCover] = useState('');
+  const [berCoverUploading, setBerCoverUploading] = useState(false);
   const [berIsFeatured, setBerIsFeatured] = useState(false);
 
   // Agenda Form Fields
@@ -1606,6 +1607,10 @@ export default function AdminPortal({
   // --- ACTIONS: BERITA CRUD & REVIEW ---
   const handleSaveBerita = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (berCoverUploading) {
+      setErrorMsg('Cover masih diunggah, tunggu sampai selesai lalu simpan lagi.');
+      return;
+    }
     try {
       const method = formMode === 'add' ? 'POST' : 'PUT';
       const url = formMode === 'add' ? '/api/admin/berita' : `/api/admin/berita/${selectedItem.id}`;
@@ -4850,14 +4855,25 @@ export default function AdminPortal({
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleBase64Upload(e, setBerCover, {
-                          maxDimension: 1200,
-                          quality: 0.46,
-                          filenamePrefix: 'cover_',
-                          successMessage: 'Cover berita berhasil dikompresi maksimal dan diunggah!'
-                        })}
+                        disabled={berCoverUploading}
+                        onChange={async (e) => {
+                          setBerCoverUploading(true);
+                          try {
+                            await handleBase64Upload(e, setBerCover, {
+                              maxDimension: 1200,
+                              quality: 0.46,
+                              filenamePrefix: 'cover_',
+                              successMessage: 'Cover berita berhasil dikompresi maksimal dan diunggah!'
+                            });
+                          } finally {
+                            setBerCoverUploading(false);
+                          }
+                        }}
                         className="w-full bg-white text-xs text-gray-900 px-4 py-2 rounded-xl border border-gray-200"
                       />
+                      {berCoverUploading && (
+                        <p className="text-xs text-amber-600 mt-1">Mengunggah cover… jangan tekan Simpan dulu.</p>
+                      )}
                       {berCover && (
                         <img src={berCover} alt="Preview Cover" className="w-32 h-20 object-cover mt-2 rounded-lg border border-gray-200" />
                       )}
@@ -4882,7 +4898,7 @@ export default function AdminPortal({
 
                   <div className="flex justify-end space-x-3">
                     <button type="button" onClick={() => setFormMode('list')} className="px-4 py-2 bg-white border border-gray-100 shadow-sm rounded-xl text-gray-600">Batal</button>
-                    <button type="submit" className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold transition">Simpan</button>
+                    <button type="submit" disabled={berCoverUploading} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white font-bold transition">{berCoverUploading ? 'Mengunggah…' : 'Simpan'}</button>
                   </div>
                 </form>
               )}

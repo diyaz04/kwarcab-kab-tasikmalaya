@@ -61,7 +61,12 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
     await db.ready;
 
     // Response API tidak boleh di-cache (browser/CDN) — data berita/hero harus selalu terbaru.
-    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    // Endpoint publik boleh di-cache singkat di CDN (cepat); sisanya tetap no-store.
+    const isPublicGet = req.method === 'GET' && req.path.startsWith('/public/') && !req.path.startsWith('/public/verify-anggota');
+    res.setHeader(
+      'Cache-Control',
+      isPublicGet ? 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' : 'no-store, max-age=0'
+    );
 
     if (isServerlessRuntime && isSupabaseConfigured) {
       // 0) Kalau bootstrap Supabase sebelumnya gagal, coba sambungkan lagi.
@@ -69,7 +74,7 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
 
       // 1) State instance ini bisa basi (instance lain mungkin sudah mengubah data) -> muat ulang.
       const publicRead = req.method === 'GET' && req.path.startsWith('/public/');
-      await db.refreshFromSupabase(publicRead ? 5000 : 0);
+      await db.refreshFromSupabase(publicRead ? 10000 : 0);
 
       // 2) Untuk request yang mengubah data: pastikan tersimpan ke Supabase SEBELUM response
       //    dikirim, karena Vercel membekukan function begitu response selesai.
@@ -545,6 +550,22 @@ app.get('/api/public/runtime', (req: Request, res: Response) => {
     usingServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     netlifyRuntime: Boolean(process.env.NETLIFY || (process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.VERCEL)),
     devPanelEnabled: !supabaseConnected
+  });
+});
+
+// Semua data publik halaman utama dalam satu request
+app.get('/api/public/all', (req: Request, res: Response) => {
+  res.json({
+    profil: db.getProfil(),
+    pimpinan: db.getPimpinan().sort((a, b) => a.urutan - b.urutan),
+    berita: db.getBerita()
+      .filter(b => b.status === 'approved')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    agenda: db.getAgenda()
+      .sort((a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime()),
+    kwarran: db.getKwarran().sort((a, b) => a.nama_kecamatan.localeCompare(b.nama_kecamatan)),
+    saka: db.getSaka().sort((a, b) => a.nama_saka.localeCompare(b.nama_saka)),
+    kampungPramuka: db.getKampungPramuka().sort((a, b) => a.nama.localeCompare(b.nama))
   });
 });
 
@@ -1313,7 +1334,7 @@ app.post('/api/admin/berita', authenticate, (req: AuthRequest, res: Response) =>
     id: `berita_${Date.now()}`,
     judul,
     konten,
-    gambar_cover: gambar_cover || 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=800&auto=format&fit=crop',
+    gambar_cover: gambar_cover || '/logo-source.png',
     author_type: authorType,
     author_id: user.ref_id || user.id, // reference role ID
     author_nama: user.nama,

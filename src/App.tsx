@@ -129,27 +129,17 @@ export default function App() {
   // Floating selector for quick evaluation
 
   // Load all public data
-  const loadPublicData = async () => {
+  const loadPublicData = async (bypassCache = false) => {
     try {
-      const [pRes, pimRes, bRes, agRes, kwRes, skRes, kpRes] = await Promise.all([
-        fetch('/api/public/profil', { cache: 'no-store' }),
-        fetch('/api/public/pimpinan', { cache: 'no-store' }),
-        fetch('/api/public/berita', { cache: 'no-store' }),
-        fetch('/api/public/agenda', { cache: 'no-store' }),
-        fetch('/api/public/kwarran', { cache: 'no-store' }),
-        fetch('/api/public/saka', { cache: 'no-store' }),
-        fetch('/api/public/kampung-pramuka', { cache: 'no-store' })
-      ]);
-
-      const [profilData, pimpinanData, beritaData, agendaData, kwarranData, sakaData, kpData] = await Promise.all([
-        readPublicJson(pRes, 'profil'),
-        readPublicJson(pimRes, 'pimpinan'),
-        readPublicJson(bRes, 'berita'),
-        readPublicJson(agRes, 'agenda'),
-        readPublicJson(kwRes, 'kwarran'),
-        readPublicJson(skRes, 'saka'),
-        readPublicJson(kpRes, 'kampung pramuka')
-      ]);
+      const res = await fetch(bypassCache ? `/api/public/all?t=${Date.now()}` : '/api/public/all', { cache: 'no-store' });
+      const all = await readPublicJson(res, 'data publik');
+      const profilData = all?.profil;
+      const pimpinanData = all?.pimpinan;
+      const beritaData = all?.berita;
+      const agendaData = all?.agenda;
+      const kwarranData = all?.kwarran;
+      const sakaData = all?.saka;
+      const kpData = all?.kampungPramuka;
 
       setProfil(profilData);
       setPimpinan(ensureArray<PimpinanKwarcab>(pimpinanData));
@@ -502,7 +492,7 @@ export default function App() {
               <AdminPortal 
                 user={user} 
                 token={token} 
-                onRefreshData={loadPublicData} 
+                onRefreshData={() => loadPublicData(true)} 
                 allKwarran={kwarran} 
                 allSaka={saka} 
                 onBackToLanding={() => setCurrentTab('home')}
