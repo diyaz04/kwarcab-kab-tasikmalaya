@@ -4,6 +4,7 @@ import { Berita, ProfilKwarcab } from '../types';
 
 interface LandingHeroProps {
   profil: ProfilKwarcab | null;
+  /** Berita terbaru untuk kilasan di hero (sudah diurutkan, maks. 5 dipakai). */
   featuredNews: Berita[];
   onSelectBerita: (b: Berita) => void;
   onNavigateToTab: (tab: string) => void;
@@ -17,47 +18,43 @@ export default function LandingHero({
 }: LandingHeroProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const heroMode = profil?.hero_mode || 'dinamis';
-  const hasFeatured = featuredNews.length > 0;
+  const newsItems = featuredNews.slice(0, 5);
+  const hasNews = newsItems.length > 0;
 
   useEffect(() => {
-    if (heroMode === 'dinamis' && hasFeatured) {
+    if (activeIndex >= newsItems.length) setActiveIndex(0);
+  }, [newsItems.length, activeIndex]);
+
+  useEffect(() => {
+    if (newsItems.length > 1) {
       const interval = setInterval(() => {
-        setActiveIndex((prev) => (prev + 1) % featuredNews.length);
+        setActiveIndex((prev) => (prev + 1) % newsItems.length);
       }, 6000);
       return () => clearInterval(interval);
     }
-  }, [heroMode, featuredNews.length, hasFeatured]);
+  }, [newsItems.length]);
 
   const handlePrev = () => {
-    setActiveIndex((prev) => (prev === 0 ? featuredNews.length - 1 : prev - 1));
+    setActiveIndex((prev) => (prev === 0 ? newsItems.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % featuredNews.length);
+    setActiveIndex((prev) => (prev + 1) % newsItems.length);
   };
 
-  const mainNews = hasFeatured ? featuredNews[activeIndex] : null;
+  const mainNews = hasNews ? newsItems[Math.min(activeIndex, newsItems.length - 1)] : null;
+  const bannerUrl = profil?.banner_statis_url || 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop';
 
   return (
     <div className="relative min-h-[100vh] flex flex-col justify-center overflow-hidden bg-white">
       
       {/* Background Image Layer */}
       <div className="absolute inset-0 z-0">
-        {mainNews ? (
-          <img
-            key={mainNews.gambar_cover}
-            src={mainNews.gambar_cover}
-            alt={mainNews.judul}
-            className="w-full h-full object-cover animate-in fade-in duration-1000"
-          />
-        ) : (
-          <img 
-            src={profil?.banner_statis_url || 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop'} 
-            alt="Scout Hero Banner" 
-            className="w-full h-full object-cover"
-          />
-        )}
+        <img
+          src={bannerUrl}
+          alt="Banner Kwarcab"
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Complex White Overlay Shape (Left side) - Desktop */}
@@ -79,7 +76,7 @@ export default function LandingHero({
       </div>
 
       {/* Main Content container */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-24 pb-[16rem] sm:pb-[18rem] md:pb-32 flex flex-col justify-center min-h-[100vh]">
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-24 pb-[19rem] sm:pb-[20rem] md:pb-32 flex flex-col justify-center min-h-[100vh]">
         <div className="w-full md:w-[60%] lg:w-[55%]">
           
           {/* Badge */}
@@ -98,24 +95,22 @@ export default function LandingHero({
 
           {/* Heading */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-green-900 mb-4 leading-tight font-heading drop-shadow-[0_0_15px_rgba(255,255,255,0.9)] md:drop-shadow-[0_0_20px_rgba(255,255,255,1)]">
-            {mainNews ? mainNews.judul : (
-              <>Kwartir Cabang <br/><span className="text-green-700">Kabupaten Tasikmalaya</span></>
-            )}
+            Kwartir Cabang <br/><span className="text-green-700">Kabupaten Tasikmalaya</span>
           </h1>
 
           {/* Description */}
           <p className="text-sm sm:text-lg text-slate-700 mb-6 line-clamp-4 leading-relaxed max-w-xl drop-shadow-[0_0_15px_rgba(255,255,255,1)] md:drop-shadow-none">
-            {mainNews ? mainNews.konten : 'Wadah pembentukan generasi muda tangguh, edukatif, mandiri, berkarakter luhur, dan unggul berlandaskan nilai moral Pancasila serta religiusitas Islami.'}
+            Wadah pembentukan generasi muda tangguh, edukatif, mandiri, berkarakter luhur, dan unggul berlandaskan nilai moral Pancasila serta religiusitas Islami.
           </p>
 
           {/* Action Buttons */}
           <div className="flex flex-row gap-3 items-center mb-6">
             <button 
-              onClick={() => mainNews ? onSelectBerita(mainNews) : onNavigateToTab('berita')}
+              onClick={() => onNavigateToTab('berita')}
               className="flex items-center justify-center space-x-2 px-5 sm:px-7 py-3 rounded-full bg-green-700 hover:bg-green-800 text-white font-bold text-[11px] sm:text-sm shadow-xl shadow-green-900/20 transition-all duration-200 flex-1 sm:flex-none"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>Baca Selengkapnya</span>
+              <span>Semua Berita</span>
             </button>
             <button 
               onClick={() => onNavigateToTab('agenda')}
@@ -126,16 +121,42 @@ export default function LandingHero({
             </button>
           </div>
 
-          {/* Meta Info */}
+          {/* Kilasan berita terbaru */}
           {mainNews && (
-            <div className="flex items-center space-x-2 text-[10px] sm:text-xs text-gray-700 font-medium drop-shadow-[0_0_8px_rgba(255,255,255,1)] md:drop-shadow-none">
-              <Calendar className="w-3.5 h-3.5 text-gray-500" />
-              <span>Oleh: {mainNews.author_nama || 'Admin Kwarcab'}</span>
-              <span className="text-gray-400">•</span>
-              <span>{new Date(mainNews.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl border border-gray-100 shadow-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-green-700">Kilasan Berita Terbaru</span>
+                {newsItems.length > 1 && (
+                  <div className="flex items-center space-x-1">
+                    <button type="button" onClick={handlePrev} aria-label="Berita sebelumnya" className="p-1 rounded-full text-gray-500 hover:bg-gray-100">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={handleNext} aria-label="Berita berikutnya" className="p-1 rounded-full text-gray-500 hover:bg-gray-100">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button type="button" onClick={() => onSelectBerita(mainNews)} className="flex items-center gap-3 text-left w-full group">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                  <img key={mainNews.id} src={mainNews.gambar_cover} alt="" className="w-full h-full object-cover animate-in fade-in duration-500" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-green-700">{mainNews.judul}</div>
+                  <div className="text-[10px] text-gray-500 mt-1">
+                    {new Date(mainNews.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+              </button>
+              {newsItems.length > 1 && (
+                <div className="flex justify-center space-x-1 mt-2">
+                  {newsItems.map((n, i) => (
+                    <span key={n.id} className={`h-1 rounded-full transition-all ${i === activeIndex ? 'w-4 bg-green-700' : 'w-1.5 bg-gray-300'}`} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-
         </div>
       </div>
 
@@ -209,24 +230,6 @@ export default function LandingHero({
         </div>
       </div>
       
-      {/* Side Slide Navigation Controls */}
-      {featuredNews.length > 1 && (
-        <div className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 flex-col space-y-2">
-          <button
-            onClick={handlePrev}
-            className="p-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/40 transition-all shadow-lg"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button
-            onClick={handleNext}
-            className="p-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/40 transition-all shadow-lg"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-        </div>
-      )}
-
     </div>
   );
 }

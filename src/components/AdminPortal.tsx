@@ -5195,28 +5195,25 @@ export default function AdminPortal({
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-600">Mode Hero Landingpage *</label>
-                    <select
-                      value={confHeroMode}
-                      onChange={(e) => setConfHeroMode(e.target.value as any)}
-                      className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
-                    >
-                      <option value="statis">Statis (1 Banner Gambar)</option>
-                      <option value="dinamis">Dinamis (Carousel Berita Featured)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-600">Banner Statis URL (Jika Mode Statis)</label>
-                    <input
-                      type="text"
-                      value={confBanner}
-                      onChange={(e) => setConfBanner(e.target.value)}
-                      className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-gray-600">Foto Hero Landing Page</label>
+                  <p className="text-[11px] text-gray-500/70">
+                    Foto latar di bagian atas beranda. Kilasan berita terbaru tetap tampil di atas foto ini.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleBase64Upload(e, setConfBanner, {
+                      maxDimension: 1920,
+                      quality: 0.6,
+                      filenamePrefix: 'hero_',
+                      successMessage: 'Foto hero berhasil diunggah. Klik Simpan untuk menerapkan.'
+                    })}
+                    className="w-full text-[11px] text-gray-700 bg-white border border-gray-200 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 transition-all cursor-pointer"
+                  />
+                  {confBanner && (
+                    <img src={confBanner} alt="Preview Hero" className="w-full max-w-xs h-28 object-cover mt-2 rounded-lg border border-gray-200" />
+                  )}
                 </div>
               </div>
 

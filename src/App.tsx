@@ -257,13 +257,17 @@ export default function App() {
     setCurrentTab('home');
   };
 
-  const featuredNews = berita.filter(b => b.is_featured && b.status === 'approved');
   const approvedNews = berita.filter(b => b.status === 'approved');
 
-  // Kartu kecil di bawah hero: berita lain (bukan yang sedang tampil di slide), maks. 6.
-  // Jika hero statis / tidak ada berita sorotan, semua berita terbaru boleh tampil.
-  const heroShowsSlides = (profil?.hero_mode || 'dinamis') === 'dinamis' && featuredNews.length > 0;
-  const stripNews = approvedNews.filter(b => !heroShowsSlides || !b.is_featured).slice(0, 6);
+  // Kilasan di hero: berita sorotan (admin) lebih dulu, lalu berita terbaru. Maks. 5.
+  const heroNews = [
+    ...approvedNews.filter(b => b.is_featured),
+    ...approvedNews.filter(b => !b.is_featured)
+  ].slice(0, 5);
+
+  // Kartu kecil di bawah hero: berita lain yang belum tampil di kilasan hero, maks. 6.
+  const heroNewsIds = new Set(heroNews.map(b => b.id));
+  const stripNews = approvedNews.filter(b => !heroNewsIds.has(b.id)).slice(0, 6);
 
   return (
     <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${theme === 'light' ? 'light-mode' : ''}`}>
@@ -302,7 +306,7 @@ export default function App() {
             <div>
               <LandingHero 
                 profil={profil} 
-                featuredNews={featuredNews} 
+                featuredNews={heroNews} 
                 onSelectBerita={(b) => {
                   setSelectedBerita(b);
                   setCurrentTab('berita');
