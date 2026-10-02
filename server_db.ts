@@ -874,6 +874,17 @@ export class DatabaseSim {
     return errors;
   }
 
+  // Query ringan ke Supabase (dipakai keep-alive). true = berhasil.
+  public async pingSupabase(): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('profil_kwarcab').select('id').limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
   // ---- Cadangan data (untuk diunduh admin) ----
   public getBackupTableNames(): string[] {
     return [...ARRAY_TABLES as string[], 'kta_config'];

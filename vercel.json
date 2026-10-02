@@ -16,5 +16,11 @@
     "api/index.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/public/keepalive",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

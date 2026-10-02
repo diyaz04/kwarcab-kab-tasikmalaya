@@ -62,7 +62,7 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
 
     // Response API tidak boleh di-cache (browser/CDN) — data berita/hero harus selalu terbaru.
     // Endpoint publik boleh di-cache singkat di CDN (cepat); sisanya tetap no-store.
-    const isPublicGet = req.method === 'GET' && req.path.startsWith('/public/') && !req.path.startsWith('/public/verify-anggota');
+    const isPublicGet = req.method === 'GET' && req.path.startsWith('/public/') && !req.path.startsWith('/public/verify-anggota') && !req.path.startsWith('/public/keepalive');
     res.setHeader(
       'Cache-Control',
       isPublicGet ? 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' : 'no-store, max-age=0'
@@ -551,6 +551,13 @@ app.get('/api/public/runtime', (req: Request, res: Response) => {
     netlifyRuntime: Boolean(process.env.NETLIFY || (process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.VERCEL)),
     devPanelEnabled: !supabaseConnected
   });
+});
+
+// Keep-alive: dipanggil Vercel Cron tiap hari agar project Supabase (free tier) tidak dijeda
+// karena tidak ada aktivitas. Melakukan 1 query ringan ke Supabase.
+app.get('/api/public/keepalive', async (req: Request, res: Response) => {
+  const supabaseActive = await db.pingSupabase();
+  res.json({ ok: true, supabase: supabaseActive, at: new Date().toISOString() });
 });
 
 // Semua data publik halaman utama dalam satu request
