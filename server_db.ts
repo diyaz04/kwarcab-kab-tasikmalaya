@@ -103,13 +103,13 @@ const DEFAULT_PROFIL: ProfilKwarcab = {
   hero_mode: 'dinamis',
   banner_statis_url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1600&auto=format&fit=crop',
   ketua_kwarcab_nama: 'H. Cecep Nurul Yakin, S.Pd., M.A.P.',
-  ketua_kwarcab_foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop',
+  ketua_kwarcab_foto: '',
   ketua_harian_nama: 'Drs. H. Ahmad Saefudin, M.Pd.',
-  ketua_harian_foto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop',
+  ketua_harian_foto: '',
   sekretaris_nama: 'Asep Supriadi, S.Sos.',
-  sekretaris_foto: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop',
+  sekretaris_foto: '',
   bendahara_nama: 'Hj. Neni Nuraeni, S.E.',
-  bendahara_foto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop',
+  bendahara_foto: '',
   ketua_pusdatin_nama: 'Dadan Wildan, S.Kom., M.Kom.',
   ketua_pusdatin_foto: ''
 };
@@ -120,28 +120,28 @@ const DEFAULT_PIMPINAN: PimpinanKwarcab[] = [
     id: 'p_1',
     nama: 'H. Cecep Nurul Yakin, S.Pd., M.A.P.',
     jabatan: 'Ketua Kwartir Cabang',
-    foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop',
+    foto: '',
     urutan: 1
   },
   {
     id: 'p_2',
     nama: 'Drs. H. Ahmad Saefudin, M.Pd.',
     jabatan: 'Ketua Harian',
-    foto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop',
+    foto: '',
     urutan: 2
   },
   {
     id: 'p_3',
     nama: 'Yayat Ruhiyat, S.Pd., M.Si.',
     jabatan: 'Sekretaris Umum',
-    foto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop',
+    foto: '',
     urutan: 3
   },
   {
     id: 'p_4',
     nama: 'Hj. Endah Nurhayati, S.E.',
     jabatan: 'Bendahara Umum',
-    foto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop',
+    foto: '',
     urutan: 4
   }
 ];
@@ -153,9 +153,9 @@ const DEFAULT_KWARRAN: KwartirRanting[] = [
     ketua: 'Kak H. Maman Budiman, M.Pd.',
     sekretaris: 'Kak Ade Sukmana, S.Pd.',
     bendahara: 'Kak Nenden Nurjanah, S.Pd.',
-    foto_ketua: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-01-10T00:00:00Z'
   },
@@ -165,9 +165,9 @@ const DEFAULT_KWARRAN: KwartirRanting[] = [
     ketua: 'Kak Dr. H. Tatang, M.Si.',
     sekretaris: 'Kak Dani Ramdani, S.Pd.',
     bendahara: 'Kak Imas Masriah, S.Ag.',
-    foto_ketua: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-01-15T00:00:00Z'
   },
@@ -177,9 +177,9 @@ const DEFAULT_KWARRAN: KwartirRanting[] = [
     ketua: 'Kak Drs. Agus Junaedi',
     sekretaris: 'Kak Hendra Wijaya, S.Pd.',
     bendahara: 'Kak Siti Jubaedah',
-    foto_ketua: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'transisi',
     created_at: '2026-02-01T00:00:00Z'
   },
@@ -189,9 +189,9 @@ const DEFAULT_KWARRAN: KwartirRanting[] = [
     ketua: 'Kak H. Endang, S.Pd.',
     sekretaris: 'Kak Nanang, S.Pd.',
     bendahara: 'Kak Erna, S.Pd.',
-    foto_ketua: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-02-10T00:00:00Z'
   }
@@ -231,9 +231,9 @@ const DEFAULT_SAKA: SatuanKarya[] = [
     ketua: 'Kak AKP H. Subarna (Polres Tasikmalaya)',
     sekretaris: 'Kak Bripka Heri, S.H.',
     bendahara: 'Kak Rina Marlina',
-    foto_ketua: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-01-10T00:00:00Z'
   },
@@ -243,9 +243,9 @@ const DEFAULT_SAKA: SatuanKarya[] = [
     ketua: 'Kak Dr. H. Heru (Dinas Kesehatan)',
     sekretaris: 'Kak Ns. Dian, S.Kep.',
     bendahara: 'Kak Lilis Herawati, S.ST.',
-    foto_ketua: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-01-12T00:00:00Z'
   },
@@ -255,9 +255,9 @@ const DEFAULT_SAKA: SatuanKarya[] = [
     ketua: 'Kak Mayor Inf. Sugeng (Kodim 0612)',
     sekretaris: 'Kak Serma Jajang',
     bendahara: 'Kak Astri Rahayu',
-    foto_ketua: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'aktif',
     created_at: '2026-01-15T00:00:00Z'
   },
@@ -267,9 +267,9 @@ const DEFAULT_SAKA: SatuanKarya[] = [
     ketua: 'Kak H. Wahyu (Perhutani Tasikmalaya)',
     sekretaris: 'Kak Irwan, S.Hut.',
     bendahara: 'Kak Linda, S.E.',
-    foto_ketua: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=200',
-    foto_sekretaris: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_bendahara: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200',
+    foto_ketua: '',
+    foto_sekretaris: '',
+    foto_bendahara: '',
     status: 'transisi',
     created_at: '2026-01-20T00:00:00Z'
   }

@@ -1122,9 +1122,9 @@ app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: 
     ketua: ketua || '-',
     sekretaris: sekretaris || '-',
     bendahara: bendahara || '-',
-    foto_ketua: foto_ketua || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_sekretaris: foto_sekretaris || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_bendahara: foto_bendahara || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200',
+    foto_ketua: foto_ketua || '/img/avatar-default.jpg',
+    foto_sekretaris: foto_sekretaris || '/img/avatar-default.jpg',
+    foto_bendahara: foto_bendahara || '/img/avatar-default.jpg',
     status: status || 'aktif',
     created_at: new Date().toISOString()
   };
@@ -1266,9 +1266,9 @@ app.post('/api/admin/saka', authenticate, authorizeKwarcab('saka'), (req: Reques
     ketua,
     sekretaris,
     bendahara,
-    foto_ketua: foto_ketua || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_sekretaris: foto_sekretaris || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-    foto_bendahara: foto_bendahara || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200',
+    foto_ketua: foto_ketua || '/img/avatar-default.jpg',
+    foto_sekretaris: foto_sekretaris || '/img/avatar-default.jpg',
+    foto_bendahara: foto_bendahara || '/img/avatar-default.jpg',
     status: status || 'aktif',
     created_at: new Date().toISOString()
   };
@@ -1559,7 +1559,7 @@ app.post('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: 
     id: `p_${Date.now()}`,
     nama,
     jabatan,
-    foto: foto || 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200',
+    foto: foto || '/img/avatar-default.jpg',
     urutan: Number(urutan) || 5
   };
   db.addPimpinan(newP);

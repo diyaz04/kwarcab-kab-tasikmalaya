@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { BookOpen, Award, Shield, Compass, Eye, ListOrdered, Calendar } from 'lucide-react';
 import { PimpinanKwarcab, ProfilKwarcab } from '../types';
 
@@ -128,13 +129,7 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
             pim.nama && (
               <div key={idx} className="bg-white rounded-3xl overflow-hidden flex flex-col h-full border border-gray-100 shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
                 <div className="relative h-72 overflow-hidden bg-gray-50 flex items-center justify-center group">
-                  {pim.foto ? (
-                    <img src={pim.foto} alt={pim.nama} className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" />
-                  ) : (
-                    <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                      <Shield className="w-10 h-10 text-gray-400" />
-                    </div>
-                  )}
+                  <img src={fotoOrDefault(pim.foto)} onError={onFotoError} alt={pim.nama} className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-transparent to-transparent"></div>
                   <div className="absolute bottom-5 left-5 right-5 text-left">
                     <p className="text-[10px] sm:text-xs text-green-400 font-bold uppercase tracking-widest mb-1">{pim.jabatan}</p>
@@ -162,7 +157,8 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
             >
               <div className="relative h-64 overflow-hidden group">
                 <img 
-                  src={p.foto} 
+                  src={fotoOrDefault(p.foto)} 
+                  onError={onFotoError}
                   alt={p.nama} 
                   className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                 />

@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
+import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
 import { notify, confirmDialog } from '../utils/dialog';
 
@@ -512,7 +513,8 @@ export default function AdminPortal({
     }
 
     const a = singleAnggota;
-    const fotoSrc = a.foto || 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png';
+    const fotoDefaulted = fotoOrDefault(a.foto);
+    const fotoSrc = fotoDefaulted.startsWith('/') ? window.location.origin + fotoDefaulted : fotoDefaulted;
     const mockNta = "09.01." + a.id.replace('ang_', '').padStart(5, '0');
 
     const htmlContent = `
@@ -3649,13 +3651,7 @@ export default function AdminPortal({
                           <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                             <td className="p-4">
                               <div className="flex items-center space-x-3">
-                                {a.foto ? (
-                                  <img src={a.foto} className="w-12 h-16 rounded object-cover border border-gray-200" alt="foto" />
-                                ) : (
-                                  <div className="w-12 h-16 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
-                                    <User className="w-6 h-6 text-gray-500" />
-                                  </div>
-                                )}
+                                <img src={fotoOrDefault(a.foto)} onError={onFotoError} className="w-12 h-16 rounded object-cover border border-gray-200" alt="foto" />
                                 <div>
                                   <div className="font-black text-gray-900 uppercase tracking-wide">{a.nama_lengkap}</div>
                                   <div className="text-xs text-green-700 font-mono mt-0.5 font-bold">NTA: 09.01.{a.id.replace('ang_','').padStart(5,'0')}</div>
@@ -5247,9 +5243,9 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
                       <div className="flex items-center gap-3">
-                        {confKetuaKwarcabFoto && (
+                        {(
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={confKetuaKwarcabFoto} alt="Ketua" className="w-full h-full object-cover" />
+                            <img src={fotoOrDefault(confKetuaKwarcabFoto)} onError={onFotoError} alt="Ketua" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1">
@@ -5269,9 +5265,9 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
                       <div className="flex items-center gap-3">
-                        {confKetuaHarianFoto && (
+                        {(
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={confKetuaHarianFoto} alt="Ketua Harian" className="w-full h-full object-cover" />
+                            <img src={fotoOrDefault(confKetuaHarianFoto)} onError={onFotoError} alt="Ketua Harian" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1">
@@ -5291,9 +5287,9 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
                       <div className="flex items-center gap-3">
-                        {confSekretarisFoto && (
+                        {(
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={confSekretarisFoto} alt="Sekretaris" className="w-full h-full object-cover" />
+                            <img src={fotoOrDefault(confSekretarisFoto)} onError={onFotoError} alt="Sekretaris" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1">
@@ -5313,9 +5309,9 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-[11px] text-gray-600 font-semibold">Foto Profil</label>
                       <div className="flex items-center gap-3">
-                        {confBendaharaFoto && (
+                        {(
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={confBendaharaFoto} alt="Bendahara" className="w-full h-full object-cover" />
+                            <img src={fotoOrDefault(confBendaharaFoto)} onError={onFotoError} alt="Bendahara" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1">
@@ -5337,9 +5333,9 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-[11px] text-gray-600 font-semibold">Foto Profil / Stempel Digital</label>
                       <div className="flex items-center gap-3">
-                        {confKetuaPusdatinFoto && (
+                        {(
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={confKetuaPusdatinFoto} alt="Kepala Pusdatin" className="w-full h-full object-cover" />
+                            <img src={fotoOrDefault(confKetuaPusdatinFoto)} onError={onFotoError} alt="Kepala Pusdatin" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1">

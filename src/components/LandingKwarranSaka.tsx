@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { Users, User, MapPin, Award, Shield, CheckCircle2, AlertTriangle, HelpCircle, Activity, BookOpen, Calendar, X, Building, ArrowLeft, Landmark, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { KwartirRanting, SatuanKarya } from '../types';
@@ -210,7 +211,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                 <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 hover:border-green-200 transition-all">
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 shadow-sm">
                     <img 
-                      src={type === 'kwarran' ? detailData.kwarran.foto_ketua : detailData.saka.foto_ketua} 
+                      src={fotoOrDefault(type === 'kwarran' ? detailData.kwarran.foto_ketua : detailData.saka.foto_ketua)} onError={onFotoError} 
                       alt="Ketua" 
                       className="w-full h-full object-cover object-top" 
                     />
@@ -225,7 +226,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                 <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 hover:border-green-200 transition-all">
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 shadow-sm">
                     <img 
-                      src={type === 'kwarran' ? detailData.kwarran.foto_sekretaris : detailData.saka.foto_sekretaris} 
+                      src={fotoOrDefault(type === 'kwarran' ? detailData.kwarran.foto_sekretaris : detailData.saka.foto_sekretaris)} onError={onFotoError} 
                       alt="Sekretaris" 
                       className="w-full h-full object-cover object-top" 
                     />
@@ -240,7 +241,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                 <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 hover:border-green-200 transition-all">
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 shadow-sm">
                     <img 
-                      src={type === 'kwarran' ? detailData.kwarran.foto_bendahara : detailData.saka.foto_bendahara} 
+                      src={fotoOrDefault(type === 'kwarran' ? detailData.kwarran.foto_bendahara : detailData.saka.foto_bendahara)} onError={onFotoError} 
                       alt="Bendahara" 
                       className="w-full h-full object-cover object-top" 
                     />
@@ -531,7 +532,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
               <div className="space-y-3 pt-3 border-t border-gray-100 mb-6">
                 <div className="flex items-center space-x-2.5">
                   <div className="w-7 h-7 rounded-full bg-gray-50 border border-gray-200 overflow-hidden flex-shrink-0">
-                    <img src={item.foto_ketua} alt="Ketua" className="w-full h-full object-cover" />
+                    <img src={fotoOrDefault(item.foto_ketua)} onError={onFotoError} alt="Ketua" className="w-full h-full object-cover" />
                   </div>
                   <div className="text-xs truncate">
                     <div className="text-gray-500 text-[9px] uppercase tracking-wider font-semibold">Ketua</div>
@@ -541,7 +542,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
 
                 <div className="flex items-center space-x-2.5">
                   <div className="w-7 h-7 rounded-full bg-gray-50 border border-gray-200 overflow-hidden flex-shrink-0">
-                    <img src={item.foto_sekretaris} alt="Sekretaris" className="w-full h-full object-cover" />
+                    <img src={fotoOrDefault(item.foto_sekretaris)} onError={onFotoError} alt="Sekretaris" className="w-full h-full object-cover" />
                   </div>
                   <div className="text-xs truncate">
                     <div className="text-gray-500 text-[9px] uppercase tracking-wider font-semibold">Sekretaris</div>
