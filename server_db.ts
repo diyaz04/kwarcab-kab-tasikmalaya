@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { 
   User, KwartirRanting, GugusDepan, SatuanKarya, 
@@ -570,6 +571,11 @@ export class DatabaseSim {
 
     try {
       await this.pullFromSupabase('bootstrap');
+      const baseV = await this.readRemoteVersions();
+      if (baseV) {
+        this.tableVersion = { ...baseV };
+        this.versionBaseline = true;
+      }
       await this.flushToSupabase();
       this.persistLocalOnly();
       this.supabaseConnected = true;
@@ -593,39 +599,98 @@ export class DatabaseSim {
   // mode 'bootstrap': DB Supabase kosong total (belum ada user) => pakai data default lokal lalu di-seed.
   // Selain itu SELALU ikuti isi Supabase apa adanya (termasuk tabel kosong), supaya data yang
   // sudah dihapus tidak "hidup lagi" dari data default.
-  private async pullFromSupabase(mode: 'bootstrap' | 'refresh' = 'bootstrap'): Promise<void> {
+  private async pullFromSupabase(
+    mode: 'bootstrap' | 'refresh' = 'bootstrap',
+    tables: ArrayTableName[] = ARRAY_TABLES,
+    includeKta = true
+  ): Promise<void> {
     if (!supabase) return;
 
     const remote = {} as Record<ArrayTableName, any[]>;
     const [results, ktaResult] = await Promise.all([
-      Promise.all(ARRAY_TABLES.map(table => supabase!.from(table).select('*'))),
-      supabase.from('kta_config')
-        .select('nama_ketua,tanda_tangan_url,stempel_url')
-        .eq('id', 'kta_1')
-        .limit(1)
+      Promise.all(tables.map(table => supabase!.from(table).select('*'))),
+      includeKta
+        ? supabase.from('kta_config')
+            .select('nama_ketua,tanda_tangan_url,stempel_url')
+            .eq('id', 'kta_1')
+            .limit(1)
+        : Promise.resolve(null)
     ]);
-    ARRAY_TABLES.forEach((table, i) => {
+    tables.forEach((table, i) => {
       const { data, error } = results[i];
       if (error) throw new Error(`${table}: ${error.message}`);
       remote[table] = data || [];
     });
 
-    const freshDb = mode === 'bootstrap' && remote.users.length === 0;
-    for (const table of ARRAY_TABLES) {
+    const freshDb = mode === 'bootstrap' && tables.includes('users') && remote.users.length === 0;
+    for (const table of tables) {
+      // Hash dicatat dari isi Supabase, supaya data default yang belum ada di Supabase tetap terdeteksi
+      // "berubah" dan ikut di-seed saat flush.
+      this.tableHash[table] = this.hashRows(remote[table]);
       if (freshDb && remote[table].length === 0) continue; // biarkan default untuk di-seed
       if (table === 'profil_kwarcab' && remote[table].length === 0) continue; // profil harus selalu ada
       (this.state[table] as any[]) = remote[table];
     }
 
-    const { data: ktaRows, error: ktaError } = ktaResult;
-    if (ktaError) throw new Error(`kta_config: ${ktaError.message}`);
-    if (ktaRows && ktaRows.length > 0) {
-      this.state.kta_config = {
-        nama_ketua: ktaRows[0].nama_ketua || DEFAULT_KTA_CONFIG.nama_ketua,
-        tanda_tangan_url: ktaRows[0].tanda_tangan_url || '',
-        stempel_url: ktaRows[0].stempel_url || ''
-      };
+    if (ktaResult) {
+      const { data: ktaRows, error: ktaError } = ktaResult;
+      if (ktaError) throw new Error(`kta_config: ${ktaError.message}`);
+      if (ktaRows && ktaRows.length > 0) {
+        this.state.kta_config = {
+          nama_ketua: ktaRows[0].nama_ketua || DEFAULT_KTA_CONFIG.nama_ketua,
+          tanda_tangan_url: ktaRows[0].tanda_tangan_url || '',
+          stempel_url: ktaRows[0].stempel_url || ''
+        };
+        this.ktaHash = this.hashRows([this.state.kta_config]);
+      } else {
+        this.ktaHash = '';
+      }
     }
+  }
+
+  // ---- Pelacakan perubahan per tabel (hemat transfer Supabase) ----
+  // tableHash: isi tabel terakhir yang diketahui sama dengan Supabase. Beda dengan state sekarang = ada perubahan lokal.
+  // tableVersion: versi tabel (dari tabel sync_state di Supabase) yang sudah dimuat instance ini.
+  private tableHash: Partial<Record<ArrayTableName, string>> = {};
+  private ktaHash = '';
+  private tableVersion: Record<string, string> = {};
+  private versionBaseline = false;
+  private versioningOffUntil = 0;
+
+  private hashRows(rows: any[]): string {
+    return crypto.createHash('md5').update(JSON.stringify(rows)).digest('hex');
+  }
+
+  // Baca versi tiap tabel. null = tabel sync_state belum ada / gagal dibaca -> pakai cara lama (tarik semua).
+  private async readRemoteVersions(): Promise<Record<string, string> | null> {
+    if (!supabase) return null;
+    if (Date.now() < this.versioningOffUntil) return null;
+    const { data, error } = await supabase.from('sync_state').select('table_name,version');
+    if (error) {
+      // Tabel belum dibuat: jangan bebani Supabase dengan cek berulang, coba lagi 5 menit lagi.
+      this.versioningOffUntil = Date.now() + 5 * 60 * 1000;
+      return null;
+    }
+    const map: Record<string, string> = {};
+    (data || []).forEach((r: any) => { map[r.table_name] = String(r.version); });
+    return map;
+  }
+
+  private async bumpVersions(names: string[]): Promise<void> {
+    if (!supabase || names.length === 0 || Date.now() < this.versioningOffUntil) return;
+    const version = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const { error } = await supabase
+      .from('sync_state')
+      .upsert(names.map(n => ({ table_name: n, version })), { onConflict: 'table_name' });
+    if (error) {
+      this.versioningOffUntil = Date.now() + 5 * 60 * 1000;
+      return;
+    }
+    names.forEach(n => { this.tableVersion[n] = version; });
+  }
+
+  private dirtyTables(): ArrayTableName[] {
+    return ARRAY_TABLES.filter(t => this.hashRows(this.state[t] as any[]) !== this.tableHash[t]);
   }
 
   private lastRefreshAt = 0;
@@ -640,7 +705,27 @@ export class DatabaseSim {
 
     this.refreshing = (async () => {
       try {
-        await this.pullFromSupabase('refresh');
+        const remoteV = await this.readRemoteVersions();
+        if (remoteV && this.versionBaseline) {
+          // Mode hemat: hanya tarik tabel yang versinya berubah sejak terakhir dimuat.
+          const staleNames = [...ARRAY_TABLES as string[], 'kta_config']
+            .filter(n => (remoteV[n] || '') !== (this.tableVersion[n] || ''));
+          if (staleNames.length > 0) {
+            await this.pullFromSupabase(
+              'refresh',
+              staleNames.filter(n => n !== 'kta_config') as ArrayTableName[],
+              staleNames.includes('kta_config')
+            );
+            staleNames.forEach(n => { this.tableVersion[n] = remoteV[n] || ''; });
+          }
+        } else {
+          // Cara lama (sync_state belum ada) atau pertama kali versi tersedia: tarik semua sebagai dasar.
+          await this.pullFromSupabase('refresh');
+          if (remoteV) {
+            this.tableVersion = { ...remoteV };
+            this.versionBaseline = true;
+          }
+        }
         this.lastRefreshAt = Date.now();
       } catch (e: any) {
         // Gagal refresh: lanjut pakai state yang ada, jangan bikin request mati
@@ -689,6 +774,8 @@ export class DatabaseSim {
     }
     const { error } = await supabase.from('berita').delete().eq('id', id);
     if (error) throw new Error(`Gagal menghapus di Supabase: ${error.message}`);
+    this.tableHash.berita = this.hashRows(this.state.berita);
+    await this.bumpVersions(['berita']);
   }
 
   private persistLocalOnly(): void {
@@ -716,9 +803,14 @@ export class DatabaseSim {
     const errors: string[] = [];
     if (!supabase) return errors;
 
+    const dirty = this.dirtyTables();
+    const ktaDirty = this.hashRows([this.state.kta_config]) !== this.ktaHash;
+    if (dirty.length === 0 && !ktaDirty) return errors;
+    const failed = new Set<string>();
+
     // Fase 1: upsert. Tiap tabel dibungkus sendiri-sendiri — error di satu tabel (mis. kolom belum ada
     // di Supabase) TIDAK boleh menggagalkan tabel lain maupun fase penghapusan di bawah.
-    await Promise.all(ARRAY_TABLES.map(async table => {
+    await Promise.all(dirty.map(async table => {
       try {
         const rows = this.state[table] as any[];
         if (rows.length > 0) {
@@ -726,23 +818,28 @@ export class DatabaseSim {
           if (error) throw new Error(`${table} upsert: ${error.message}`);
         }
       } catch (e: any) {
+        failed.add(table);
         errors.push(e?.message || String(e));
       }
     }));
 
-    try {
-      const { error: ktaError } = await supabase.from('kta_config').upsert({
-        id: 'kta_1',
-        ...this.state.kta_config,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-      if (ktaError) throw new Error(`kta_config upsert: ${ktaError.message}`);
-    } catch (e: any) {
-      errors.push(e?.message || String(e));
+    if (ktaDirty) {
+      try {
+        const { error: ktaError } = await supabase.from('kta_config').upsert({
+          id: 'kta_1',
+          ...this.state.kta_config,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+        if (ktaError) throw new Error(`kta_config upsert: ${ktaError.message}`);
+        this.ktaHash = this.hashRows([this.state.kta_config]);
+      } catch (e: any) {
+        errors.push(e?.message || String(e));
+      }
     }
 
-    // Fase 2: hapus baris di Supabase yang sudah tidak ada di state lokal.
-    const remoteIds = await Promise.all(DELETE_ORDER.map(async table => {
+    // Fase 2: hapus baris di Supabase yang sudah tidak ada di state lokal (hanya untuk tabel yang berubah).
+    const deleteTables = DELETE_ORDER.filter(t => dirty.includes(t));
+    const remoteIds = await Promise.all(deleteTables.map(async table => {
       const { data, error } = await supabase.from(table).select('id');
       return { table, data, error };
     }));
@@ -758,15 +855,36 @@ export class DatabaseSim {
           if (deleteError) throw new Error(`${table} delete stale: ${deleteError.message}`);
         }
       } catch (e: any) {
+        failed.add(table);
         errors.push(e?.message || String(e));
       }
     }
+
+    // Tabel yang berhasil tersimpan: catat hash baru & naikkan versinya agar instance lain memuat ulang.
+    const okTables = dirty.filter(t => !failed.has(t));
+    okTables.forEach(t => { this.tableHash[t] = this.hashRows(this.state[t] as any[]); });
+    const bumped: string[] = [...okTables];
+    if (ktaDirty && this.ktaHash === this.hashRows([this.state.kta_config])) bumped.push('kta_config');
+    await this.bumpVersions(bumped);
 
     if (errors.length > 0) {
       this.supabaseLastError = errors.join(' | ');
       console.error('[Database] Supabase sync ada error:', errors);
     }
     return errors;
+  }
+
+  // ---- Cadangan data (untuk diunduh admin) ----
+  public getBackupTableNames(): string[] {
+    return [...ARRAY_TABLES as string[], 'kta_config'];
+  }
+
+  public getBackupTable(name: string): any[] | null {
+    if (name === 'kta_config') return [this.state.kta_config];
+    if (!(ARRAY_TABLES as string[]).includes(name)) return null;
+    const rows = this.state[name as ArrayTableName] as any[];
+    // Jangan sertakan hash password di berkas cadangan.
+    return name === 'users' ? rows.map(({ password_hash, ...rest }: any) => rest) : rows;
   }
 
   public save(): void {

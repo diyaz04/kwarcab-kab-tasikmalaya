@@ -1364,6 +1364,42 @@ export default function AdminPortal({
   const showSuccess = (msg: string) => notify.success(msg);
   const showError = (msg: string) => notify.error(msg);
 
+  // --- Cadangan data (Kwarcab): unduh semua tabel jadi satu berkas JSON ---
+  const [backupBusy, setBackupBusy] = useState(false);
+  const handleDownloadBackup = async () => {
+    setBackupBusy(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const listRes = await fetch('/api/admin/backup', { headers, cache: 'no-store' });
+      const list = await listRes.json();
+      if (!listRes.ok) throw new Error(list.error || 'Gagal mengambil daftar tabel');
+
+      const tables: Record<string, any[]> = {};
+      for (const name of list.tables as string[]) {
+        const r = await fetch(`/api/admin/backup?table=${encodeURIComponent(name)}`, { headers, cache: 'no-store' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || `Gagal mengambil tabel ${name}`);
+        tables[name] = d.rows;
+      }
+
+      const payload = { app: 'kwarcab-kab-tasikmalaya', exported_at: new Date().toISOString(), tables };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cadangan-kwarcab-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSuccess('Cadangan data berhasil diunduh. Simpan berkasnya di tempat yang aman.');
+    } catch (err: any) {
+      setErrorMsg('Gagal mengunduh cadangan: ' + (err?.message || err));
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
   type CompressionOptions = {
     maxDimension?: number;
     quality?: number;
@@ -5154,6 +5190,7 @@ export default function AdminPortal({
 
           {/* --- TAB CONTENT: CONFIG PROFILE (KWARCAB) --- */}
           {activeTab === 'config' && (
+            <>
             <form onSubmit={handleSaveConfig} className="bg-white shadow-xl rounded-2xl border border-gray-100 rounded-3xl p-6 sm:p-8 border border-gray-200 space-y-6 animate-fade-in">
               <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-white/5 pb-2">
                 Konfigurasi Profil Utama Kwartir Cabang Tasikmalaya
@@ -5355,6 +5392,26 @@ export default function AdminPortal({
                 </button>
               </div>
             </form>
+
+            {user.role === 'kwarcab' && (
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100 p-6 sm:p-8 mt-6 space-y-3 animate-fade-in">
+                <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">Cadangan Data</h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Unduh salinan seluruh data sistem (anggota, berita, agenda, Kwarran, Saka, Kampung Pramuka, dan lainnya)
+                  dalam satu berkas JSON. Daftar hash kata sandi pengguna tidak ikut diunduh. Disarankan mengunduh
+                  sebulan sekali dan menyimpannya di tempat terpisah, misalnya Google Drive pribadi.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadBackup}
+                  disabled={backupBusy}
+                  className="px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs uppercase tracking-wider"
+                >
+                  {backupBusy ? 'Menyiapkan cadangan…' : 'Unduh Cadangan Data (JSON)'}
+                </button>
+              </div>
+            )}
+            </>
           )}
 
           {/* --- TAB CONTENT: MEDIA SOSIAL KWARRAN (ADMIN KWARRAN) --- */}

@@ -704,6 +704,22 @@ app.get('/api/public/verify-anggota/:id', (req: Request, res: Response) => {
 
 // --- ADMIN API ENDPOINTS (RBAC-PROTECTED) ---
 
+// Cadangan data: tanpa parameter -> daftar tabel; ?table=nama -> isi tabel itu (JSON).
+// Dipecah per tabel supaya respons tetap kecil (batas respons fungsi Vercel ~4,5 MB).
+app.get('/api/admin/backup', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+  const table = typeof req.query.table === 'string' ? req.query.table : '';
+  if (!table) {
+    res.json({ tables: db.getBackupTableNames(), exported_at: new Date().toISOString() });
+    return;
+  }
+  const rows = db.getBackupTable(table);
+  if (!rows) {
+    res.status(400).json({ error: 'Nama tabel tidak dikenal' });
+    return;
+  }
+  res.json({ table, rows });
+});
+
 // Metrics Stats for Dashboard
 app.get('/api/admin/stats', authenticate, (req: AuthRequest, res: Response) => {
   const user = req.user!;
