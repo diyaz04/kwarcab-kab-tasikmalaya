@@ -11,6 +11,8 @@ import {
 } from '../types';
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
+import TingkatanStats from './TingkatanStats';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
 import { notify, confirmDialog } from '../utils/dialog';
@@ -1249,20 +1251,18 @@ export default function AdminPortal({
     printWindow.document.close();
   };
 
-  // Mapping Golongan to Tingkatan (Modul 3.2 mapping)
-  const TINGKATAN_MAP: Record<GolonganPramuka, string[]> = {
-    siaga: ['Mula', 'Bantu', 'Tata'],
-    penggalang: ['Ramu', 'Rakit', 'Terap'],
-    penegak: ['Bantara', 'Laksana'],
-    pandega: ['Pandega'],
-    dewasa: ['Pembina Mahir Dasar (KMD)', 'Pembina Mahir Lanjutan (KML)', 'Pelatih Dasar', 'Pelatih Lanjutan']
-  };
-
+  // Daftar tingkatan per golongan ada di src/utils/tingkatan.ts (dipakai juga untuk statistik Rekap).
   useEffect(() => {
-    // Reset tingkatan when golongan changes
-    if (TINGKATAN_MAP[angGolongan]) {
-      setAngTingkatan(TINGKATAN_MAP[angGolongan][0]);
-    }
+    // Hanya bereaksi saat GOLONGAN berubah: tingkatan sisa dari golongan lain diganti tingkatan pertama
+    // golongan baru. Tingkatan kosong (data lama yang tidak dikenal) dibiarkan kosong agar admin wajib memilih.
+    setAngTingkatan(cur => {
+      const options = TINGKATAN_MAP[angGolongan];
+      if (!options || options.includes(cur)) return cur;
+      const normalized = normalizeTingkatan(angGolongan, cur);
+      if (normalized) return normalized;
+      const staleFromOtherGolongan = GOLONGAN_ORDER.some(g => g !== angGolongan && TINGKATAN_MAP[g].includes(cur));
+      return staleFromOtherGolongan ? options[0] : cur;
+    });
   }, [angGolongan]);
 
   // Load Dashboard Stats & scoped lists
@@ -2912,6 +2912,16 @@ export default function AdminPortal({
                   {/* ========================================= */}
                   {anggotaViewMode === 'rekap_kwarran' && (
                     <div className="space-y-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 sm:p-5">
+                        <div className="mb-3">
+                          <h3 className="text-xs font-black uppercase tracking-wider text-gray-800">Statistik Tingkatan Anggota</h3>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            Jumlah anggota per tingkatan di setiap golongan ({anggotaList.length} anggota{user.role === 'kwarran' ? ' di wilayah Anda' : ''}).
+                          </p>
+                        </div>
+                        <TingkatanStats anggota={anggotaList} />
+                      </div>
+
                       {allKwarran.length === 0 ? (
                         <div className="py-8 text-center text-gray-500 font-medium italic text-sm">
                           Belum ada data Kwartir Ranting.
@@ -2971,6 +2981,12 @@ export default function AdminPortal({
                               {/* Gudep List (Accordion Content) */}
                               {isExpanded && (
                                 <div className="border-t border-gray-100 bg-gray-50/70 p-4 md:p-5">
+                                  <div className="mb-4">
+                                    <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-700 mb-2">
+                                      Tingkatan Anggota Kecamatan {kw.nama_kecamatan}
+                                    </h4>
+                                    <TingkatanStats anggota={anggotaKwarran} compact />
+                                  </div>
                                   {gudeps.length === 0 ? (
                                     <div className="text-center text-gray-500 text-xs italic py-4 bg-white rounded-xl border border-gray-100">
                                       Belum ada Gugus Depan di Kwartir Ranting ini.
@@ -3247,7 +3263,7 @@ export default function AdminPortal({
                                           setAngTempat(a.tempat_lahir);
                                           setAngTanggal(a.tanggal_lahir);
                                           setAngGolongan(a.golongan);
-                                          setAngTingkatan(a.tingkatan);
+                                          setAngTingkatan(normalizeTingkatan(a.golongan, a.tingkatan) || '');
                                           setAngAlamat(a.alamat_asal);
                                           setAngPangkalan(a.pangkalan);
                                           setAngKwarranId(a.kwartir_ranting_id);
@@ -3419,10 +3435,12 @@ export default function AdminPortal({
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-700">Tingkatan Pramuka *</label>
                       <select
+                        required
                         value={angTingkatan}
                         onChange={(e) => setAngTingkatan(e.target.value)}
                         className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                       >
+                        {!angTingkatan && <option value="">-- Pilih tingkatan --</option>}
                         {TINGKATAN_MAP[angGolongan]?.map((ting) => (
                           <option key={ting} value={ting}>{ting}</option>
                         ))}

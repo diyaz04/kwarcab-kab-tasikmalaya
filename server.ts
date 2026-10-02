@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase, getSupabaseInitError } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 import { sanitizeSosmed } from './src/utils/sosmed';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan } from './src/utils/tingkatan';
 
 const app = express();
 const PORT = 3000;
@@ -826,6 +827,20 @@ app.get('/api/admin/anggota', authenticate, (req: AuthRequest, res: Response) =>
   res.json(resultsWithSaka);
 });
 
+// Tingkatan harus sesuai golongan agar statistik akurat. Teks bebas dari klien lama dirapikan
+// (mis. "garuda" -> "Garuda Siaga"); yang tidak dikenali ditolak dengan pesan yang jelas.
+const checkTingkatan = (golongan: string, tingkatan: string): { value?: string; error?: string } => {
+  if (!GOLONGAN_ORDER.includes(golongan as GolonganPramuka)) {
+    return { error: 'Golongan tidak valid. Pilihan: ' + GOLONGAN_ORDER.map(g => GOLONGAN_LABEL[g]).join(', ') + '.' };
+  }
+  const g = golongan as GolonganPramuka;
+  const value = normalizeTingkatan(g, tingkatan);
+  if (!value) {
+    return { error: `Tingkatan "${tingkatan}" tidak sesuai untuk golongan ${GOLONGAN_LABEL[g]}. Pilihan: ${TINGKATAN_MAP[g].join(', ')}.` };
+  }
+  return { value };
+};
+
 // Add Anggota
 app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kwarran', 'gudep'], 'anggota'), (req: AuthRequest, res: Response) => {
   const user = req.user!;
@@ -840,13 +855,19 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
     return;
   }
 
+  const tingkatanCheck = checkTingkatan(golongan, tingkatan);
+  if (tingkatanCheck.error) {
+    res.status(400).json({ error: tingkatanCheck.error });
+    return;
+  }
+
   const newAnggota = {
     id: `ang_${Date.now()}`,
     nama_lengkap,
     tempat_lahir,
     tanggal_lahir,
     golongan: golongan as GolonganPramuka,
-    tingkatan,
+    tingkatan: tingkatanCheck.value as string,
     alamat_asal: alamat_asal || '',
     pangkalan: pangkalan || '',
     kwartir_ranting_id,
@@ -922,6 +943,20 @@ app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission([
   if (tanggal_lahir !== undefined) updates.tanggal_lahir = tanggal_lahir;
   if (golongan !== undefined) updates.golongan = golongan;
   if (tingkatan !== undefined) updates.tingkatan = tingkatan;
+
+  // Validasi golongan + tingkatan hanya kalau salah satunya benar-benar berubah, supaya data lama yang
+  // belum sesuai daftar tidak menghalangi pengeditan field lain.
+  const effGolongan = golongan !== undefined ? golongan : currentAnggota.golongan;
+  const effTingkatan = tingkatan !== undefined ? tingkatan : currentAnggota.tingkatan;
+  if (effGolongan !== currentAnggota.golongan || effTingkatan !== currentAnggota.tingkatan) {
+    const check = checkTingkatan(effGolongan, effTingkatan);
+    if (check.error) {
+      res.status(400).json({ error: check.error });
+      return;
+    }
+    updates.golongan = effGolongan;
+    updates.tingkatan = check.value as string;
+  }
   if (alamat_asal !== undefined) updates.alamat_asal = alamat_asal;
   if (pangkalan !== undefined) updates.pangkalan = pangkalan;
   if (kwartir_ranting_id !== undefined) updates.kwartir_ranting_id = kwartir_ranting_id;
