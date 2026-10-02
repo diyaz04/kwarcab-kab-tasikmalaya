@@ -153,6 +153,8 @@ ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sekretaris_nama TEXT DEFAULT
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS sekretaris_foto TEXT DEFAULT '';
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS bendahara_nama TEXT DEFAULT '';
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS bendahara_foto TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_pusdatin_nama TEXT DEFAULT '';
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_pusdatin_foto TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS kampung_pramuka (
   id TEXT PRIMARY KEY,
