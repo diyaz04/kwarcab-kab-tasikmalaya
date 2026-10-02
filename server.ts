@@ -1719,7 +1719,7 @@ app.get('/api/admin/kampung-pramuka', authenticate, (req: AuthRequest, res: Resp
 });
 
 app.post('/api/admin/kampung-pramuka', authenticate, authorizeKwarcab('kampung_pramuka'), (req: AuthRequest, res: Response) => {
-  const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan } = req.body;
+  const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan, status } = req.body;
   if (!nama || !kecamatan || latitude === undefined || longitude === undefined || !sejarah || !keunggulan) {
     res.status(400).json({ error: 'Field nama, kecamatan, koordinat, sejarah, dan keunggulan wajib diisi' });
     return;
@@ -1733,6 +1733,8 @@ app.post('/api/admin/kampung-pramuka', authenticate, authorizeKwarcab('kampung_p
     foto: foto || '',
     sejarah,
     keunggulan,
+    // status hanya disimpan kalau dikirim (klien lama/native tidak mengirimnya -> dianggap 'aktif')
+    ...(status === 'aktif' || status === 'proses' ? { status } : {}),
     created_at: new Date().toISOString()
   };
   db.addKampungPramuka(newKp);
@@ -1741,7 +1743,7 @@ app.post('/api/admin/kampung-pramuka', authenticate, authorizeKwarcab('kampung_p
 
 app.put('/api/admin/kampung-pramuka/:id', authenticate, authorizeKwarcab('kampung_pramuka'), (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan } = req.body;
+  const { nama, kecamatan, latitude, longitude, foto, sejarah, keunggulan, status } = req.body;
   const updates: any = {};
   if (nama !== undefined) updates.nama = nama;
   if (kecamatan !== undefined) updates.kecamatan = kecamatan;
@@ -1750,6 +1752,7 @@ app.put('/api/admin/kampung-pramuka/:id', authenticate, authorizeKwarcab('kampun
   if (foto !== undefined) updates.foto = foto;
   if (sejarah !== undefined) updates.sejarah = sejarah;
   if (keunggulan !== undefined) updates.keunggulan = keunggulan;
+  if (status === 'aktif' || status === 'proses') updates.status = status;
 
   db.updateKampungPramuka(id, updates);
   res.json({ message: 'Kampung Pramuka updated successfully' });

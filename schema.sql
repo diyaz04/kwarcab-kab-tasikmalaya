@@ -156,6 +156,7 @@ ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS bendahara_foto TEXT DEFAULT 
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_pusdatin_nama TEXT DEFAULT '';
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS ketua_pusdatin_foto TEXT DEFAULT '';
 
+-- Status kampung pramuka untuk warna peta: 'aktif' (hijau) atau 'proses' (kuning)
 CREATE TABLE IF NOT EXISTS kampung_pramuka (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL,
@@ -167,6 +168,7 @@ CREATE TABLE IF NOT EXISTS kampung_pramuka (
   keunggulan TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE kampung_pramuka ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aktif';
 
 CREATE TABLE IF NOT EXISTS kta_config (
   id TEXT PRIMARY KEY DEFAULT 'kta_1',

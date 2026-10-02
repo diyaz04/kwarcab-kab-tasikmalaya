@@ -99,6 +99,7 @@ export default function AdminPortal({
   const [kpList, setKpList] = useState<KampungPramuka[]>([]);
   const [kpNama, setKpNama] = useState('');
   const [kpKecamatan, setKpKecamatan] = useState('');
+  const [kpStatus, setKpStatus] = useState<'aktif' | 'proses'>('aktif');
   const [kpLatitude, setKpLatitude] = useState('');
   const [kpLongitude, setKpLongitude] = useState('');
   const [kpFoto, setKpFoto] = useState('');
@@ -1912,7 +1913,8 @@ export default function AdminPortal({
           longitude: Number(kpLongitude),
           foto: kpFoto,
           sejarah: kpSejarah,
-          keunggulan: kpKeunggulan
+          keunggulan: kpKeunggulan,
+          status: kpStatus
         })
       });
       if (res.ok) {
@@ -5669,6 +5671,7 @@ export default function AdminPortal({
                         setSelectedItem(null);
                         setKpNama('');
                         setKpKecamatan('');
+                        setKpStatus('aktif');
                         setKpLatitude('');
                         setKpLongitude('');
                         setKpFoto('');
@@ -5706,7 +5709,12 @@ export default function AdminPortal({
                             kpList.map((kp) => (
                               <tr key={kp.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="p-4 font-bold text-gray-900">{kp.nama}</td>
-                                <td className="p-4">Kec. {kp.kecamatan}</td>
+                                <td className="p-4">
+                                  Kec. {kp.kecamatan}
+                                  <span className={`ml-2 text-[9px] font-bold px-2 py-0.5 rounded-full border ${kp.status === 'proses' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-green-100 text-green-800 border-green-200'}`}>
+                                    {kp.status === 'proses' ? 'Proses' : 'Aktif'}
+                                  </span>
+                                </td>
                                 <td className="p-4 font-mono text-[10px] text-green-700">
                                   {kp.latitude?.toFixed?.(5) || kp.latitude}, {kp.longitude?.toFixed?.(5) || kp.longitude}
                                 </td>
@@ -5732,6 +5740,7 @@ export default function AdminPortal({
                                       setFormMode('edit');
                                       setKpNama(kp.nama);
                                       setKpKecamatan(kp.kecamatan);
+                                      setKpStatus(kp.status === 'proses' ? 'proses' : 'aktif');
                                       setKpLatitude(String(kp.latitude));
                                       setKpLongitude(String(kp.longitude));
                                       setKpFoto(kp.foto);
@@ -5792,6 +5801,19 @@ export default function AdminPortal({
                           <option key={kw.id} value={kw.nama_kecamatan}>{kw.nama_kecamatan}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Status Kampung Pramuka *</label>
+                      <select
+                        value={kpStatus}
+                        onChange={(e) => setKpStatus(e.target.value as 'aktif' | 'proses')}
+                        className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
+                      >
+                        <option value="aktif">Sudah ada (kecamatan berwarna hijau di peta)</option>
+                        <option value="proses">Sedang diproses (kecamatan berwarna kuning di peta)</option>
+                      </select>
+                      <p className="text-[10px] text-gray-500">Kecamatan tanpa Kampung Pramuka otomatis berwarna merah.</p>
                     </div>
 
                     <div className="space-y-1.5">

@@ -163,6 +163,8 @@ export interface KampungPramuka {
   foto: string; // Comma separated image URLs
   sejarah: string;
   keunggulan: string;
+  /** 'aktif' = sudah ada (hijau), 'proses' = sedang diproses (kuning). Kosong dianggap 'aktif'. */
+  status?: 'aktif' | 'proses';
   created_at: string;
 }
 
