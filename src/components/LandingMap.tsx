@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Compass, X, MapPin, Globe, Award, BookOpen, ChevronLeft, ChevronRight, Map, Info } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Compass, X, MapPin, Globe, Award, BookOpen, ChevronLeft, ChevronRight, Map as MapIcon, Info } from 'lucide-react';
 import { KampungPramuka } from '../types';
 
 interface LandingMapProps {
@@ -10,22 +12,83 @@ interface LandingMapProps {
 export default function LandingMap({ items, onSelectKp }: LandingMapProps) {
   const [selectedKp, setSelectedKp] = useState<KampungPramuka | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
-  const [hoveredKp, setHoveredKp] = useState<KampungPramuka | null>(null);
 
-  // Coordinate bounding box for Kabupaten Tasikmalaya
-  const minLat = -7.85;
-  const maxLat = -7.15;
-  const minLon = 107.95;
-  const maxLon = 108.45;
+  const mapDivRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const onSelectRef = useRef<(kp: KampungPramuka) => void>(() => {});
 
-  const getXY = (lat: number, lon: number) => {
-    const x = ((lon - minLon) / (maxLon - minLon)) * 100;
-    const y = ((maxLat - lat) / (maxLat - minLat)) * 100;
-    return { 
-      x: Math.max(10, Math.min(90, x)), 
-      y: Math.max(10, Math.min(90, y)) 
-    };
+  const handleSelect = (kp: KampungPramuka) => {
+    if (onSelectKp) {
+      onSelectKp(kp);
+    } else {
+      setSelectedKp(kp);
+      setActivePhotoIndex(0);
+    }
   };
+  onSelectRef.current = handleSelect;
+
+  const validItems = items.filter(
+    (kp) => Number.isFinite(Number(kp.latitude)) && Number.isFinite(Number(kp.longitude))
+  );
+
+  // Buat peta sekali
+  useEffect(() => {
+    if (!mapDivRef.current || mapRef.current) return;
+    const map = L.map(mapDivRef.current, { scrollWheelZoom: false }).setView([-7.45, 108.15], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markersRef.current.clear();
+    };
+  }, []);
+
+  // Pasang / perbarui marker dari koordinat tiap Kampung Pramuka
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current.clear();
+
+    validItems.forEach((kp) => {
+      const icon = L.divIcon({
+        className: '',
+        html: '<div style="width:34px;height:34px;border-radius:12px;background:#fff;border:2px solid #16a34a;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#15803d"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 34]
+      });
+      const marker = L.marker([Number(kp.latitude), Number(kp.longitude)], { icon, title: kp.nama })
+        .addTo(map)
+        .bindTooltip(kp.nama, { direction: 'top', offset: [0, -34] });
+      marker.on('click', () => onSelectRef.current(kp));
+      markersRef.current.set(kp.id, marker);
+    });
+
+    if (validItems.length === 1) {
+      map.setView([Number(validItems[0].latitude), Number(validItems[0].longitude)], 13);
+    } else if (validItems.length > 1) {
+      map.fitBounds(
+        L.latLngBounds(validItems.map((kp) => [Number(kp.latitude), Number(kp.longitude)] as [number, number])),
+        { padding: [60, 60], maxZoom: 13 }
+      );
+    }
+  }, [items]);
+
+  // Klik di daftar / marker -> geser peta ke lokasi tersebut
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedKp) return;
+    const lat = Number(selectedKp.latitude);
+    const lon = Number(selectedKp.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      map.flyTo([lat, lon], Math.max(map.getZoom(), 12), { duration: 0.8 });
+    }
+  }, [selectedKp]);
 
   const photos = selectedKp ? selectedKp.foto.split(',').filter(Boolean) : [];
 
@@ -75,116 +138,20 @@ export default function LandingMap({ items, onSelectKp }: LandingMapProps) {
             <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-white/90 to-transparent p-4 flex items-center justify-between z-10 pointer-events-none">
               <div className="flex items-center space-x-2 bg-white/80 px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm backdrop-blur-md">
                 <Compass className="w-4 h-4 text-green-600 animate-pulse" />
-                <span className="text-[10px] font-mono font-bold text-green-900 uppercase tracking-wider">Tasikmalaya Grid System</span>
+                <span className="text-[10px] font-mono font-bold text-green-900 uppercase tracking-wider">Peta Sebaran Kampung Pramuka</span>
               </div>
               <div className="bg-white/80 px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm backdrop-blur-md text-[9px] font-mono text-gray-600 pointer-events-auto">
-                Kab. Tasikmalaya (7.15° S &bull; 108.15° E)
+                {validItems.length} lokasi
               </div>
             </div>
 
-            {/* MAP CANVAS (SVG Vector Background + Grid + Markers) */}
-            <div className="flex-grow w-full h-full relative bg-[#F8FAFC] overflow-hidden flex items-center justify-center select-none">
-              
-              {/* Coordinate Grid Overlay */}
-              <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 opacity-30 pointer-events-none">
-                {Array.from({ length: 100 }).map((_, i) => (
-                  <div key={i} className="border-t border-l border-green-200/50 font-mono text-[7px] text-green-700/40 p-0.5">
-                    {i % 10 === 0 && `${(minLon + (i/10) * 0.05).toFixed(2)}°E`}
-                  </div>
-                ))}
-              </div>
+            {/* PETA ASLI (OpenStreetMap) - posisi pin dibaca dari koordinat tiap Kampung Pramuka */}
+            <div ref={mapDivRef} className="flex-grow w-full h-full relative z-0" />
 
-              {/* Geographic Vector Shape of Kabupaten Tasikmalaya (Stylized Premium Outline) */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <defs>
-                  <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#22C55E" stopOpacity="0.05" />
-                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-                
-                {/* Background glow around central Tasikmalaya */}
-                <rect width="100" height="100" fill="url(#mapGlow)" />
-
-                {/* Stylized region contour representing mountain slopes and Tasikmalaya terrain */}
-                <path 
-                  d="M 15,35 Q 25,20 45,25 T 75,15 T 85,45 T 70,80 T 50,90 T 25,85 T 15,55 Z" 
-                  fill="none" 
-                  stroke="rgba(21, 128, 61, 0.3)" 
-                  strokeWidth="0.75" 
-                  strokeDasharray="2,2" 
-                />
-                
-                <path 
-                  d="M 20,40 Q 30,28 48,32 T 70,25 T 80,48 T 65,75 T 48,82 T 28,78 T 20,55 Z" 
-                  fill="none" 
-                  stroke="rgba(234, 179, 8, 0.3)" 
-                  strokeWidth="0.5" 
-                />
-
-                {/* Volcano Ridge: Mt. Galunggung representation */}
-                <g transform="translate(42, 38)">
-                  <path d="M -10,12 L 0,0 L 10,12" fill="none" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="0.5" />
-                  <path d="M -6,12 L 0,4 L 6,12" fill="none" stroke="rgba(239, 68, 68, 0.3)" strokeWidth="0.5" />
-                  <circle r="1" fill="rgba(239, 68, 68, 0.5)" className="animate-ping" />
-                </g>
-
-                {/* Southern Coast representation */}
-                <path d="M 5,87 L 95,95" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="1" strokeDasharray="4,4" />
-              </svg>
-
-              {/* Dynamic Interactive Markers */}
-              {items.map((kp) => {
-                const { x, y } = getXY(kp.latitude, kp.longitude);
-                const isSelected = selectedKp?.id === kp.id;
-                const isHovered = hoveredKp?.id === kp.id;
-
-                return (
-                  <div
-                    key={kp.id}
-                    className="absolute z-20 cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                    onClick={() => {
-                      if (onSelectKp) {
-                        onSelectKp(kp);
-                      } else {
-                        setSelectedKp(kp);
-                        setActivePhotoIndex(0);
-                      }
-                    }}
-                    onMouseEnter={() => setHoveredKp(kp)}
-                    onMouseLeave={() => setHoveredKp(null)}
-                  >
-                    {/* Ring Pulse Effect */}
-                    <span className={`absolute inline-flex h-10 w-10 -left-3.5 -top-3.5 rounded-full bg-green-500/20 transition-transform ${isSelected || isHovered ? 'scale-150 opacity-100 animate-ping' : 'scale-50 opacity-0'}`}></span>
-                    <span className={`absolute inline-flex h-6 w-6 -left-1.5 -top-1.5 rounded-full bg-yellow-500/40 animate-pulse`}></span>
-                    
-                    {/* Pin Shape */}
-                    <div className={`p-2 rounded-xl border flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-green-700 border-green-800 text-white scale-125 shadow-xl shadow-green-900/20' : 'bg-white border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 hover:scale-110 shadow-sm'}`}>
-                      <MapPin className="w-4 h-4" />
-                    </div>
-
-                    {/* Popover Hover Label */}
-                    <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 pointer-events-none transition-all duration-200 ${isHovered && !isSelected ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-95'}`}>
-                      <div className="bg-gray-900 text-[10px] text-white font-bold px-2.5 py-1.5 rounded-lg border border-gray-700 shadow-xl whitespace-nowrap">
-                        {kp.nama}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Compass Indicator */}
-              <div className="absolute bottom-6 left-6 flex flex-col items-center opacity-50">
-                <Compass className="w-12 h-12 text-green-700 animate-spin" style={{ animationDuration: '25s' }} />
-                <span className="text-[9px] font-mono text-gray-500 font-bold mt-1 tracking-widest">N &bull; SE</span>
-              </div>
-
-              {/* Floating Helper Tip */}
-              <div className="absolute bottom-6 right-6 bg-white/90 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm text-[9px] text-gray-600 font-light flex items-center gap-1 backdrop-blur-sm">
-                <Info className="w-3.5 h-3.5 text-green-600" />
-                Hover pin untuk nama, klik untuk profil lengkap.
-              </div>
+            {/* Floating Helper Tip */}
+            <div className="absolute bottom-6 left-4 z-10 bg-white/90 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm text-[9px] text-gray-600 font-light flex items-center gap-1 backdrop-blur-sm pointer-events-none">
+              <Info className="w-3.5 h-3.5 text-green-600" />
+              Arahkan ke pin untuk nama, klik untuk profil lengkap.
             </div>
           </div>
 
@@ -194,7 +161,7 @@ export default function LandingMap({ items, onSelectKp }: LandingMapProps) {
             {/* List Header */}
             <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
               <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Daftar Kampung ({items.length})</span>
-              <Map className="w-4 h-4 text-green-600" />
+              <MapIcon className="w-4 h-4 text-green-600" />
             </div>
 
             {/* Scrollable list of locations */}
@@ -205,11 +172,10 @@ export default function LandingMap({ items, onSelectKp }: LandingMapProps) {
                   <button
                     key={kp.id}
                     onClick={() => {
-                      if (onSelectKp) {
-                        onSelectKp(kp);
-                      } else {
-                        setSelectedKp(kp);
-                        setActivePhotoIndex(0);
+                      handleSelect(kp);
+                      const m = mapRef.current;
+                      if (m && Number.isFinite(Number(kp.latitude)) && Number.isFinite(Number(kp.longitude))) {
+                        m.flyTo([Number(kp.latitude), Number(kp.longitude)], Math.max(m.getZoom(), 12), { duration: 0.8 });
                       }
                     }}
                     className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${isSelected ? 'bg-green-50 border-green-300 shadow-md shadow-green-900/5' : 'bg-white hover:bg-gray-50 border-gray-100 shadow-sm hover:shadow-md'}`}
