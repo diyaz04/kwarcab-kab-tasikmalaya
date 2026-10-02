@@ -123,7 +123,7 @@ export default function LandingHero({
 
           {/* Kilasan berita terbaru */}
           {mainNews && (
-            <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl border border-gray-100 shadow-lg p-3">
+            <div className="w-full max-w-md md:max-w-none md:w-[380px] md:absolute md:right-4 lg:right-8 md:top-1/2 md:-translate-y-1/2 bg-white/90 backdrop-blur-md rounded-2xl border border-gray-100 shadow-xl p-3 md:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-green-700">Kilasan Berita Terbaru</span>
                 {newsItems.length > 1 && (
@@ -137,12 +137,12 @@ export default function LandingHero({
                   </div>
                 )}
               </div>
-              <button type="button" onClick={() => onSelectBerita(mainNews)} className="flex items-center gap-3 text-left w-full group">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+              <button type="button" onClick={() => onSelectBerita(mainNews)} className="flex items-center md:items-stretch md:flex-col gap-3 text-left w-full group">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-full md:h-auto md:aspect-video rounded-xl overflow-hidden bg-gray-100 shrink-0">
                   <img key={mainNews.id} src={mainNews.gambar_cover} alt="" className="w-full h-full object-cover animate-in fade-in duration-500" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-green-700">{mainNews.judul}</div>
+                  <div className="text-xs sm:text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 md:line-clamp-3 group-hover:text-green-700">{mainNews.judul}</div>
                   <div className="text-[10px] text-gray-500 mt-1">
                     {new Date(mainNews.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </div>
