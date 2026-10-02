@@ -177,6 +177,12 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                         ? `Kwartir Ranting ${detailData.kwarran.nama_kecamatan}` 
                         : detailData.saka.nama_saka}
                     </h1>
+                    {type === 'kwarran' && detailData.kwarran.masa_khidmat && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-green-800 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Masa Khidmat {detailData.kwarran.masa_khidmat}</span>
+                      </div>
+                    )}
                     {type === 'kwarran' && (
                       <SosmedButtons
                         links={detailData.kwarran.sosmed}
@@ -527,6 +533,13 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
               <h3 className="text-lg font-bold text-gray-900 font-heading tracking-wide mb-4 group-hover:text-green-700 transition-colors">
                 {type === 'kwarran' ? `Kwarran ${item.nama_kecamatan}` : item.nama_saka}
               </h3>
+
+              {type === 'kwarran' && item.masa_khidmat && (
+                <div className="-mt-2 mb-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-green-800 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5">
+                  <Calendar className="w-3 h-3" />
+                  <span>Masa Khidmat {item.masa_khidmat}</span>
+                </div>
+              )}
 
               {/* Leader / Pengurus Cards */}
               <div className="space-y-3 pt-3 border-t border-gray-100 mb-6">

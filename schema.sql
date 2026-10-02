@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS kwartir_ranting (
 
 -- Link media sosial (JSON: instagram, facebook, youtube, tiktok, x, whatsapp, website)
 ALTER TABLE kwartir_ranting ADD COLUMN IF NOT EXISTS sosmed JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE kwartir_ranting ADD COLUMN IF NOT EXISTS masa_khidmat TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS gugus_depan (
   id TEXT PRIMARY KEY,

@@ -185,6 +185,7 @@ export default function AdminPortal({
   // Kwarran Form Fields
   const [kwNama, setKwNama] = useState('');
   const [kwKetua, setKwKetua] = useState('');
+  const [kwMasaKhidmat, setKwMasaKhidmat] = useState('');
   const [kwSekretaris, setKwSekretaris] = useState('');
   const [kwBendahara, setKwBendahara] = useState('');
   const [kwStatus, setKwStatus] = useState<'aktif' | 'non-aktif' | 'transisi'>('aktif');
@@ -2002,7 +2003,8 @@ export default function AdminPortal({
           ketua: kwKetua,
           sekretaris: kwSekretaris,
           bendahara: kwBendahara,
-          status: kwStatus
+          status: kwStatus,
+          ...((kwMasaKhidmat.trim() || (formMode === 'edit' && selectedItem?.masa_khidmat !== undefined)) ? { masa_khidmat: kwMasaKhidmat.trim() } : {})
         })
       });
       if (res.ok) {
@@ -3754,6 +3756,7 @@ export default function AdminPortal({
                           setFormMode('add');
                           setKwNama('');
                           setKwKetua('');
+                          setKwMasaKhidmat('');
                           setKwSekretaris('');
                           setKwBendahara('');
                           setKwStatus('aktif');
@@ -3834,6 +3837,7 @@ export default function AdminPortal({
                                       setSelectedItem(kw);
                                       setKwNama(kw.nama_kecamatan);
                                       setKwKetua(kw.ketua);
+                                      setKwMasaKhidmat(kw.masa_khidmat || '');
                                       setKwSekretaris(kw.sekretaris);
                                       setKwBendahara(kw.bendahara);
                                       setKwStatus(kw.status);
@@ -3890,6 +3894,7 @@ export default function AdminPortal({
                                   setSelectedItem(kw);
                                   setKwNama(kw.nama_kecamatan);
                                   setKwKetua(kw.ketua);
+                                      setKwMasaKhidmat(kw.masa_khidmat || '');
                                   setKwSekretaris(kw.sekretaris);
                                   setKwBendahara(kw.bendahara);
                                   setKwStatus(kw.status);
@@ -3961,6 +3966,7 @@ export default function AdminPortal({
                               setSelectedItem(viewingKwarranDetail);
                               setKwNama(viewingKwarranDetail.nama_kecamatan);
                               setKwKetua(viewingKwarranDetail.ketua);
+                              setKwMasaKhidmat(viewingKwarranDetail.masa_khidmat || '');
                               setKwSekretaris(viewingKwarranDetail.sekretaris);
                               setKwBendahara(viewingKwarranDetail.bendahara);
                               setKwStatus(viewingKwarranDetail.status);
@@ -4027,6 +4033,17 @@ export default function AdminPortal({
                         required={user.role === 'kwarran'}
                         value={kwBendahara}
                         onChange={(e) => setKwBendahara(e.target.value)}
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-600">Masa Khidmat</label>
+                      <input
+                        type="text"
+                        maxLength={40}
+                        value={kwMasaKhidmat}
+                        onChange={(e) => setKwMasaKhidmat(e.target.value)}
+                        placeholder="Contoh: 2023 - 2028"
                         className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
                       />
                     </div>

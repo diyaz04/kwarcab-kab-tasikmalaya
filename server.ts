@@ -1169,7 +1169,7 @@ app.get('/api/admin/kwarran', authenticate, (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: Request, res: Response) => {
-  const { nama_kecamatan, ketua, sekretaris, bendahara, status, foto_ketua, foto_sekretaris, foto_bendahara } = req.body;
+  const { nama_kecamatan, ketua, sekretaris, bendahara, status, foto_ketua, foto_sekretaris, foto_bendahara, masa_khidmat } = req.body;
   if (!nama_kecamatan) {
     res.status(400).json({ error: 'Data nama kecamatan wajib diisi' });
     return;
@@ -1184,6 +1184,8 @@ app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: 
     foto_sekretaris: foto_sekretaris || '/img/avatar-default.jpg',
     foto_bendahara: foto_bendahara || '/img/avatar-default.jpg',
     status: status || 'aktif',
+    // Disimpan hanya kalau diisi (klien lama/native tidak mengirimnya)
+    ...(typeof masa_khidmat === 'string' && masa_khidmat.trim() ? { masa_khidmat: masa_khidmat.trim().slice(0, 40) } : {}),
     created_at: new Date().toISOString()
   };
   db.addKwarran(newKw);
@@ -1210,6 +1212,9 @@ app.put('/api/admin/kwarran/:id', authenticate, (req: AuthRequest, res: Response
   if (user.role === 'kwarran') {
     delete updates.nama_kecamatan;
     delete updates.status;
+  }
+  if ('masa_khidmat' in updates) {
+    updates.masa_khidmat = String(updates.masa_khidmat ?? '').trim().slice(0, 40);
   }
   if ('sosmed' in updates) {
     updates.sosmed = sanitizeSosmed(updates.sosmed);

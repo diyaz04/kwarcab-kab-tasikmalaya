@@ -37,6 +37,8 @@ export interface KwartirRanting {
   foto_sekretaris: string;
   foto_bendahara: string;
   status: 'aktif' | 'non-aktif' | 'transisi';
+  /** Periode kepengurusan, teks bebas, mis. "2023 - 2028". */
+  masa_khidmat?: string;
   sosmed?: SosmedLinks;
   created_at: string;
 }
