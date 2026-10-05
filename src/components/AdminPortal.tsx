@@ -12,6 +12,7 @@ import {
 import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import TingkatanStats from './TingkatanStats';
+import PimpinanManager from './PimpinanManager';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
@@ -5427,6 +5428,18 @@ export default function AdminPortal({
                 </button>
               </div>
             </form>
+
+            <PimpinanManager
+              items={pimpinanList}
+              token={token}
+              onChanged={() => { loadDashboardData(); onRefreshData(); }}
+              onUploadFoto={(e, setUrl) => handleBase64Upload(e, setUrl, {
+                maxDimension: 420,
+                quality: 0.42,
+                filenamePrefix: 'pimpinan_',
+                successMessage: 'Foto berhasil dikompresi dan diunggah!'
+              })}
+            />
 
             {user.role === 'kwarcab' && (
               <div className="bg-white shadow-xl rounded-2xl border border-gray-100 p-6 sm:p-8 mt-6 space-y-3 animate-fade-in">

@@ -10,7 +10,7 @@ import { sanitizeSosmed } from './src/utils/sosmed';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan } from './src/utils/tingkatan';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const isServerlessRuntime = process.env.NETLIFY === 'true'
   || process.env.NETLIFY_DEV === 'true'
   || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
@@ -1613,7 +1613,7 @@ app.get('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: R
 });
 
 app.post('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
-  const { nama, jabatan, foto, urutan } = req.body;
+  const { nama, jabatan, foto, urutan, kategori } = req.body;
   if (!nama || !jabatan) {
     res.status(400).json({ error: 'Nama dan jabatan wajib' });
     return;
@@ -1623,14 +1623,24 @@ app.post('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: 
     nama,
     jabatan,
     foto: foto || '/img/avatar-default.jpg',
-    urutan: Number(urutan) || 5
+    urutan: Number(urutan) || 5,
+    // Disimpan hanya kalau dikirim (klien lama/native tidak mengirimnya -> dianggap pengurus)
+    ...(kategori === 'inti' || kategori === 'pengurus' ? { kategori } : {})
   };
   db.addPimpinan(newP);
   res.json(newP);
 });
 
 app.put('/api/admin/pimpinan/:id', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
-  db.updatePimpinan(req.params.id, req.body);
+  // Hanya field yang dikenal yang boleh diubah.
+  const { nama, jabatan, foto, urutan, kategori } = req.body || {};
+  const updates: Record<string, unknown> = {};
+  if (typeof nama === 'string') updates.nama = nama;
+  if (typeof jabatan === 'string') updates.jabatan = jabatan;
+  if (typeof foto === 'string') updates.foto = foto;
+  if (urutan !== undefined && Number.isFinite(Number(urutan))) updates.urutan = Number(urutan);
+  if (kategori === 'inti' || kategori === 'pengurus') updates.kategori = kategori;
+  db.updatePimpinan(req.params.id, updates);
   res.json({ message: 'Pimpinan updated successfully' });
 });
 

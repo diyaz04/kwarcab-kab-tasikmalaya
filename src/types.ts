@@ -134,6 +134,8 @@ export interface PimpinanKwarcab {
   jabatan: string;
   foto: string;
   urutan: number;
+  /** 'inti' = Pimpinan Inti; kosong / 'pengurus' = Pengurus Kwarcab. */
+  kategori?: 'inti' | 'pengurus';
 }
 
 export interface ProfilKwarcab {

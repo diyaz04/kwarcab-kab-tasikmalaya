@@ -125,6 +125,9 @@ CREATE TABLE IF NOT EXISTS pimpinan_kwarcab (
   urutan INTEGER DEFAULT 5
 );
 
+-- Kategori tampilan: 'inti' (Pimpinan Inti) atau 'pengurus' (Pengurus Kwarcab)
+ALTER TABLE pimpinan_kwarcab ADD COLUMN IF NOT EXISTS kategori TEXT DEFAULT 'pengurus';
+
 CREATE TABLE IF NOT EXISTS profil_kwarcab (
   id TEXT PRIMARY KEY,
   visi TEXT NOT NULL,

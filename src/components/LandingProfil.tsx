@@ -23,6 +23,11 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
     .map((m) => m.trim())
     .filter((m) => m.length > 0);
 
+  // Orang yang ditambahkan admin: 'inti' ikut di Pimpinan Inti, sisanya jadi Pengurus.
+  const sortedPimpinan = [...pimpinan].sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+  const pimpinanInti = sortedPimpinan.filter(p => p.kategori === 'inti');
+  const pengurus = sortedPimpinan.filter(p => p.kategori !== 'inti');
+
   return (
     <div className="pt-32 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Watermark Logo (Mockup Style) */}
@@ -100,6 +105,7 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
             { jabatan: 'Ketua Harian', nama: profil.ketua_harian_nama, foto: profil.ketua_harian_foto },
             { jabatan: 'Sekretaris Cabang', nama: profil.sekretaris_nama, foto: profil.sekretaris_foto },
             { jabatan: 'Bendahara Cabang', nama: profil.bendahara_nama, foto: profil.bendahara_foto },
+            ...pimpinanInti.map(p => ({ jabatan: p.jabatan, nama: p.nama, foto: p.foto })),
           ].map((pim, idx) => (
             pim.nama && (
               <div key={idx} className="bg-white rounded-3xl overflow-hidden flex flex-col h-full border border-gray-100 shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
@@ -116,6 +122,29 @@ export default function LandingProfil({ profil, pimpinan }: LandingProfilProps) 
           ))}
         </div>
       </div>
+
+      {/* Pengurus Kwarcab (ditambahkan admin) */}
+      {pengurus.length > 0 && (
+        <div className="mb-20">
+          <div className="flex items-center justify-center space-x-3 mb-10 text-center">
+            <Shield className="w-6 h-6 text-blue-700" />
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">Pengurus Kwartir Cabang</h3>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {pengurus.map((p) => (
+              <div key={p.id} className="bg-white rounded-2xl overflow-hidden flex flex-col h-full border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-300">
+                <div className="relative h-56 overflow-hidden bg-gray-50">
+                  <img src={fotoOrDefault(p.foto)} onError={onFotoError} alt={p.nama} className="w-full h-full object-cover object-top" />
+                </div>
+                <div className="p-4 text-center border-t border-gray-50">
+                  <h4 className="text-sm font-bold text-gray-900 leading-tight">{p.nama}</h4>
+                  <p className="text-[11px] text-green-700 font-semibold uppercase tracking-wider mt-1">{p.jabatan}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Sejarah Kwarcab */}
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-gray-100 shadow-sm overflow-hidden relative">
