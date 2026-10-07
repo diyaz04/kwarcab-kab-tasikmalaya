@@ -276,6 +276,22 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                   <div className="space-y-4">
                     {type === 'kwarran' ? (
                       <>
+                        {/* CALON SIAGA */}
+                        {typeof detailData.stats.calon_siaga === 'number' && (
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
+                              <span className="text-pink-600">Calon Siaga (TK)</span>
+                              <span className="text-gray-900 font-semibold">{detailData.stats.calon_siaga} orang</span>
+                            </div>
+                            <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                              <div
+                                className="h-full bg-pink-400 rounded-full transition-all duration-500"
+                                style={{ width: `${detailData.stats.total > 0 ? (detailData.stats.calon_siaga / detailData.stats.total) * 100 : 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* SIAGA */}
                         <div>
                           <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
@@ -347,6 +363,12 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                             style={{ width: `${detailData.stats.total > 0 ? (detailData.stats.dewasa / detailData.stats.total) * 100 : 0}%` }}
                           ></div>
                         </div>
+                        {typeof detailData.stats.pelatih === 'number' && (
+                          <div className="flex items-center justify-between text-xs mt-2 font-medium">
+                            <span className="text-teal-700">&bull; Di antaranya Pelatih (KPD/KPL)</span>
+                            <span className="text-gray-900 font-semibold">{detailData.stats.pelatih} orang</span>
+                          </div>
+                        )}
                       </div>
                     ) : null}
                   </div>

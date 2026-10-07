@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Anggota } from '../types';
-import { buildTingkatanStats, GOLONGAN_LABEL } from '../utils/tingkatan';
+import { buildTingkatanStats, GOLONGAN_LABEL, countPelatih, countKpdKpl } from '../utils/tingkatan';
 
 interface TingkatanStatsProps {
   anggota: Anggota[];
@@ -9,6 +9,7 @@ interface TingkatanStatsProps {
 }
 
 const BAR_COLOR: Record<string, string> = {
+  calon_siaga: 'bg-pink-400',
   siaga: 'bg-green-500',
   penggalang: 'bg-red-500',
   penegak: 'bg-yellow-500',
@@ -19,6 +20,8 @@ const BAR_COLOR: Record<string, string> = {
 /** Statistik jumlah anggota per tingkatan, dikelompokkan per golongan. */
 export default function TingkatanStats({ anggota, compact = false }: TingkatanStatsProps) {
   const stats = useMemo(() => buildTingkatanStats(anggota), [anggota]);
+  const pelatih = useMemo(() => countPelatih(anggota), [anggota]);
+  const kpdKpl = useMemo(() => countKpdKpl(anggota), [anggota]);
 
   return (
     <div className={`grid gap-3 ${compact ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
@@ -54,6 +57,20 @@ export default function TingkatanStats({ anggota, compact = false }: TingkatanSt
           </div>
         </div>
       ))}
+
+      {/* Pelatih: anggota Dewasa KPD/KPL yang statusnya dibenarkan sebagai Pelatih */}
+      <div className="bg-teal-50 border border-teal-200 rounded-xl p-3.5 shadow-sm">
+        <div className="flex items-center justify-between mb-2.5">
+          <h5 className="text-xs font-black uppercase tracking-wider text-teal-900">Pelatih</h5>
+          <span className="text-[10px] font-black bg-white border border-teal-200 text-teal-800 px-2 py-0.5 rounded-md">
+            {pelatih} orang
+          </span>
+        </div>
+        <p className="text-[11px] text-teal-900/80 leading-relaxed">
+          Dihitung dari anggota Dewasa dengan tingkatan KPD atau KPL yang dinyatakan sebagai Pelatih
+          ({pelatih} dari {kpdKpl} anggota KPD/KPL).
+        </p>
+      </div>
     </div>
   );
 }

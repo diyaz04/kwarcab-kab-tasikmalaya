@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase, getSupabaseInitError } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 import { sanitizeSosmed } from './src/utils/sosmed';
-import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan } from './src/utils/tingkatan';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan, isPelatihEligible, sanitizePeran } from './src/utils/tingkatan';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -625,11 +625,13 @@ app.get('/api/public/kwarran/:id', (req: Request, res: Response) => {
   // Statistics per golongan
   const anggota = db.getAnggota().filter(a => a.kwartir_ranting_id === id);
   const stats = {
+    calon_siaga: anggota.filter(a => a.golongan === 'calon_siaga').length,
     siaga: anggota.filter(a => a.golongan === 'siaga').length,
     penggalang: anggota.filter(a => a.golongan === 'penggalang').length,
     penegak: anggota.filter(a => a.golongan === 'penegak').length,
     pandega: anggota.filter(a => a.golongan === 'pandega').length,
     dewasa: anggota.filter(a => a.golongan === 'dewasa').length,
+    pelatih: anggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)).length,
     total: anggota.length
   };
 
@@ -763,11 +765,13 @@ app.get('/api/admin/stats', authenticate, (req: AuthRequest, res: Response) => {
   // Calculate demographics
   const stats = {
     totalAnggota: filteredAnggota.length,
+    calon_siaga: filteredAnggota.filter(a => a.golongan === 'calon_siaga').length,
     siaga: filteredAnggota.filter(a => a.golongan === 'siaga').length,
     penggalang: filteredAnggota.filter(a => a.golongan === 'penggalang').length,
     penegak: filteredAnggota.filter(a => a.golongan === 'penegak').length,
     pandega: filteredAnggota.filter(a => a.golongan === 'pandega').length,
     dewasa: filteredAnggota.filter(a => a.golongan === 'dewasa').length,
+    pelatih: filteredAnggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)).length,
     pendingBerita: pendingBeritaCount,
     pendingSakaApproval: pendingSakaApprovalCount,
   };
@@ -847,15 +851,16 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
   const { 
     nama_lengkap, tempat_lahir, tanggal_lahir, golongan, tingkatan, 
     alamat_asal, pangkalan, kwartir_ranting_id, gudep_id, 
-    aktif_saka, saka_ids, foto
+    aktif_saka, saka_ids, foto, is_pelatih, peran
   } = req.body;
 
-  if (!nama_lengkap || !tempat_lahir || !tanggal_lahir || !golongan || !tingkatan || !kwartir_ranting_id) {
+  // Calon Siaga tidak punya tingkatan (otomatis "-"), jadi tidak wajib dikirim.
+  if (!nama_lengkap || !tempat_lahir || !tanggal_lahir || !golongan || (!tingkatan && golongan !== 'calon_siaga') || !kwartir_ranting_id) {
     res.status(400).json({ error: 'Data wajib lengkap' });
     return;
   }
 
-  const tingkatanCheck = checkTingkatan(golongan, tingkatan);
+  const tingkatanCheck = checkTingkatan(golongan, tingkatan || '');
   if (tingkatanCheck.error) {
     res.status(400).json({ error: tingkatanCheck.error });
     return;
@@ -873,6 +878,10 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
     kwartir_ranting_id,
     gudep_id: gudep_id || null,
     foto: foto || '',
+    // Status Pelatih hanya disimpan untuk Dewasa KPD/KPL yang menjawabnya (klien lama/native tidak mengirimnya)
+    ...(isPelatihEligible(golongan, tingkatanCheck.value) && typeof is_pelatih === 'boolean' ? { is_pelatih } : {}),
+    // Peran hanya untuk Dewasa dan hanya disimpan kalau ada yang dipilih
+    ...(golongan === 'dewasa' && sanitizePeran(peran).length > 0 ? { peran: sanitizePeran(peran) } : {}),
     created_by: user.id,
     created_at: new Date().toISOString()
   };
@@ -934,7 +943,7 @@ app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission([
   const { 
     nama_lengkap, tempat_lahir, tanggal_lahir, golongan, tingkatan, 
     alamat_asal, pangkalan, kwartir_ranting_id, gudep_id,
-    aktif_saka, saka_ids, foto, is_kta_printed
+    aktif_saka, saka_ids, foto, is_kta_printed, is_pelatih, peran
   } = req.body;
 
   const updates: Partial<typeof currentAnggota> = {};
@@ -956,6 +965,25 @@ app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission([
     }
     updates.golongan = effGolongan;
     updates.tingkatan = check.value as string;
+  }
+
+  // Status Pelatih: hanya berlaku untuk Dewasa KPD/KPL. Kalau tidak lagi memenuhi syarat, otomatis dibatalkan.
+  const finalGolongan = (updates.golongan ?? currentAnggota.golongan) as string;
+  const finalTingkatan = (updates.tingkatan ?? currentAnggota.tingkatan) as string;
+  if (isPelatihEligible(finalGolongan, finalTingkatan)) {
+    if (typeof is_pelatih === 'boolean') updates.is_pelatih = is_pelatih;
+  } else if (currentAnggota.is_pelatih !== undefined) {
+    updates.is_pelatih = false;
+  }
+
+  // Peran hanya untuk Dewasa; berpindah golongan membersihkan peran lama.
+  if (finalGolongan === 'dewasa') {
+    if (peran !== undefined) {
+      const cleaned = sanitizePeran(peran);
+      if (cleaned.length > 0 || currentAnggota.peran !== undefined) updates.peran = cleaned;
+    }
+  } else if (currentAnggota.peran !== undefined) {
+    updates.peran = [];
   }
   if (alamat_asal !== undefined) updates.alamat_asal = alamat_asal;
   if (pangkalan !== undefined) updates.pangkalan = pangkalan;

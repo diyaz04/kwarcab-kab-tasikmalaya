@@ -63,7 +63,7 @@ export interface SatuanKarya {
   created_at: string;
 }
 
-export type GolonganPramuka = 'siaga' | 'penggalang' | 'penegak' | 'pandega' | 'dewasa';
+export type GolonganPramuka = 'calon_siaga' | 'siaga' | 'penggalang' | 'penegak' | 'pandega' | 'dewasa';
 
 export interface Anggota {
   id: string;
@@ -78,6 +78,10 @@ export interface Anggota {
   gudep_id: string | null;
   foto?: string;
   is_kta_printed?: boolean;
+  /** Hanya bermakna untuk golongan Dewasa dengan tingkatan KPD/KPL: true = tercatat sebagai Pelatih. */
+  is_pelatih?: boolean;
+  /** Peran anggota Dewasa (boleh lebih dari satu), mis. ['pembina_siaga', 'pamong_saka']. */
+  peran?: string[];
   created_by: string; // User ID
   created_at: string;
 }

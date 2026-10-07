@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS anggota (
   nama_lengkap TEXT NOT NULL,
   tempat_lahir TEXT NOT NULL,
   tanggal_lahir TEXT NOT NULL,
-  golongan TEXT NOT NULL CHECK (golongan IN ('siaga', 'penggalang', 'penegak', 'pandega', 'dewasa')),
+  golongan TEXT NOT NULL CHECK (golongan IN ('calon_siaga', 'siaga', 'penggalang', 'penegak', 'pandega', 'dewasa')),
   tingkatan TEXT NOT NULL,
   alamat_asal TEXT DEFAULT '',
   pangkalan TEXT DEFAULT '',
@@ -68,9 +68,17 @@ CREATE TABLE IF NOT EXISTS anggota (
   gudep_id TEXT,
   foto TEXT DEFAULT '',
   is_kta_printed BOOLEAN DEFAULT FALSE,
+  is_pelatih BOOLEAN DEFAULT FALSE,
+  peran JSONB DEFAULT '[]'::jsonb,
   created_by TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrasi untuk database yang sudah ada (golongan Calon Siaga & peran anggota Dewasa)
+ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_golongan_check;
+ALTER TABLE anggota ADD CONSTRAINT anggota_golongan_check CHECK (golongan IN ('calon_siaga', 'siaga', 'penggalang', 'penegak', 'pandega', 'dewasa'));
+ALTER TABLE anggota ADD COLUMN IF NOT EXISTS is_pelatih BOOLEAN DEFAULT FALSE;
+ALTER TABLE anggota ADD COLUMN IF NOT EXISTS peran JSONB DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS anggota_saka (
   id TEXT PRIMARY KEY,

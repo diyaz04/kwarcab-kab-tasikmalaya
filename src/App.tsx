@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { golonganLabel } from './utils/tingkatan';
 import { 
   Compass, Shield, Award, Users, Calendar, BookOpen, MapPin, 
   ChevronRight, ArrowUpRight, Activity, HelpCircle, User, 
@@ -768,7 +769,7 @@ export default function App() {
                         {verifiedMember.anggota.nama_lengkap.toUpperCase()}
                       </h4>
                       <p className="text-xs text-green-700 font-semibold uppercase tracking-wider">
-                        {verifiedMember.anggota.golongan} ({verifiedMember.anggota.tingkatan})
+                        {golonganLabel(verifiedMember.anggota.golongan)}{verifiedMember.anggota.tingkatan && verifiedMember.anggota.tingkatan !== '-' ? ` (${verifiedMember.anggota.tingkatan})` : ''}
                       </p>
                       <p className="text-xs text-gray-500 font-light">
                         ID Pusdatin: <span className="font-mono font-medium text-gray-900">{verifiedMember.anggota.id.toUpperCase()}</span>

@@ -13,7 +13,7 @@ import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import TingkatanStats from './TingkatanStats';
 import PimpinanManager from './PimpinanManager';
-import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan } from '../utils/tingkatan';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
 import { notify, confirmDialog } from '../utils/dialog';
@@ -126,6 +126,11 @@ export default function AdminPortal({
   const [angTanggal, setAngTanggal] = useState('');
   const [angGolongan, setAngGolongan] = useState<GolonganPramuka>('penegak');
   const [angTingkatan, setAngTingkatan] = useState('Bantara');
+  // Jawaban "apakah termasuk Pelatih?" untuk Dewasa KPD/KPL: '' = belum dijawab
+  const [angPelatih, setAngPelatih] = useState<'' | 'ya' | 'tidak'>('');
+  const angPelatihEligible = isPelatihEligible(angGolongan, angTingkatan);
+  // Peran anggota Dewasa (boleh lebih dari satu)
+  const [angPeran, setAngPeran] = useState<string[]>([]);
   const [angAlamat, setAngAlamat] = useState('');
   const [angPangkalan, setAngPangkalan] = useState('');
   const [angKwarranId, setAngKwarranId] = useState('');
@@ -253,7 +258,7 @@ export default function AdminPortal({
         a.nama_lengkap,
         a.tempat_lahir,
         a.tanggal_lahir,
-        a.golongan.toUpperCase(),
+        golonganLabel(a.golongan).toUpperCase(),
         a.tingkatan,
         a.alamat_asal.replace(/"/g, '""'),
         a.pangkalan.replace(/"/g, '""'),
@@ -303,7 +308,7 @@ export default function AdminPortal({
           <td style="text-align: center; padding: 6px; border: 1px solid #111;">${index + 1}</td>
           <td style="padding: 6px; border: 1px solid #111; font-weight: bold;">${a.nama_lengkap}</td>
           <td style="padding: 6px; border: 1px solid #111;">${a.tempat_lahir}, ${a.tanggal_lahir}</td>
-          <td style="padding: 6px; border: 1px solid #111; text-transform: uppercase;">${a.golongan}</td>
+          <td style="padding: 6px; border: 1px solid #111; text-transform: uppercase;">${golonganLabel(a.golongan)}</td>
           <td style="padding: 6px; border: 1px solid #111;">${a.tingkatan}</td>
           <td style="padding: 6px; border: 1px solid #111;">${a.pangkalan}</td>
           <td style="padding: 6px; border: 1px solid #111;">${a.alamat_asal}</td>
@@ -631,7 +636,7 @@ export default function AdminPortal({
             
             <div class="data-diri">
               <div class="nama">${a.nama_lengkap}</div>
-              <div class="gol">${a.golongan}</div>
+              <div class="gol">${golonganLabel(a.golongan)}</div>
               <div class="nta">${mockNta}</div>
             </div>
             
@@ -765,7 +770,7 @@ export default function AdminPortal({
               <tr>
                 <td class="label-col">Golongan / Tingkatan</td>
                 <td class="separator">:</td>
-                <td class="val-col text-uppercase font-medium">${a.golongan} / ${a.tingkatan}</td>
+                <td class="val-col text-uppercase font-medium">${golonganLabel(a.golongan)}${a.tingkatan && a.tingkatan !== '-' ? ' / ' + a.tingkatan : ''}</td>
               </tr>
               <tr>
                 <td class="label-col">Tempat / Tanggal Lahir</td>
@@ -1267,6 +1272,14 @@ export default function AdminPortal({
     });
   }, [angGolongan]);
 
+  useEffect(() => {
+    if (!angPelatihEligible) setAngPelatih('');
+  }, [angPelatihEligible]);
+
+  useEffect(() => {
+    if (angGolongan !== 'dewasa') setAngPeran([]);
+  }, [angGolongan]);
+
   // Load Dashboard Stats & scoped lists
   const loadDashboardData = async () => {
     setLoading(true);
@@ -1540,6 +1553,8 @@ export default function AdminPortal({
       foto: angFoto,
       aktif_saka: angAktifSaka,
       saka_ids: angAktifSaka ? angSakaIds : [],
+      ...(angPelatihEligible ? { is_pelatih: angPelatih === 'ya' } : {}),
+      ...(angGolongan === 'dewasa' ? { peran: angPeran } : {}),
     };
 
     try {
@@ -2893,6 +2908,8 @@ export default function AdminPortal({
                           onClick={() => {
                             setFormMode('add');
                             setAngNama('');
+                            setAngPelatih('');
+                            setAngPeran([]);
                             setAngTempat('');
                             setAngTanggal('');
                             setAngAlamat('');
@@ -2934,11 +2951,13 @@ export default function AdminPortal({
                           const isExpanded = selectedRekapKwarranId === kw.id;
                           const anggotaKwarran = anggotaList.filter(a => a.kwartir_ranting_id === kw.id);
                           const totalKwarran = anggotaKwarran.length;
+                          const calonSiagaCount = anggotaKwarran.filter(a => a.golongan === 'calon_siaga').length;
                           const siagaCount = anggotaKwarran.filter(a => a.golongan === 'siaga').length;
                           const penggalangCount = anggotaKwarran.filter(a => a.golongan === 'penggalang').length;
                           const penegakCount = anggotaKwarran.filter(a => a.golongan === 'penegak').length;
                           const pandegaCount = anggotaKwarran.filter(a => a.golongan === 'pandega').length;
                           const dewasaCount = anggotaKwarran.filter(a => a.golongan === 'dewasa').length;
+                          const pelatihCount = countPelatih(anggotaKwarran);
                           
                           const gudeps = gudepList.filter(g => g.kwartir_ranting_id === kw.id);
                           return (
@@ -2958,6 +2977,9 @@ export default function AdminPortal({
                                       <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md text-[10px] font-black border border-gray-200">
                                         Total: {totalKwarran}
                                       </span>
+                                      <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-pink-100">
+                                        Calon Siaga: {calonSiagaCount}
+                                      </span>
                                       <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-green-100">
                                         Siaga: {siagaCount}
                                       </span>
@@ -2972,6 +2994,9 @@ export default function AdminPortal({
                                       </span>
                                       <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-purple-100">
                                         Dewasa: {dewasaCount}
+                                      </span>
+                                      <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-teal-100">
+                                        Pelatih: {pelatihCount}
                                       </span>
                                     </div>
                                   </div>
@@ -3048,7 +3073,7 @@ export default function AdminPortal({
                               <div>
                                 <div className="font-bold text-gray-900 text-sm">{a.nama_lengkap}</div>
                                 <div className="text-[10px] text-gray-500 mt-1">
-                                  Pangkalan: {a.pangkalan} &bull; Golongan: {a.golongan.toUpperCase()} ({a.tingkatan})
+                                  Pangkalan: {a.pangkalan} &bull; Golongan: {golonganLabel(a.golongan).toUpperCase()}{a.tingkatan && a.tingkatan !== '-' ? ` (${a.tingkatan})` : ''}
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2 mt-2 sm:mt-0">
@@ -3180,6 +3205,7 @@ export default function AdminPortal({
                             className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                           >
                             <option value="all">Semua Golongan</option>
+                            <option value="calon_siaga">Calon Siaga</option>
                             <option value="siaga">Siaga</option>
                             <option value="penggalang">Penggalang</option>
                             <option value="penegak">Penegak</option>
@@ -3224,8 +3250,18 @@ export default function AdminPortal({
                                   <div className="text-[10px] text-gray-500 mt-0.5">{a.tempat_lahir}, {a.tanggal_lahir}</div>
                                 </td>
                                 <td className="p-4">
-                                  <span className="font-bold uppercase tracking-wider text-[10px] text-green-700">{a.golongan}</span>
+                                  <span className="font-bold uppercase tracking-wider text-[10px] text-green-700">{golonganLabel(a.golongan)}</span>
                                   <div className="text-[10px] text-gray-500 mt-0.5">{a.tingkatan}</div>
+                                  {a.golongan === 'dewasa' && Array.isArray(a.peran) && a.peran.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
+                                      {a.peran.map((id: string) => (
+                                        <span key={id} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">{peranLabel(id)}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan) && (
+                                    <span className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">PELATIH</span>
+                                  )}
                                 </td>
                                 <td className="p-4 max-w-[200px]">
                                   <div className="truncate font-light">{a.pangkalan}</div>
@@ -3263,6 +3299,8 @@ export default function AdminPortal({
                                           setFormMode('edit');
                                           setSelectedItem(a);
                                           setAngNama(a.nama_lengkap);
+                                          setAngPelatih(a.is_pelatih === true ? 'ya' : a.is_pelatih === false ? 'tidak' : '');
+                                          setAngPeran(Array.isArray(a.peran) ? a.peran : []);
                                           setAngTempat(a.tempat_lahir);
                                           setAngTanggal(a.tanggal_lahir);
                                           setAngGolongan(a.golongan);
@@ -3426,6 +3464,7 @@ export default function AdminPortal({
                         onChange={(e) => setAngGolongan(e.target.value as GolonganPramuka)}
                         className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
                       >
+                        <option value="calon_siaga">Calon Siaga (TK / di bawah 7 Th)</option>
                         <option value="siaga">Siaga (SD / 7-10 Th)</option>
                         <option value="penggalang">Penggalang (SMP / 11-15 Th)</option>
                         <option value="penegak">Penegak (SMA / 16-20 Th)</option>
@@ -3439,16 +3478,76 @@ export default function AdminPortal({
                       <label className="text-xs font-bold text-gray-700">Tingkatan Pramuka *</label>
                       <select
                         required
+                        disabled={angGolongan === 'calon_siaga'}
                         value={angTingkatan}
                         onChange={(e) => setAngTingkatan(e.target.value)}
-                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
                       >
                         {!angTingkatan && <option value="">-- Pilih tingkatan --</option>}
                         {TINGKATAN_MAP[angGolongan]?.map((ting) => (
                           <option key={ting} value={ting}>{ting}</option>
                         ))}
                       </select>
+                      {angGolongan === 'calon_siaga' && (
+                        <p className="text-[10px] text-gray-500">Calon Siaga belum memiliki tingkatan, otomatis diisi "-".</p>
+                      )}
                     </div>
+
+                    {/* Peran anggota Dewasa: boleh lebih dari satu */}
+                    {angGolongan === 'dewasa' && (
+                      <div className="sm:col-span-2 bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-purple-900">Peran yang bersangkutan (boleh lebih dari satu)</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-1">
+                          {PERAN_DEWASA.map(p => (
+                            <label key={p.id} className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={angPeran.includes(p.id)}
+                                onChange={(e) => setAngPeran(prev => e.target.checked ? [...prev, p.id] : prev.filter(x => x !== p.id))}
+                                className="accent-purple-600 w-4 h-4"
+                              />
+                              <span>{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pertanyaan Pelatih: hanya untuk Dewasa dengan tingkatan KPD / KPL */}
+                    {angPelatihEligible && (
+                      <div className="sm:col-span-2 bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-amber-900">
+                          Apakah yang bersangkutan termasuk Pelatih? *
+                        </p>
+                        <p className="text-[11px] text-amber-800/80">
+                          Anggota Dewasa dengan tingkatan KPD atau KPL yang dibenarkan sebagai Pelatih akan dihitung di statistik "Pelatih".
+                        </p>
+                        <div className="flex flex-wrap gap-4 pt-1">
+                          <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="angPelatih"
+                              required
+                              checked={angPelatih === 'ya'}
+                              onChange={() => setAngPelatih('ya')}
+                              className="accent-green-600"
+                            />
+                            <span>Ya, termasuk Pelatih</span>
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="angPelatih"
+                              required
+                              checked={angPelatih === 'tidak'}
+                              onChange={() => setAngPelatih('tidak')}
+                              className="accent-green-600"
+                            />
+                            <span>Bukan Pelatih</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Pangkalan */}
                     <div className="space-y-1.5">
@@ -3715,7 +3814,7 @@ export default function AdminPortal({
                                   <div className="font-black text-gray-900 uppercase tracking-wide">{a.nama_lengkap}</div>
                                   <div className="text-xs text-green-700 font-mono mt-0.5 font-bold">NTA: 09.01.{a.id.replace('ang_','').padStart(5,'0')}</div>
                                   <div className="text-[10px] text-gray-500 uppercase mt-1 px-2 py-0.5 bg-green-50 rounded inline-block border border-green-200">
-                                    {a.golongan} - {a.tingkatan}
+                                    {golonganLabel(a.golongan)}{a.tingkatan && a.tingkatan !== '-' ? ` - ${a.tingkatan}` : ''}
                                   </div>
                                 </div>
                               </div>
@@ -6046,7 +6145,7 @@ export default function AdminPortal({
                     <div>
                       <div className="font-bold text-gray-900">{c.nama_lengkap}</div>
                       <div className="text-[10px] text-gray-500 font-light mt-0.5">
-                        Pangkalan: {c.pangkalan} &bull; Golongan: {c.golongan.toUpperCase()}
+                        Pangkalan: {c.pangkalan} &bull; Golongan: {golonganLabel(c.golongan).toUpperCase()}
                       </div>
                     </div>
                     <button
@@ -6103,7 +6202,8 @@ export default function AdminPortal({
                 onChange={(e) => setExportFilterGolongan(e.target.value)}
                 className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
               >
-                <option value="all">Semua Golongan (Siaga, Penggalang, Penegak, Pandega, Dewasa)</option>
+                <option value="all">Semua Golongan (Calon Siaga, Siaga, Penggalang, Penegak, Pandega, Dewasa)</option>
+                <option value="calon_siaga">Golongan Calon Siaga</option>
                 <option value="siaga">Golongan Siaga</option>
                 <option value="penggalang">Golongan Penggalang</option>
                 <option value="penegak">Golongan Penegak</option>

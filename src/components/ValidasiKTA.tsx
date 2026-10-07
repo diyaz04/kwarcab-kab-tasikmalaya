@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { golonganLabel } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { Anggota } from '../types';
 import { BadgeCheck, ArrowLeft, AlertTriangle } from 'lucide-react';
@@ -92,7 +93,7 @@ const ValidasiKTA: React.FC<ValidasiKTAProps> = ({ id }) => {
                 <img src={fotoOrDefault(data.anggota.foto)} onError={onFotoError} alt="Foto Profil" className="w-24 h-32 object-cover rounded-lg shadow-md mb-4 border border-gray-200" />
                 <h3 className="text-xl font-bold text-gray-900 text-center uppercase">{data.anggota.nama_lengkap}</h3>
                 <span className="mt-1 px-3 py-1 bg-primary-100 text-primary-800 text-xs font-semibold rounded-full uppercase tracking-wide">
-                  {data.anggota.golongan} - {data.anggota.tingkatan}
+                  {golonganLabel(data.anggota.golongan)}{data.anggota.tingkatan && data.anggota.tingkatan !== '-' ? ` - ${data.anggota.tingkatan}` : ''}
                 </span>
               </div>
               
