@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Anggota } from '../types';
-import { buildTingkatanStats, GOLONGAN_LABEL, countPelatih, countKpdKpl } from '../utils/tingkatan';
+import { buildTingkatanStats, GOLONGAN_LABEL, countPelatih, countKpdKpl, countPeran } from '../utils/tingkatan';
 
 interface TingkatanStatsProps {
   anggota: Anggota[];
@@ -22,6 +22,7 @@ export default function TingkatanStats({ anggota, compact = false }: TingkatanSt
   const stats = useMemo(() => buildTingkatanStats(anggota), [anggota]);
   const pelatih = useMemo(() => countPelatih(anggota), [anggota]);
   const kpdKpl = useMemo(() => countKpdKpl(anggota), [anggota]);
+  const peran = useMemo(() => countPeran(anggota), [anggota]);
 
   return (
     <div className={`grid gap-3 ${compact ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
@@ -69,6 +70,35 @@ export default function TingkatanStats({ anggota, compact = false }: TingkatanSt
         <p className="text-[11px] text-teal-900/80 leading-relaxed">
           Dihitung dari anggota Dewasa dengan tingkatan KPD atau KPL yang dinyatakan sebagai Pelatih
           ({pelatih} dari {kpdKpl} anggota KPD/KPL).
+        </p>
+      </div>
+
+      {/* Peran anggota Dewasa (satu orang boleh lebih dari satu peran) */}
+      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3.5 shadow-sm">
+        <div className="flex items-center justify-between mb-2.5">
+          <h5 className="text-xs font-black uppercase tracking-wider text-purple-900">Peran Dewasa</h5>
+          <span className="text-[10px] font-black bg-white border border-purple-200 text-purple-800 px-2 py-0.5 rounded-md">
+            {peran.denganPeran} dari {peran.dewasa} dewasa
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          {peran.rows.map(r => {
+            const pct = peran.dewasa > 0 ? Math.round((r.count / peran.dewasa) * 100) : 0;
+            return (
+              <div key={r.id}>
+                <div className="flex items-center justify-between text-[11px] text-gray-700">
+                  <span className="truncate pr-2">{r.label}</span>
+                  <span className="font-bold tabular-nums">{r.count}</span>
+                </div>
+                <div className="h-1.5 bg-white rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-purple-500" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-purple-900/70 mt-2 leading-relaxed">
+          Satu orang boleh memiliki lebih dari satu peran, sehingga jumlah per peran bisa lebih besar dari jumlah orang.
         </p>
       </div>
     </div>

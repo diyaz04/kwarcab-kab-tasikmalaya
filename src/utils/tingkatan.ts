@@ -117,3 +117,21 @@ export const countPelatih = (anggota: Anggota[]): number =>
 /** Jumlah anggota Dewasa KPD/KPL (calon Pelatih) sebagai pembanding. */
 export const countKpdKpl = (anggota: Anggota[]): number =>
   anggota.filter(a => isPelatihEligible(a.golongan, a.tingkatan)).length;
+
+export interface PeranRow { id: string; label: string; count: number }
+
+/** Jumlah anggota Dewasa per peran (satu orang boleh punya beberapa peran, jadi total bisa lebih besar dari jumlah orang). */
+export const countPeran = (anggota: Anggota[]): { rows: PeranRow[]; dewasa: number; denganPeran: number } => {
+  const dewasaList = anggota.filter(a => a.golongan === 'dewasa');
+  const rows: PeranRow[] = PERAN_DEWASA.map(p => ({ id: p.id, label: p.label, count: 0 }));
+  let denganPeran = 0;
+  dewasaList.forEach(a => {
+    const peran = sanitizePeran(a.peran);
+    if (peran.length > 0) denganPeran += 1;
+    peran.forEach(id => {
+      const row = rows.find(r => r.id === id);
+      if (row) row.count += 1;
+    });
+  });
+  return { rows, dewasa: dewasaList.length, denganPeran };
+};
