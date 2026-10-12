@@ -85,22 +85,53 @@ export const normalizeTingkatan = (golongan: GolonganPramuka, raw?: string | nul
   return options.find(o => o.toLowerCase() === v.replace(/^tingkat\s+/, '')) || null;
 };
 
-export interface TingkatanRow { name: string; count: number }
-export interface GolonganStat { golongan: GolonganPramuka; total: number; rows: TingkatanRow[]; lainnya: number }
+export type JenisKelamin = 'L' | 'P';
+export const JK_LABEL: Record<JenisKelamin, string> = { L: 'Laki-laki', P: 'Perempuan' };
+
+/** Rapikan teks jenis kelamin ("laki-laki", "pria", "P", "wanita", ...) ke 'L' / 'P'. null = tidak dikenali / kosong. */
+export const normalizeJenisKelamin = (raw: unknown): JenisKelamin | null => {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim().toLowerCase();
+  if (['l', 'laki-laki', 'laki laki', 'lakilaki', 'pria', 'male', 'm'].includes(v)) return 'L';
+  if (['p', 'perempuan', 'wanita', 'female', 'f'].includes(v)) return 'P';
+  return null;
+};
+
+/** Jumlah per jenis kelamin. total = semua anggota (termasuk yang jenis kelaminnya belum diisi = u). */
+export interface JkCount { l: number; p: number; u: number; total: number }
+
+export const countJk = (anggota: Anggota[]): JkCount => {
+  const c: JkCount = { l: 0, p: 0, u: 0, total: anggota.length };
+  anggota.forEach(a => {
+    const jk = normalizeJenisKelamin(a.jenis_kelamin);
+    if (jk === 'L') c.l += 1; else if (jk === 'P') c.p += 1; else c.u += 1;
+  });
+  return c;
+};
+
+export interface TingkatanRow { name: string; count: number; l: number; p: number }
+export interface GolonganStat { golongan: GolonganPramuka; total: number; l: number; p: number; rows: TingkatanRow[]; lainnya: number }
 
 /** Hitung jumlah anggota per golongan dan per tingkatan. Calon Siaga tidak punya tingkatan (hanya total). */
 export const buildTingkatanStats = (anggota: Anggota[]): GolonganStat[] =>
   GOLONGAN_ORDER.map(golongan => {
     const members = anggota.filter(a => a.golongan === golongan);
-    if (golongan === 'calon_siaga') return { golongan, total: members.length, rows: [], lainnya: 0 };
-    const rows: TingkatanRow[] = TINGKATAN_MAP[golongan].map(name => ({ name, count: 0 }));
+    const jk = countJk(members);
+    if (golongan === 'calon_siaga') return { golongan, total: members.length, l: jk.l, p: jk.p, rows: [], lainnya: 0 };
+    const rows: TingkatanRow[] = TINGKATAN_MAP[golongan].map(name => ({ name, count: 0, l: 0, p: 0 }));
     let lainnya = 0;
     members.forEach(a => {
       const matched = normalizeTingkatan(golongan, a.tingkatan);
       const row = matched ? rows.find(r => r.name === matched) : undefined;
-      if (row) row.count += 1; else lainnya += 1;
+      if (row) {
+        row.count += 1;
+        const g = normalizeJenisKelamin(a.jenis_kelamin);
+        if (g === 'L') row.l += 1; else if (g === 'P') row.p += 1;
+      } else {
+        lainnya += 1;
+      }
     });
-    return { golongan, total: members.length, rows, lainnya };
+    return { golongan, total: members.length, l: jk.l, p: jk.p, rows, lainnya };
   });
 
 /** Pertanyaan "apakah termasuk Pelatih?" hanya relevan untuk Dewasa dengan tingkatan KPD atau KPL. */
@@ -111,26 +142,32 @@ export const isPelatihEligible = (golongan: string, tingkatan?: string | null): 
 };
 
 /** Jumlah Pelatih = anggota Dewasa KPD/KPL yang statusnya dibenarkan sebagai Pelatih. */
-export const countPelatih = (anggota: Anggota[]): number =>
-  anggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)).length;
+export const pelatihList = (anggota: Anggota[]): Anggota[] =>
+  anggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan));
+
+export const countPelatih = (anggota: Anggota[]): number => pelatihList(anggota).length;
 
 /** Jumlah anggota Dewasa KPD/KPL (calon Pelatih) sebagai pembanding. */
 export const countKpdKpl = (anggota: Anggota[]): number =>
   anggota.filter(a => isPelatihEligible(a.golongan, a.tingkatan)).length;
 
-export interface PeranRow { id: string; label: string; count: number }
+export interface PeranRow { id: string; label: string; count: number; l: number; p: number }
 
 /** Jumlah anggota Dewasa per peran (satu orang boleh punya beberapa peran, jadi total bisa lebih besar dari jumlah orang). */
 export const countPeran = (anggota: Anggota[]): { rows: PeranRow[]; dewasa: number; denganPeran: number } => {
   const dewasaList = anggota.filter(a => a.golongan === 'dewasa');
-  const rows: PeranRow[] = PERAN_DEWASA.map(p => ({ id: p.id, label: p.label, count: 0 }));
+  const rows: PeranRow[] = PERAN_DEWASA.map(p => ({ id: p.id, label: p.label, count: 0, l: 0, p: 0 }));
   let denganPeran = 0;
   dewasaList.forEach(a => {
     const peran = sanitizePeran(a.peran);
     if (peran.length > 0) denganPeran += 1;
     peran.forEach(id => {
       const row = rows.find(r => r.id === id);
-      if (row) row.count += 1;
+      if (row) {
+        row.count += 1;
+        const g = normalizeJenisKelamin(a.jenis_kelamin);
+        if (g === 'L') row.l += 1; else if (g === 'P') row.p += 1;
+      }
     });
   });
   return { rows, dewasa: dewasaList.length, denganPeran };

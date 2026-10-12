@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase, getSupabaseInitError } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 import { sanitizeSosmed } from './src/utils/sosmed';
-import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan, isPelatihEligible, sanitizePeran } from './src/utils/tingkatan';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan, isPelatihEligible, sanitizePeran, normalizeJenisKelamin } from './src/utils/tingkatan';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -632,7 +632,8 @@ app.get('/api/public/kwarran/:id', (req: Request, res: Response) => {
     pandega: anggota.filter(a => a.golongan === 'pandega').length,
     dewasa: anggota.filter(a => a.golongan === 'dewasa').length,
     pelatih: anggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)).length,
-    total: anggota.length
+    total: anggota.length,
+    jk: jkStats(anggota)
   };
 
   res.json({
@@ -772,6 +773,7 @@ app.get('/api/admin/stats', authenticate, (req: AuthRequest, res: Response) => {
     pandega: filteredAnggota.filter(a => a.golongan === 'pandega').length,
     dewasa: filteredAnggota.filter(a => a.golongan === 'dewasa').length,
     pelatih: filteredAnggota.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)).length,
+    jk: jkStats(filteredAnggota),
     pendingBerita: pendingBeritaCount,
     pendingSakaApproval: pendingSakaApprovalCount,
   };
@@ -831,6 +833,22 @@ app.get('/api/admin/anggota', authenticate, (req: AuthRequest, res: Response) =>
   res.json(resultsWithSaka);
 });
 
+// Jumlah Laki-laki (l) / Perempuan (p) per golongan + total, untuk statistik.
+const jkStats = (list: Array<{ golongan: string; tingkatan: string; jenis_kelamin?: string; is_pelatih?: boolean }>) => {
+  const make = (items: typeof list) => {
+    let l = 0, p = 0;
+    items.forEach(a => {
+      const jk = normalizeJenisKelamin(a.jenis_kelamin);
+      if (jk === 'L') l += 1; else if (jk === 'P') p += 1;
+    });
+    return { l, p, total: items.length };
+  };
+  const out: Record<string, { l: number; p: number; total: number }> = { total: make(list) };
+  GOLONGAN_ORDER.forEach(g => { out[g] = make(list.filter(a => a.golongan === g)); });
+  out.pelatih = make(list.filter(a => a.is_pelatih === true && isPelatihEligible(a.golongan, a.tingkatan)));
+  return out;
+};
+
 // Tingkatan harus sesuai golongan agar statistik akurat. Teks bebas dari klien lama dirapikan
 // (mis. "garuda" -> "Garuda Siaga"); yang tidak dikenali ditolak dengan pesan yang jelas.
 const checkTingkatan = (golongan: string, tingkatan: string): { value?: string; error?: string } => {
@@ -851,8 +869,15 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
   const { 
     nama_lengkap, tempat_lahir, tanggal_lahir, golongan, tingkatan, 
     alamat_asal, pangkalan, kwartir_ranting_id, gudep_id, 
-    aktif_saka, saka_ids, foto, is_pelatih, peran
+    aktif_saka, saka_ids, foto, is_pelatih, peran, jenis_kelamin
   } = req.body;
+
+  // Jenis kelamin opsional (klien lama/native tidak mengirimnya), tapi kalau dikirim harus valid.
+  const jkNormalized = normalizeJenisKelamin(jenis_kelamin);
+  if (jenis_kelamin !== undefined && jenis_kelamin !== null && jenis_kelamin !== '' && !jkNormalized) {
+    res.status(400).json({ error: 'Jenis kelamin tidak valid. Pilihan: Laki-laki (L) atau Perempuan (P).' });
+    return;
+  }
 
   // Calon Siaga tidak punya tingkatan (otomatis "-"), jadi tidak wajib dikirim.
   if (!nama_lengkap || !tempat_lahir || !tanggal_lahir || !golongan || (!tingkatan && golongan !== 'calon_siaga') || !kwartir_ranting_id) {
@@ -880,6 +905,7 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
     foto: foto || '',
     // Status Pelatih hanya disimpan untuk Dewasa KPD/KPL yang menjawabnya (klien lama/native tidak mengirimnya)
     ...(isPelatihEligible(golongan, tingkatanCheck.value) && typeof is_pelatih === 'boolean' ? { is_pelatih } : {}),
+    ...(jkNormalized ? { jenis_kelamin: jkNormalized } : {}),
     // Peran hanya untuk Dewasa dan hanya disimpan kalau ada yang dipilih
     ...(golongan === 'dewasa' && sanitizePeran(peran).length > 0 ? { peran: sanitizePeran(peran) } : {}),
     created_by: user.id,
@@ -943,7 +969,7 @@ app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission([
   const { 
     nama_lengkap, tempat_lahir, tanggal_lahir, golongan, tingkatan, 
     alamat_asal, pangkalan, kwartir_ranting_id, gudep_id,
-    aktif_saka, saka_ids, foto, is_kta_printed, is_pelatih, peran
+    aktif_saka, saka_ids, foto, is_kta_printed, is_pelatih, peran, jenis_kelamin
   } = req.body;
 
   const updates: Partial<typeof currentAnggota> = {};
@@ -965,6 +991,15 @@ app.put('/api/admin/anggota/:id', authenticate, authorizeWithKwarcabPermission([
     }
     updates.golongan = effGolongan;
     updates.tingkatan = check.value as string;
+  }
+
+  if (jenis_kelamin !== undefined && jenis_kelamin !== null && jenis_kelamin !== '') {
+    const jk = normalizeJenisKelamin(jenis_kelamin);
+    if (!jk) {
+      res.status(400).json({ error: 'Jenis kelamin tidak valid. Pilihan: Laki-laki (L) atau Perempuan (P).' });
+      return;
+    }
+    updates.jenis_kelamin = jk;
   }
 
   // Status Pelatih: hanya berlaku untuk Dewasa KPD/KPL. Kalau tidak lagi memenuhi syarat, otomatis dibatalkan.

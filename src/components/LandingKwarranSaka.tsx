@@ -12,6 +12,12 @@ interface LandingKwarranSakaProps {
   onSelectId?: (id: string | null) => void;
 }
 
+/** " (L 3 • P 2)" dari statistik server; kosong bila data belum ada. */
+const lpText = (jk: any, key: string): string => {
+  const c = jk && jk[key];
+  return c ? ` (L ${c.l} • P ${c.p})` : '';
+};
+
 export default function LandingKwarranSaka({ type, items, externalSelectedId, onSelectId }: LandingKwarranSakaProps) {
   const [internalId, setInternalId] = useState<string | null>(null);
   const selectedId = externalSelectedId !== undefined ? externalSelectedId : internalId;
@@ -266,7 +272,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                     <h3 className="text-sm font-extrabold text-green-900 uppercase tracking-wider font-heading">
                       Demografi Anggota
                     </h3>
-                    <span className="text-xs text-green-700 font-bold">Total: {detailData.stats.total} Orang</span>
+                    <span className="text-xs text-green-700 font-bold">Total: {detailData.stats.total} Orang{lpText(detailData.stats.jk, 'total')}</span>
                   </div>
                   <p className="text-[11px] text-gray-500 mb-5 font-light leading-relaxed">
                     Jumlah anggota Pramuka terdaftar aktif yang dihimpun secara realtime dari pangkalan gugus depan.
@@ -281,7 +287,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                           <div>
                             <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                               <span className="text-pink-600">Calon Siaga (TK)</span>
-                              <span className="text-gray-900 font-semibold">{detailData.stats.calon_siaga} orang</span>
+                              <span className="text-gray-900 font-semibold">{detailData.stats.calon_siaga} orang{lpText(detailData.stats.jk, 'calon_siaga')}</span>
                             </div>
                             <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                               <div
@@ -296,7 +302,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                         <div>
                           <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                             <span className="text-emerald-600">Siaga (SD)</span>
-                            <span className="text-gray-900 font-semibold">{detailData.stats.siaga} orang</span>
+                            <span className="text-gray-900 font-semibold">{detailData.stats.siaga} orang{lpText(detailData.stats.jk, 'siaga')}</span>
                           </div>
                           <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                             <div 
@@ -310,7 +316,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                         <div>
                           <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                             <span className="text-red-600">Penggalang (SMP)</span>
-                            <span className="text-gray-900 font-semibold">{detailData.stats.penggalang} orang</span>
+                            <span className="text-gray-900 font-semibold">{detailData.stats.penggalang} orang{lpText(detailData.stats.jk, 'penggalang')}</span>
                           </div>
                           <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                             <div 
@@ -326,7 +332,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                         <span className="text-purple-600">Penegak (SMA)</span>
-                        <span className="text-gray-900 font-semibold">{detailData.stats.penegak} orang</span>
+                        <span className="text-gray-900 font-semibold">{detailData.stats.penegak} orang{lpText(detailData.stats.jk, 'penegak')}</span>
                       </div>
                       <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                         <div 
@@ -340,7 +346,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                         <span className="text-sky-600">Pandega (PT)</span>
-                        <span className="text-gray-900 font-semibold">{detailData.stats.pandega} orang</span>
+                        <span className="text-gray-900 font-semibold">{detailData.stats.pandega} orang{lpText(detailData.stats.jk, 'pandega')}</span>
                       </div>
                       <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                         <div 
@@ -355,7 +361,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                       <div>
                         <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
                           <span className="text-yellow-600">Pembina / Dewasa</span>
-                          <span className="text-gray-900 font-semibold">{detailData.stats.dewasa} orang</span>
+                          <span className="text-gray-900 font-semibold">{detailData.stats.dewasa} orang{lpText(detailData.stats.jk, 'dewasa')}</span>
                         </div>
                         <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
                           <div 
@@ -366,7 +372,7 @@ export default function LandingKwarranSaka({ type, items, externalSelectedId, on
                         {typeof detailData.stats.pelatih === 'number' && (
                           <div className="flex items-center justify-between text-xs mt-2 font-medium">
                             <span className="text-teal-700">&bull; Di antaranya Pelatih (KPD/KPL)</span>
-                            <span className="text-gray-900 font-semibold">{detailData.stats.pelatih} orang</span>
+                            <span className="text-gray-900 font-semibold">{detailData.stats.pelatih} orang{lpText(detailData.stats.jk, 'pelatih')}</span>
                           </div>
                         )}
                       </div>

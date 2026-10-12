@@ -80,6 +80,8 @@ export interface Anggota {
   is_kta_printed?: boolean;
   /** Hanya bermakna untuk golongan Dewasa dengan tingkatan KPD/KPL: true = tercatat sebagai Pelatih. */
   is_pelatih?: boolean;
+  /** 'L' = Laki-laki, 'P' = Perempuan. Kosong pada data lama yang belum dilengkapi. */
+  jenis_kelamin?: 'L' | 'P';
   /** Peran anggota Dewasa (boleh lebih dari satu), mis. ['pembina_siaga', 'pamong_saka']. */
   peran?: string[];
   created_by: string; // User ID

@@ -13,7 +13,7 @@ import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import TingkatanStats from './TingkatanStats';
 import PimpinanManager from './PimpinanManager';
-import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel } from '../utils/tingkatan';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel, countJk, normalizeJenisKelamin, JK_LABEL, pelatihList } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
 import { notify, confirmDialog } from '../utils/dialog';
@@ -131,6 +131,8 @@ export default function AdminPortal({
   const angPelatihEligible = isPelatihEligible(angGolongan, angTingkatan);
   // Peran anggota Dewasa (boleh lebih dari satu)
   const [angPeran, setAngPeran] = useState<string[]>([]);
+  // Jenis kelamin: '' = belum dipilih
+  const [angJk, setAngJk] = useState<'' | 'L' | 'P'>('');
   const [angAlamat, setAngAlamat] = useState('');
   const [angPangkalan, setAngPangkalan] = useState('');
   const [angKwarranId, setAngKwarranId] = useState('');
@@ -240,6 +242,7 @@ export default function AdminPortal({
       'Nama Lengkap',
       'Tempat Lahir',
       'Tanggal Lahir',
+      'Jenis Kelamin',
       'Golongan',
       'Tingkatan',
       'Alamat Asal',
@@ -258,6 +261,7 @@ export default function AdminPortal({
         a.nama_lengkap,
         a.tempat_lahir,
         a.tanggal_lahir,
+        JK_LABEL[normalizeJenisKelamin(a.jenis_kelamin) as 'L' | 'P'] || '',
         golonganLabel(a.golongan).toUpperCase(),
         a.tingkatan,
         a.alamat_asal.replace(/"/g, '""'),
@@ -1555,6 +1559,7 @@ export default function AdminPortal({
       saka_ids: angAktifSaka ? angSakaIds : [],
       ...(angPelatihEligible ? { is_pelatih: angPelatih === 'ya' } : {}),
       ...(angGolongan === 'dewasa' ? { peran: angPeran } : {}),
+      ...(angJk ? { jenis_kelamin: angJk } : {}),
     };
 
     try {
@@ -2910,6 +2915,7 @@ export default function AdminPortal({
                             setAngNama('');
                             setAngPelatih('');
                             setAngPeran([]);
+                            setAngJk('');
                             setAngTempat('');
                             setAngTanggal('');
                             setAngAlamat('');
@@ -2951,6 +2957,8 @@ export default function AdminPortal({
                           const isExpanded = selectedRekapKwarranId === kw.id;
                           const anggotaKwarran = anggotaList.filter(a => a.kwartir_ranting_id === kw.id);
                           const totalKwarran = anggotaKwarran.length;
+                          const lp = (list: Anggota[]) => { const c = countJk(list); return ` (L ${c.l} • P ${c.p})`; };
+                          const byGol = (g: string) => anggotaKwarran.filter(a => a.golongan === g);
                           const calonSiagaCount = anggotaKwarran.filter(a => a.golongan === 'calon_siaga').length;
                           const siagaCount = anggotaKwarran.filter(a => a.golongan === 'siaga').length;
                           const penggalangCount = anggotaKwarran.filter(a => a.golongan === 'penggalang').length;
@@ -2975,28 +2983,28 @@ export default function AdminPortal({
                                     <h3 className="font-bold text-gray-900 text-sm md:text-base mb-1.5">Kecamatan {kw.nama_kecamatan}</h3>
                                     <div className="flex flex-wrap gap-1.5">
                                       <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md text-[10px] font-black border border-gray-200">
-                                        Total: {totalKwarran}
+                                        Total: {totalKwarran}{lp(anggotaKwarran)}
                                       </span>
                                       <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-pink-100">
-                                        Calon Siaga: {calonSiagaCount}
+                                        Calon Siaga: {calonSiagaCount}{lp(byGol('calon_siaga'))}
                                       </span>
                                       <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-green-100">
-                                        Siaga: {siagaCount}
+                                        Siaga: {siagaCount}{lp(byGol('siaga'))}
                                       </span>
                                       <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-red-100">
-                                        Penggalang: {penggalangCount}
+                                        Penggalang: {penggalangCount}{lp(byGol('penggalang'))}
                                       </span>
                                       <span className="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-yellow-100">
-                                        Penegak: {penegakCount}
+                                        Penegak: {penegakCount}{lp(byGol('penegak'))}
                                       </span>
                                       <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-amber-100">
-                                        Pandega: {pandegaCount}
+                                        Pandega: {pandegaCount}{lp(byGol('pandega'))}
                                       </span>
                                       <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-purple-100">
-                                        Dewasa: {dewasaCount}
+                                        Dewasa: {dewasaCount}{lp(byGol('dewasa'))}
                                       </span>
                                       <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-teal-100">
-                                        Pelatih: {pelatihCount}
+                                        Pelatih: {pelatihCount}{lp(pelatihList(anggotaKwarran))}
                                       </span>
                                     </div>
                                   </div>
@@ -3251,6 +3259,11 @@ export default function AdminPortal({
                                 </td>
                                 <td className="p-4">
                                   <span className="font-bold uppercase tracking-wider text-[10px] text-green-700">{golonganLabel(a.golongan)}</span>
+                                  {normalizeJenisKelamin(a.jenis_kelamin) && (
+                                    <span className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded border ${normalizeJenisKelamin(a.jenis_kelamin) === 'L' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-pink-50 text-pink-700 border-pink-200'}`}>
+                                      {normalizeJenisKelamin(a.jenis_kelamin)}
+                                    </span>
+                                  )}
                                   <div className="text-[10px] text-gray-500 mt-0.5">{a.tingkatan}</div>
                                   {a.golongan === 'dewasa' && Array.isArray(a.peran) && a.peran.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
@@ -3301,6 +3314,7 @@ export default function AdminPortal({
                                           setAngNama(a.nama_lengkap);
                                           setAngPelatih(a.is_pelatih === true ? 'ya' : a.is_pelatih === false ? 'tidak' : '');
                                           setAngPeran(Array.isArray(a.peran) ? a.peran : []);
+                                          setAngJk(normalizeJenisKelamin(a.jenis_kelamin) || '');
                                           setAngTempat(a.tempat_lahir);
                                           setAngTanggal(a.tanggal_lahir);
                                           setAngGolongan(a.golongan);
@@ -3454,6 +3468,21 @@ export default function AdminPortal({
                         onChange={(e) => setAngTanggal(e.target.value)}
                         className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none transition"
                       />
+                    </div>
+
+                    {/* Jenis Kelamin */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700">Jenis Kelamin *</label>
+                      <select
+                        required
+                        value={angJk}
+                        onChange={(e) => setAngJk(e.target.value as '' | 'L' | 'P')}
+                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-400/40 focus:outline-none transition"
+                      >
+                        <option value="">-- Pilih jenis kelamin --</option>
+                        <option value="L">Laki-laki</option>
+                        <option value="P">Perempuan</option>
+                      </select>
                     </div>
 
                     {/* Golongan Pramuka */}

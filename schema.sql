@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS anggota (
   is_kta_printed BOOLEAN DEFAULT FALSE,
   is_pelatih BOOLEAN DEFAULT FALSE,
   peran JSONB DEFAULT '[]'::jsonb,
+  jenis_kelamin TEXT CHECK (jenis_kelamin IN ('L', 'P')),
   created_by TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -79,6 +80,9 @@ ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_golongan_check;
 ALTER TABLE anggota ADD CONSTRAINT anggota_golongan_check CHECK (golongan IN ('calon_siaga', 'siaga', 'penggalang', 'penegak', 'pandega', 'dewasa'));
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS is_pelatih BOOLEAN DEFAULT FALSE;
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS peran JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE anggota ADD COLUMN IF NOT EXISTS jenis_kelamin TEXT;
+ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_jenis_kelamin_check;
+ALTER TABLE anggota ADD CONSTRAINT anggota_jenis_kelamin_check CHECK (jenis_kelamin IS NULL OR jenis_kelamin IN ('L', 'P'));
 
 CREATE TABLE IF NOT EXISTS anggota_saka (
   id TEXT PRIMARY KEY,
