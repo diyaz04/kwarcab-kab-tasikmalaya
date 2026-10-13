@@ -90,6 +90,24 @@ const DELETE_ORDER: ArrayTableName[] = [
   'kampung_pramuka'
 ];
 
+// Kolom tambahan hasil pengembangan bertahap. Dipakai pemeriksa struktur database (admin) untuk
+// memberi tahu SQL apa yang masih perlu dijalankan di Supabase.
+const EXPECTED_COLUMNS: Record<string, Record<string, string>> = {
+  profil_kwarcab: {
+    hero_mode: "TEXT DEFAULT 'dinamis'", banner_statis_url: "TEXT DEFAULT ''", sosmed: "JSONB DEFAULT '{}'::jsonb",
+    ketua_kwarcab_nama: "TEXT DEFAULT ''", ketua_kwarcab_foto: "TEXT DEFAULT ''",
+    ketua_harian_nama: "TEXT DEFAULT ''", ketua_harian_foto: "TEXT DEFAULT ''",
+    sekretaris_nama: "TEXT DEFAULT ''", sekretaris_foto: "TEXT DEFAULT ''",
+    bendahara_nama: "TEXT DEFAULT ''", bendahara_foto: "TEXT DEFAULT ''",
+    ketua_pusdatin_nama: "TEXT DEFAULT ''", ketua_pusdatin_foto: "TEXT DEFAULT ''"
+  },
+  pimpinan_kwarcab: { kategori: "TEXT DEFAULT 'pengurus'" },
+  kwartir_ranting: { sosmed: "JSONB DEFAULT '{}'::jsonb", masa_khidmat: "TEXT DEFAULT ''" },
+  kampung_pramuka: { status: "TEXT DEFAULT 'aktif'" },
+  anggota: { is_pelatih: 'BOOLEAN DEFAULT FALSE', peran: "JSONB DEFAULT '[]'::jsonb", jenis_kelamin: 'TEXT' },
+  users: { permissions: "JSONB DEFAULT '[]'::jsonb" }
+};
+
 const DEFAULT_KTA_CONFIG: KtaConfig = {
   nama_ketua: 'H. Agus Ridallah, S.H., M.H., M.Pd.',
   tanda_tangan_url: '',
@@ -747,8 +765,41 @@ export class DatabaseSim {
       this.syncTimer = null;
     }
     const errors = await this.flushToSupabase();
+    if (this.lastFailedTables.length > 0) {
+      // Perubahan yang ditolak Supabase dibuang dari memori, supaya tampilan tidak menunjukkan data
+      // yang sebenarnya tidak tersimpan (dan tidak menggagalkan permintaan berikutnya).
+      try {
+        await this.pullFromSupabase('refresh', this.lastFailedTables);
+      } catch (e) {
+        console.error('[Database] Gagal memulihkan tabel setelah simpan gagal:', e);
+      }
+      this.lastFailedTables = [];
+    }
     this.lastRefreshAt = Date.now();
     return errors;
+  }
+
+  private lastFailedTables: ArrayTableName[] = [];
+
+  // Periksa kolom tambahan yang diperlukan aplikasi. Mengembalikan daftar yang belum ada beserta SQL perbaikannya.
+  public async checkSchema(): Promise<{ ok: boolean; missing: Array<{ table: string; column: string; sql: string }>; syncState: boolean; error?: string }> {
+    if (!supabase || !this.supabaseConnected) {
+      return { ok: false, missing: [], syncState: false, error: 'Supabase belum tersambung.' };
+    }
+    const missing: Array<{ table: string; column: string; sql: string }> = [];
+    const jobs: Array<Promise<void>> = [];
+    for (const [table, cols] of Object.entries(EXPECTED_COLUMNS)) {
+      for (const [column, type] of Object.entries(cols)) {
+        jobs.push((async () => {
+          const { error } = await supabase!.from(table).select(column).limit(1);
+          if (error) missing.push({ table, column, sql: `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type};` });
+        })());
+      }
+    }
+    const ss = supabase.from('sync_state').select('table_name').limit(1).then(({ error }) => !error);
+    await Promise.all(jobs);
+    missing.sort((a, b) => (a.table + a.column).localeCompare(b.table + b.column));
+    return { ok: missing.length === 0, missing, syncState: await ss };
   }
 
   // Coba sambungkan ulang ke Supabase kalau bootstrap sebelumnya gagal (mis. gangguan sesaat saat cold
@@ -807,6 +858,7 @@ export class DatabaseSim {
     const ktaDirty = this.hashRows([this.state.kta_config]) !== this.ktaHash;
     if (dirty.length === 0 && !ktaDirty) return errors;
     const failed = new Set<string>();
+    this.lastFailedTables = [];
 
     // Fase 1: upsert. Tiap tabel dibungkus sendiri-sendiri — error di satu tabel (mis. kolom belum ada
     // di Supabase) TIDAK boleh menggagalkan tabel lain maupun fase penghapusan di bawah.
@@ -859,6 +911,8 @@ export class DatabaseSim {
         errors.push(e?.message || String(e));
       }
     }
+
+    this.lastFailedTables = [...failed] as ArrayTableName[];
 
     // Tabel yang berhasil tersimpan: catat hash baru & naikkan versinya agar instance lain memuat ulang.
     const okTables = dirty.filter(t => !failed.has(t));

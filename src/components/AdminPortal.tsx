@@ -13,6 +13,8 @@ import { mapSvg, pramukaSvg, jabarPng } from './ktaAssets';
 import SosmedFields from './SosmedFields';
 import TingkatanStats from './TingkatanStats';
 import PimpinanManager from './PimpinanManager';
+import ProfilKwarranPanel from './ProfilKwarranPanel';
+import RekapGudepList, { GolonganChips } from './RekapGudep';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel, countJk, normalizeJenisKelamin, JK_LABEL, pelatihList } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
 import { sanitizeSosmed } from '../utils/sosmed';
@@ -143,7 +145,7 @@ export default function AdminPortal({
 
   // Drill-down Anggota Mode
   const [anggotaViewMode, setAnggotaViewMode] = useState<'rekap_kwarran' | 'list'>(
-    (user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran') ? 'rekap_kwarran' : 'list'
+    (user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran' || user.role === 'gudep') ? 'rekap_kwarran' : 'list'
   );
   const [selectedRekapKwarranId, setSelectedRekapKwarranId] = useState<string | null>(
     user.role === 'kwarran' ? user.ref_id : null
@@ -1383,6 +1385,23 @@ export default function AdminPortal({
   const showSuccess = (msg: string) => notify.success(msg);
   const showError = (msg: string) => notify.error(msg);
 
+  // --- Pemeriksa struktur database (Kwarcab) ---
+  const [dbCheck, setDbCheck] = useState<null | { ok: boolean; missing: Array<{ table: string; column: string; sql: string }>; syncState: boolean; error?: string }>(null);
+  const [dbCheckBusy, setDbCheckBusy] = useState(false);
+  const handleDbCheck = async () => {
+    setDbCheckBusy(true);
+    try {
+      const res = await fetch('/api/admin/db-check', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal memeriksa database');
+      setDbCheck(data);
+    } catch (err: any) {
+      setErrorMsg('Gagal memeriksa database: ' + (err?.message || err));
+    } finally {
+      setDbCheckBusy(false);
+    }
+  };
+
   // --- Cadangan data (Kwarcab): unduh semua tabel jadi satu berkas JSON ---
   const [backupBusy, setBackupBusy] = useState(false);
   const handleDownloadBackup = async () => {
@@ -2164,8 +2183,7 @@ export default function AdminPortal({
     { id: 'overview', label: 'Ringkasan Ikhtisar', icon: Compass, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
     { id: 'anggota', label: 'Kelola Anggota', icon: Users, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'anggota' as AdminPermission },
     { id: 'kta', label: 'Kelola KTA', icon: IdCard, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kta' as AdminPermission },
-    { id: 'kwarran', label: 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'kwarran' as AdminPermission },
-    { id: 'kwarran_sosmed', label: 'Media Sosial Kwarran', icon: Globe, roles: ['kwarran'] as UserRole[] },
+    { id: 'kwarran', label: user.role === 'kwarran' ? 'Profil Kwarran' : 'Kwartir Ranting', icon: MapPin, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'kwarran' as AdminPermission },
     { id: 'gudep', label: 'Gugus Depan', icon: Building, roles: ['kwarcab', 'staff_kwarcab', 'kwarran'] as UserRole[], permission: 'gudep' as AdminPermission },
     { id: 'saka', label: 'Satuan Karya (Saka)', icon: Award, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'saka' as AdminPermission },
     { id: 'kampung_pramuka', label: 'Kampung Pramuka', icon: Globe, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'kampung_pramuka' as AdminPermission },
@@ -2823,7 +2841,9 @@ export default function AdminPortal({
               const tabMeta: Record<string, { title: string; subtitle: string; icon: React.ReactNode }> = {
                 anggota:   { title: 'Kelola Anggota', subtitle: 'Manajemen data keanggotaan Pramuka Kabupaten Tasikmalaya', icon: <Users className="w-5 h-5 text-white" /> },
                 kta:       { title: 'Kelola KTA', subtitle: 'Penerbitan Kartu Tanda Anggota (KTA) Pramuka', icon: <IdCard className="w-5 h-5 text-white" /> },
-                kwarran:   { title: 'Kwartir Ranting', subtitle: 'Data Kwartir Ranting se-Kabupaten Tasikmalaya', icon: <MapPin className="w-5 h-5 text-white" /> },
+                kwarran:   user.role === 'kwarran'
+                  ? { title: 'Profil Kwarran', subtitle: 'Ubah data pengurus, foto, masa khidmat, dan media sosial Kwartir Ranting Anda', icon: <MapPin className="w-5 h-5 text-white" /> }
+                  : { title: 'Kwartir Ranting', subtitle: 'Data Kwartir Ranting se-Kabupaten Tasikmalaya', icon: <MapPin className="w-5 h-5 text-white" /> },
                 gudep:     { title: 'Gugus Depan', subtitle: 'Data Gugus Depan / Pangkalan Pramuka', icon: <Shield className="w-5 h-5 text-white" /> },
                 saka:      { title: 'Satuan Karya (Saka)', subtitle: 'Manajemen Satuan Karya Pramuka se-Kabupaten Tasikmalaya', icon: <Award className="w-5 h-5 text-white" /> },
                 berita:    { title: 'Berita & Konten', subtitle: 'Kelola artikel, berita, dan publikasi Kwarcab', icon: <FileText className="w-5 h-5 text-white" /> },
@@ -2855,7 +2875,7 @@ export default function AdminPortal({
               {formMode === 'list' ? (
                 <>
                   {/* View Mode Toggle (Only for Kwarcab/Staff or Kwarran to see Gudeps) */}
-                  {(user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran') && (
+                  {(user.role === 'kwarcab' || user.role === 'staff_kwarcab' || user.role === 'kwarran' || user.role === 'gudep') && (
                     <div className="flex border-b border-gray-200">
                       <button
                         onClick={() => {
@@ -2940,15 +2960,26 @@ export default function AdminPortal({
                     <div className="space-y-4">
                       <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 sm:p-5">
                         <div className="mb-3">
-                          <h3 className="text-xs font-black uppercase tracking-wider text-gray-800">Statistik Tingkatan Anggota</h3>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-gray-800">
+                            {user.role === 'gudep'
+                              ? `Statistik Gugus Depan ${gudepList[0]?.nama_pangkalan || ''}`.trim()
+                              : user.role === 'kwarran'
+                                ? `Statistik Kwartir Ranting ${ownKwarran?.nama_kecamatan || ''}`.trim()
+                                : 'Statistik Tingkatan Anggota'}
+                          </h3>
                           <p className="text-[11px] text-gray-500 mt-0.5">
-                            Jumlah anggota per tingkatan di setiap golongan ({anggotaList.length} anggota{user.role === 'kwarran' ? ' di wilayah Anda' : ''}).
+                            Jumlah anggota per tingkatan di setiap golongan ({anggotaList.length} anggota{user.role === 'kwarran' ? ' di wilayah Anda' : user.role === 'gudep' ? ' di gugus depan Anda' : ''}).
                           </p>
+                          {(user.role === 'gudep' || user.role === 'kwarran') && (
+                            <div className="mt-2.5"><GolonganChips anggota={anggotaList} /></div>
+                          )}
                         </div>
                         <TingkatanStats anggota={anggotaList} />
                       </div>
 
-                      {allKwarran.length === 0 ? (
+                      {user.role === 'kwarran' ? (
+                        <RekapGudepList gudeps={gudepList} anggota={anggotaList} />
+                      ) : user.role === 'gudep' ? null : allKwarran.length === 0 ? (
                         <div className="py-8 text-center text-gray-500 font-medium italic text-sm">
                           Belum ada data Kwartir Ranting.
                         </div>
@@ -3030,7 +3061,7 @@ export default function AdminPortal({
                                   ) : (
                                     <div className="space-y-2 md:pl-14">
                                       {gudeps.map(gudep => {
-                                        const totalGudep = anggotaList.filter(a => a.gugus_depan_id === gudep.id).length;
+                                        const totalGudep = anggotaList.filter(a => a.gudep_id === gudep.id).length;
                                         return (
                                           <div key={gudep.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-green-200 transition-colors gap-3">
                                             <div className="flex items-center space-x-3">
@@ -3873,7 +3904,21 @@ export default function AdminPortal({
           )}
 
           {/* --- TAB CONTENT: KWARTRAN LIST (KWARCAB) --- */}
-          {activeTab === 'kwarran' && (
+          {activeTab === 'kwarran' && user.role === 'kwarran' && (
+            <ProfilKwarranPanel
+              kwarran={ownKwarran}
+              token={token}
+              onSaved={() => { loadDashboardData(); onRefreshData(); }}
+              onUploadFoto={(e, setUrl) => handleBase64Upload(e, setUrl, {
+                maxDimension: 420,
+                quality: 0.42,
+                filenamePrefix: 'kwarran_',
+                successMessage: 'Foto berhasil dikompresi dan diunggah!'
+              })}
+            />
+          )}
+
+          {activeTab === 'kwarran' && (user.role as string) !== 'kwarran' && (
             <div className="space-y-6 animate-fade-in">
               {formMode === 'list' ? (
                 <>
@@ -5568,6 +5613,47 @@ export default function AdminPortal({
                 successMessage: 'Foto berhasil dikompresi dan diunggah!'
               })}
             />
+
+            {user.role === 'kwarcab' && (
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100 p-6 sm:p-8 mt-6 space-y-3 animate-fade-in">
+                <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">Periksa Struktur Database</h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Jika foto atau data yang disimpan tidak muncul di situs, cek di sini apakah ada kolom database yang belum dibuat.
+                  Hasilnya berisi SQL yang tinggal disalin ke Supabase (SQL Editor).
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDbCheck}
+                  disabled={dbCheckBusy}
+                  className="px-5 py-2.5 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 rounded-xl text-white font-bold text-xs uppercase tracking-wider"
+                >
+                  {dbCheckBusy ? 'Memeriksa…' : 'Periksa Sekarang'}
+                </button>
+                {dbCheck && (
+                  dbCheck.error ? (
+                    <p className="text-xs text-red-700">{dbCheck.error}</p>
+                  ) : dbCheck.ok ? (
+                    <p className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-xl p-3">
+                      Struktur database lengkap. Tidak ada kolom yang kurang.
+                      {!dbCheck.syncState && ' (Tabel sync_state belum ada; sinkron tetap berjalan dengan cara lama.)'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-red-700">
+                        {dbCheck.missing.length} kolom belum ada di database. Salin SQL di bawah ke Supabase (SQL Editor), lalu jalankan:
+                      </p>
+                      <textarea
+                        readOnly
+                        value={dbCheck.missing.map(m => m.sql).join('\n')}
+                        rows={Math.min(14, dbCheck.missing.length + 1)}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="w-full font-mono text-[11px] text-gray-900 bg-gray-50 border border-gray-200 rounded-xl p-3"
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            )}
 
             {user.role === 'kwarcab' && (
               <div className="bg-white shadow-xl rounded-2xl border border-gray-100 p-6 sm:p-8 mt-6 space-y-3 animate-fade-in">

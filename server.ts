@@ -86,8 +86,26 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
           if (ended) return res;
           ended = true;
           db.syncNow()
-            .catch(err => console.error('[API] syncNow gagal:', err))
-            .finally(() => originalEnd(...args));
+            .catch((err: any): string[] => {
+              console.error('[API] syncNow gagal:', err);
+              return [err?.message || String(err)];
+            })
+            .then((errors: string[]) => {
+              // Jangan pura-pura sukses: kalau Supabase menolak perubahan, beri tahu admin apa penyebabnya.
+              if (errors.length > 0 && res.statusCode < 400) {
+                console.error('[API] Perubahan TIDAK tersimpan ke Supabase:', errors);
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.removeHeader('Content-Length');
+                res.removeHeader('ETag');
+                originalEnd(JSON.stringify({
+                  error: 'Perubahan BELUM tersimpan permanen di database: ' + errors.join(' | ') +
+                    ' — kemungkinan kolom database belum dibuat. Buka Profil Kwarcab > Periksa Struktur Database untuk melihat SQL yang perlu dijalankan.'
+                }));
+                return;
+              }
+              originalEnd(...args);
+            });
           return res;
         };
       }
@@ -715,6 +733,11 @@ app.get('/api/public/verify-anggota/:id', (req: Request, res: Response) => {
 
 // --- ADMIN API ENDPOINTS (RBAC-PROTECTED) ---
 
+// Pemeriksa struktur database: memberi tahu kolom mana yang belum ada di Supabase beserta SQL perbaikannya.
+app.get('/api/admin/db-check', authenticate, authorize(['kwarcab']), async (req: AuthRequest, res: Response) => {
+  res.json(await db.checkSchema());
+});
+
 // Cadangan data: tanpa parameter -> daftar tabel; ?table=nama -> isi tabel itu (JSON).
 // Dipecah per tabel supaya respons tetap kecil (batas respons fungsi Vercel ~4,5 MB).
 app.get('/api/admin/backup', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
@@ -1227,8 +1250,18 @@ app.post('/api/admin/saka/pull-member', authenticate, authorize(['saka']), (req:
 
 
 // --- KWARTRAN ADMIN ENDPOINTS ---
-app.get('/api/admin/kwarran', authenticate, (req: Request, res: Response) => {
-  res.json(db.getKwarran());
+app.get('/api/admin/kwarran', authenticate, (req: AuthRequest, res: Response) => {
+  const user = req.user!;
+  const all = db.getKwarran();
+  // Akun Kwarran hanya melihat Kwarran-nya sendiri; akun Gudep hanya Kwarran induknya.
+  if (user.role === 'kwarran') {
+    res.json(all.filter(k => k.id === user.ref_id));
+  } else if (user.role === 'gudep') {
+    const parent = db.getGudep().find(g => g.id === user.ref_id);
+    res.json(all.filter(k => parent && k.id === parent.kwartir_ranting_id));
+  } else {
+    res.json(all);
+  }
 });
 
 app.post('/api/admin/kwarran', authenticate, authorizeKwarcab('kwarran'), (req: Request, res: Response) => {
