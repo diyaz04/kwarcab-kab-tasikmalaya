@@ -105,7 +105,7 @@ const EXPECTED_COLUMNS: Record<string, Record<string, string>> = {
   kwartir_ranting: { sosmed: "JSONB DEFAULT '{}'::jsonb", masa_khidmat: "TEXT DEFAULT ''" },
   kampung_pramuka: { status: "TEXT DEFAULT 'aktif'" },
   anggota: { is_pelatih: 'BOOLEAN DEFAULT FALSE', peran: "JSONB DEFAULT '[]'::jsonb", jenis_kelamin: 'TEXT' },
-  users: { permissions: "JSONB DEFAULT '[]'::jsonb" }
+  users: { permissions: "JSONB DEFAULT '[]'::jsonb", foto: "TEXT DEFAULT ''" }
 };
 
 const DEFAULT_KTA_CONFIG: KtaConfig = {

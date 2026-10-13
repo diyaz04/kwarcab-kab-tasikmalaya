@@ -24,6 +24,8 @@ export interface User {
   role: UserRole;
   ref_id: string | null; // ID of Kwarran, Gudep, or Saka
   permissions?: AdminPermission[]; // Scoped access for staff_kwarcab
+  /** Foto profil akun; kosong = siluet bawaan. */
+  foto?: string;
   created_at: string;
 }
 

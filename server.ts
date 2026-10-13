@@ -416,7 +416,7 @@ const authorizeWithKwarcabPermission = (allowedRoles: UserRole[], permission: Ad
 // --- AUTH ENDPOINTS ---
 
 app.put('/api/auth/password', authenticate, async (req: AuthRequest, res: Response) => {
-  const { password } = req.body;
+  const { password, current_password } = req.body;
   if (!password || password.length < 6) {
     res.status(400).json({ error: 'Password minimal 6 karakter' });
     return;
@@ -428,6 +428,16 @@ app.put('/api/auth/password', authenticate, async (req: AuthRequest, res: Respon
     return;
   }
   
+  // Klien baru mengirim password lama untuk diverifikasi (klien lama/native tidak, tetap diterima).
+  if (typeof current_password === 'string') {
+    const cocok = (await validateSupabaseAuthPassword(current.email, current_password))
+      || current.password_hash === `$2a$10$${current_password}hashsimulation`;
+    if (!cocok) {
+      res.status(400).json({ error: 'Password lama salah' });
+      return;
+    }
+  }
+
   const updates = { password_hash: `$2a$10$${password}hashsimulation` };
   const nextUser = { ...current, ...updates };
   
@@ -438,6 +448,47 @@ app.put('/api/auth/password', authenticate, async (req: AuthRequest, res: Respon
   } catch (error: any) {
     res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
   }
+});
+
+// Ubah nama & foto akun sendiri
+app.put('/api/auth/profile', authenticate, (req: AuthRequest, res: Response) => {
+  const current = db.getUsers().find(u => u.id === req.user!.id);
+  if (!current) {
+    res.status(404).json({ error: 'User tidak ditemukan' });
+    return;
+  }
+  const { nama, foto } = req.body || {};
+  const updates: Record<string, unknown> = {};
+  if (nama !== undefined) {
+    const n = String(nama).trim();
+    if (!n || n.length > 80) {
+      res.status(400).json({ error: 'Nama wajib diisi (maksimal 80 karakter)' });
+      return;
+    }
+    updates.nama = n;
+  }
+  if (foto !== undefined) {
+    const f = String(foto).trim();
+    if (f && (f.length > 500 || !/^(https?:\/\/|\/)/i.test(f))) {
+      res.status(400).json({ error: 'Alamat foto tidak valid' });
+      return;
+    }
+    // kolom foto hanya disentuh bila ada isinya atau sebelumnya sudah ada (aman sebelum kolom DB dibuat)
+    if (f || current.foto !== undefined) updates.foto = f;
+  }
+  db.updateUser(current.id, updates);
+  const next = { ...current, ...updates };
+  res.json({
+    user: {
+      id: next.id,
+      nama: next.nama,
+      email: next.email,
+      role: next.role,
+      ref_id: next.ref_id,
+      permissions: normalizePermissions(next.permissions),
+      foto: next.foto || ''
+    }
+  });
 });
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
@@ -495,7 +546,8 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       ref_id: user.ref_id,
-      permissions: normalizePermissions(user.permissions)
+      permissions: normalizePermissions(user.permissions),
+      foto: user.foto || ''
     }
   });
 });
@@ -517,7 +569,8 @@ app.get('/api/auth/me', authenticate, (req: AuthRequest, res: Response) => {
       email: user.email,
       role: user.role,
       ref_id: user.ref_id,
-      permissions: normalizePermissions(user.permissions)
+      permissions: normalizePermissions(user.permissions),
+      foto: user.foto || ''
     }
   });
 });

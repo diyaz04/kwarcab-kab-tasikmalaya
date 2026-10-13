@@ -14,6 +14,7 @@ import SosmedFields from './SosmedFields';
 import TingkatanStats from './TingkatanStats';
 import PimpinanManager from './PimpinanManager';
 import ProfilKwarranPanel from './ProfilKwarranPanel';
+import ProfilSayaModal from './ProfilSayaModal';
 import RekapGudepList, { GolonganChips } from './RekapGudep';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel, countJk, normalizeJenisKelamin, JK_LABEL, pelatihList } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
@@ -59,6 +60,8 @@ interface AdminPortalProps {
   allSaka: SatuanKarya[];
   onBackToLanding: () => void;
   onLogout?: () => void;
+  /** Dipanggil saat profil akun (nama/foto) berubah, agar tampilan di seluruh aplikasi ikut diperbarui. */
+  onUserUpdate?: (user: UserType) => void;
 }
 
 export default function AdminPortal({
@@ -68,10 +71,12 @@ export default function AdminPortal({
   allKwarran,
   allSaka,
   onBackToLanding,
-  onLogout
+  onLogout,
+  onUserUpdate
 }: AdminPortalProps) {
   // Navigation inside Admin Dashboard
   const [activeTab, setActiveTab] = useState<string>('overview'); // overview, anggota, kwarran, gudep, saka, berita, agenda, config, users, notif
+  const [showProfilSaya, setShowProfilSaya] = useState(false);
   const [stats, setStats] = useState<any>({
     totalAnggota: 0, siaga: 0, penggalang: 0, penegak: 0, pandega: 0, dewasa: 0, pendingBerita: 0, pendingSakaApproval: 0
   });
@@ -2569,16 +2574,36 @@ export default function AdminPortal({
               </button>
 
               {/* User info */}
-              <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setShowProfilSaya(true)}
+                title="Profil saya: ganti foto, nama, dan password"
+                className="flex items-center gap-2 sm:gap-3 rounded-xl px-1.5 py-1 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
                 <div className="hidden md:block text-right">
                   <div className="text-xs font-bold text-gray-900">{user.nama}</div>
                   <div className="text-[10px] text-gray-500 font-medium">{getRoleLabel(user.role)}</div>
                 </div>
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 border border-green-200 flex items-center justify-center text-green-700 font-bold text-xs sm:text-sm overflow-hidden shadow-sm flex-shrink-0 relative">
-                  <img src="https://i.pravatar.cc/150?u=admin" alt="avatar" className="w-full h-full object-cover" />
+                  <img src={fotoOrDefault(user.foto)} onError={onFotoError} alt="Foto profil" className="w-full h-full object-cover object-top" />
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 hidden sm:block rotate-90" />
-              </div>
+              </button>
+              {showProfilSaya && (
+                <ProfilSayaModal
+                  user={user}
+                  token={token}
+                  roleLabel={getRoleLabel(user.role)}
+                  onClose={() => setShowProfilSaya(false)}
+                  onUpdated={(u) => onUserUpdate?.(u)}
+                  onUploadFoto={(e, setUrl) => handleBase64Upload(e, setUrl, {
+                    maxDimension: 420,
+                    quality: 0.42,
+                    filenamePrefix: 'profil_',
+                    successMessage: 'Foto berhasil diunggah. Klik Simpan untuk menerapkan.'
+                  })}
+                />
+              )}
             </div>
           </div>
           

@@ -502,6 +502,7 @@ export default function App() {
                 allSaka={saka} 
                 onBackToLanding={() => setCurrentTab('home')}
                 onLogout={handleLogout}
+                onUserUpdate={(u) => { setUser(u); localStorage.setItem('kwarcab_user', JSON.stringify(u)); }}
               />
             ) : (
               <div className="py-24 text-center max-w-md mx-auto px-4">
