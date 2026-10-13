@@ -1343,6 +1343,11 @@ app.get('/api/admin/gudep', authenticate, (req: AuthRequest, res: Response) => {
   }
 });
 
+// Bandingkan nama tanpa memedulikan huruf besar/kecil, spasi ganda, dan tanda baca.
+const normNama = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const findGudepKembar = (nama: string, kwarranId: string, exceptId?: string) =>
+  db.getGudep().find(g => g.id !== exceptId && g.kwartir_ranting_id === kwarranId && normNama(g.nama_pangkalan) === normNama(nama));
+
 app.post('/api/admin/gudep', authenticate, authorizeWithKwarcabPermission(['kwarran'], 'gudep'), (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const { nama_pangkalan, kwartir_ranting_id } = req.body;
@@ -1350,6 +1355,12 @@ app.post('/api/admin/gudep', authenticate, authorizeWithKwarcabPermission(['kwar
 
   if (!nama_pangkalan || !targetKwarranId) {
     res.status(400).json({ error: 'Nama pangkalan dan Kwartir Ranting wajib diisi' });
+    return;
+  }
+
+  const kembar = findGudepKembar(nama_pangkalan, targetKwarranId);
+  if (kembar) {
+    res.status(409).json({ error: `Gugus Depan "${kembar.nama_pangkalan}" sudah ada di Kwartir Ranting ini. Pilih dari daftar, jangan buat ganda.` });
     return;
   }
 
@@ -1385,6 +1396,14 @@ app.put('/api/admin/gudep/:id', authenticate, (req: AuthRequest, res: Response) 
     return;
   }
 
+  const namaBaru = req.body?.nama_pangkalan !== undefined ? req.body.nama_pangkalan : current.nama_pangkalan;
+  const kwarranBaru = user.role === 'kwarran' ? current.kwartir_ranting_id : (req.body?.kwartir_ranting_id ?? current.kwartir_ranting_id);
+  const kembar = findGudepKembar(namaBaru, kwarranBaru, id);
+  if (kembar) {
+    res.status(409).json({ error: `Gugus Depan "${kembar.nama_pangkalan}" sudah ada di Kwartir Ranting ini.` });
+    return;
+  }
+
   db.updateGudep(id, req.body);
   res.json({ message: 'Gudep updated successfully' });
 });
@@ -1400,6 +1419,13 @@ app.delete('/api/admin/gudep/:id', authenticate, authorizeWithKwarcabPermission(
 
   if (user.role === 'kwarran' && current.kwartir_ranting_id !== user.ref_id) {
     res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const nAnggota = db.getAnggota().filter(a => a.gudep_id === id).length;
+  const nAkun = db.getUsers().filter(u => u.role === 'gudep' && u.ref_id === id).length;
+  if (nAnggota > 0 || nAkun > 0) {
+    res.status(409).json({ error: `Gugus Depan masih dipakai: ${nAnggota} anggota dan ${nAkun} akun terhubung. Pindahkan atau hapus dulu sebelum menghapus Gugus Depan ini.` });
     return;
   }
 

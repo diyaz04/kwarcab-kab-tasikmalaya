@@ -2128,6 +2128,21 @@ export default function AdminPortal({
     }
   };
 
+  const handleDeleteGudep = async (gd: any) => {
+    if (!(await confirmDialog({ title: 'Hapus Gugus Depan', message: `Hapus Gugus Depan "${gd.nama_pangkalan}"?`, danger: true }))) return;
+    try {
+      const res = await fetch(`/api/admin/gudep/${gd.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        showSuccess('Gugus Depan berhasil dihapus');
+        loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal menghapus Gugus Depan');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    }
+  };
+
   // --- ACTIONS: SAKA CRUD (KWARCAB) ---
   const handleSaveSaka = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4311,8 +4326,11 @@ export default function AdminPortal({
                                     <div className="w-8 h-8 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center flex-shrink-0 text-green-700">
                                       <Award className="w-4 h-4" />
                                     </div>
-                                    <div className="font-bold text-gray-900">
-                                      {gd.nama_pangkalan}
+                                    <div>
+                                      <div className="font-bold text-gray-900">{gd.nama_pangkalan}</div>
+                                      <div className="text-[10px] text-gray-500 mt-0.5">
+                                        {anggotaList.filter(a => a.gudep_id === gd.id).length} anggota • {userList.filter(u => u.role === 'gudep' && u.ref_id === gd.id).length} akun
+                                      </div>
                                     </div>
                                   </div>
                                 </td>
@@ -4320,13 +4338,33 @@ export default function AdminPortal({
                                   Kecamatan {kw ? kw.nama_kecamatan : 'Tasikmalaya'}
                                 </td>
                                 <td className="py-3.5 px-5 text-right">
-                                  <button
-                                    onClick={() => setViewingGudepDetail(gd)}
-                                    className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
-                                    title="Lihat Detail"
-                                  >
-                                    <Eye className="w-3.5 h-3.5 text-green-700" />
-                                  </button>
+                                  <div className="flex items-center justify-end space-x-2">
+                                    <button
+                                      onClick={() => setViewingGudepDetail(gd)}
+                                      className="p-1.5 rounded-lg bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
+                                      title="Lihat Detail"
+                                    >
+                                      <Eye className="w-3.5 h-3.5 text-green-700" />
+                                    </button>
+                                    {(canManage('gudep') || user.role === 'kwarran') && (
+                                      <>
+                                        <button
+                                          onClick={() => { setFormMode('edit'); setSelectedItem(gd); setGdNama(gd.nama_pangkalan); setGdKwarran(gd.kwartir_ranting_id); }}
+                                          className="p-1.5 rounded-lg bg-white shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 transition"
+                                          title="Ubah"
+                                        >
+                                          <Edit className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteGudep(gd)}
+                                          className="p-1.5 rounded-lg bg-white shadow-sm text-red-600 hover:bg-red-50 border border-red-200 transition"
+                                          title="Hapus"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -4350,12 +4388,12 @@ export default function AdminPortal({
                                 <div>
                                   <h4 className="text-xs font-bold text-gray-900">{gd.nama_pangkalan}</h4>
                                   <p className="text-[10px] text-gray-500/70 mt-0.5">
-                                    Kwarran: Kecamatan {kw ? kw.nama_kecamatan : 'Tasikmalaya'}
+                                    Kwarran: Kecamatan {kw ? kw.nama_kecamatan : 'Tasikmalaya'} • {anggotaList.filter(x => x.gudep_id === gd.id).length} anggota • {userList.filter(u => u.role === 'gudep' && u.ref_id === gd.id).length} akun
                                   </p>
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-end pt-2 border-t border-white/5">
+                              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
                                 <button
                                   onClick={() => setViewingGudepDetail(gd)}
                                   className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-100 shadow-sm border border-gray-200 text-[10px] font-bold text-gray-600 transition"
@@ -4363,6 +4401,24 @@ export default function AdminPortal({
                                   <Eye className="w-3 h-3 text-green-700" />
                                   <span>Detail</span>
                                 </button>
+                                {(canManage('gudep') || user.role === 'kwarran') && (
+                                  <>
+                                    <button
+                                      onClick={() => { setFormMode('edit'); setSelectedItem(gd); setGdNama(gd.nama_pangkalan); setGdKwarran(gd.kwartir_ranting_id); }}
+                                      className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-gray-200 text-[10px] font-bold text-gray-600 transition"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                      <span>Ubah</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteGudep(gd)}
+                                      className="flex items-center space-x-1 px-2.5 py-1 rounded bg-white border border-red-200 text-[10px] font-bold text-red-600 transition"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      <span>Hapus</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
