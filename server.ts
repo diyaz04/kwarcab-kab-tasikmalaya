@@ -1161,7 +1161,7 @@ app.post('/api/admin/saka/approve-member', authenticate, authorizeWithKwarcabPer
     const creatorUser = db.getUsers().find(u => u.id === a.created_by);
     if (creatorUser) {
       db.addNotifikasi({
-        id: `notif_${Date.now()}`,
+        id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         user_id: creatorUser.id,
         tipe: 'saka_approval',
         pesan: `Pengajuan anggota ${a.nama_lengkap} bergabung dengan ${s ? s.nama_saka : 'Saka'} telah DISETUJUI.`,
@@ -1179,7 +1179,7 @@ app.post('/api/admin/saka/approve-member', authenticate, authorizeWithKwarcabPer
     const creatorUser = db.getUsers().find(u => u.id === a.created_by);
     if (creatorUser) {
       db.addNotifikasi({
-        id: `notif_${Date.now()}`,
+        id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         user_id: creatorUser.id,
         tipe: 'saka_rejection',
         pesan: `Pengajuan anggota ${a.nama_lengkap} bergabung dengan ${s ? s.nama_saka : 'Saka'} telah DITOLAK.`,
@@ -1509,7 +1509,7 @@ app.post('/api/admin/berita', authenticate, (req: AuthRequest, res: Response) =>
     const kwarcabUsers = db.getUsers().filter(u => u.role === 'kwarcab');
     kwarcabUsers.forEach(kUser => {
       db.addNotifikasi({
-        id: `notif_${Date.now()}`,
+        id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         user_id: kUser.id,
         tipe: 'berita_pengajuan',
         pesan: `${user.nama} mengajukan berita baru: "${judul}" yang memerlukan persetujuan.`,
@@ -1548,7 +1548,7 @@ app.post('/api/admin/berita/:id/review', authenticate, authorizeKwarcab('berita'
   const submitterRoleUsers = db.getUsers().filter(u => u.role === b.author_type && u.ref_id === b.author_id);
   submitterRoleUsers.forEach(u => {
     db.addNotifikasi({
-      id: `notif_${Date.now()}`,
+      id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       user_id: u.id,
       tipe: 'berita_review_result',
       pesan: `Pengajuan berita Anda "${b.judul}" telah ${action === 'approve' ? 'DISETUJUI' : 'DITOLAK'} oleh Kwarcab.`,

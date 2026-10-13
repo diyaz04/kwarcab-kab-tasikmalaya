@@ -864,7 +864,8 @@ export class DatabaseSim {
     // di Supabase) TIDAK boleh menggagalkan tabel lain maupun fase penghapusan di bawah.
     await Promise.all(dirty.map(async table => {
       try {
-        const rows = this.state[table] as any[];
+        // Pengaman: baris ber-ID kembar dalam satu penyimpanan ditolak Postgres ("cannot affect row a second time"); ambil yang terakhir.
+        const rows = [...new Map((this.state[table] as any[]).map(r => [r.id, r])).values()];
         if (rows.length > 0) {
           const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
           if (error) throw new Error(`${table} upsert: ${error.message}`);
