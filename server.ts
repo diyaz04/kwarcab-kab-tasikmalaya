@@ -570,7 +570,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'Nama wajib diisi (maksimal 80 karakter)' });
     return;
   }
-  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(emailBersih) || emailBersih.length > 120) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailBersih) || emailBersih.length > 120) {
     res.status(400).json({ error: 'Format email tidak valid' });
     return;
   }
@@ -2026,7 +2026,7 @@ app.post('/api/admin/users/:id/approve', authenticate, authorize(['kwarcab']), a
     return;
   }
   try {
-    const plain = /^$2a$10$([sS]*)hashsimulation$/.exec(current.password_hash)?.[1];
+    const plain = /^\$2a\$10\$([\s\S]*)hashsimulation$/.exec(current.password_hash)?.[1];
     await syncSupabaseAuthUser(current, plain);
     db.updateUser(current.id, { status: 'aktif' });
     db.addNotifikasi({
