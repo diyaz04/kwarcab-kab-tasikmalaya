@@ -26,6 +26,8 @@ export interface User {
   permissions?: AdminPermission[]; // Scoped access for staff_kwarcab
   /** Foto profil akun; kosong = siluet bawaan. */
   foto?: string;
+  /** 'pending' = pendaftaran mandiri yang belum disetujui (belum bisa login); kosong/'aktif' = normal. */
+  status?: 'pending' | 'aktif';
   created_at: string;
 }
 
@@ -164,6 +166,8 @@ export interface ProfilKwarcab {
   bendahara_foto?: string;
   ketua_pusdatin_nama?: string;
   ketua_pusdatin_foto?: string;
+  /** Pendaftaran mandiri Admin Kwarran dibuka (true) atau ditutup (false/kosong). */
+  registrasi_terbuka?: boolean;
 }
 
 export interface KampungPramuka {

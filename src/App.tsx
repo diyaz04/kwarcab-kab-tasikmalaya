@@ -117,6 +117,15 @@ export default function App() {
 
   // Modals
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // Pendaftaran mandiri Admin Kwarran (muncul hanya jika dibuka Kwarcab)
+  const [authMode, setAuthMode] = useState<'login' | 'daftar'>('login');
+  const [regNama, setRegNama] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regKwarran, setRegKwarran] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regUlang, setRegUlang] = useState('');
+  const [regSukses, setRegSukses] = useState('');
+  const [regKirim, setRegKirim] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -246,6 +255,29 @@ export default function App() {
       setCurrentTab('admin');
     } catch (err: any) {
       setLoginError(err.message);
+    }
+  };
+
+  const handleDaftar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (regPassword.length < 6) return setLoginError('Password minimal 6 karakter.');
+    if (regPassword !== regUlang) return setLoginError('Konfirmasi password tidak sama.');
+    setRegKirim(true);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama: regNama, email: regEmail, password: regPassword, kwarran_id: regKwarran })
+      });
+      const data = await readApiJson(res);
+      if (!res.ok) throw new Error(data.error || 'Pendaftaran gagal');
+      setRegSukses(data.message || 'Pendaftaran terkirim, menunggu persetujuan.');
+      setRegNama(''); setRegEmail(''); setRegKwarran(''); setRegPassword(''); setRegUlang('');
+    } catch (err: any) {
+      setLoginError(err.message);
+    } finally {
+      setRegKirim(false);
     }
   };
 
@@ -620,6 +652,8 @@ export default function App() {
               onClick={() => {
                 setShowLoginModal(false);
                 setLoginError('');
+                setAuthMode('login');
+                setRegSukses('');
               }}
               className="absolute top-4 right-4 p-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-all duration-200"
             >
@@ -648,8 +682,8 @@ export default function App() {
               <h4 className="text-xs font-black tracking-widest text-green-700 uppercase mb-1">
                 PUSDATIN KWARCAB KAB. TASIKMALAYA
               </h4>
-              <h3 className="text-lg font-bold text-gray-900 font-heading tracking-wide">Akses Portal Sinergi</h3>
-              <p className="text-[11px] text-gray-500 mt-1 font-light">Masuk menggunakan email pengurus resmi Anda</p>
+              <h3 className="text-lg font-bold text-gray-900 font-heading tracking-wide">{authMode === 'daftar' ? 'Daftar Admin Kwarran' : 'Akses Portal Sinergi'}</h3>
+              <p className="text-[11px] text-gray-500 mt-1 font-light">{authMode === 'daftar' ? 'Pendaftaran akan ditinjau dan disetujui Admin Kwarcab' : 'Masuk menggunakan email pengurus resmi Anda'}</p>
             </div>
 
             {loginError && (
@@ -659,6 +693,7 @@ export default function App() {
               </div>
             )}
 
+            {authMode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Email Pengurus *</label>
@@ -691,10 +726,69 @@ export default function App() {
                 Otorisasi Akses
               </button>
             </form>
+            )}
+
+            {authMode === 'daftar' && (regSukses ? (
+              <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-xs leading-relaxed text-center">
+                {regSukses}
+              </div>
+            ) : (
+              <form onSubmit={handleDaftar} className="space-y-3">
+                {[
+                  { label: 'Nama Lengkap *', type: 'text', value: regNama, set: setRegNama, ph: 'Nama pengurus Kwarran' },
+                  { label: 'Email *', type: 'email', value: regEmail, set: setRegEmail, ph: 'email@contoh.com' },
+                ].map(f => (
+                  <div key={f.label} className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">{f.label}</label>
+                    <input type={f.type} required maxLength={120} value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.ph}
+                      className="w-full bg-gray-50 text-xs text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-600 focus:ring-1 focus:ring-green-600 focus:outline-none" />
+                  </div>
+                ))}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Kwartir Ranting *</label>
+                  <select required value={regKwarran} onChange={(e) => setRegKwarran(e.target.value)}
+                    className="w-full bg-gray-50 text-xs text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-600 focus:outline-none">
+                    <option value="">-- Pilih Kwartir Ranting --</option>
+                    {kwarran.map(kw => <option key={kw.id} value={kw.id}>Kwarran {kw.nama_kecamatan}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Password *</label>
+                    <input type="password" required minLength={6} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Min. 6 karakter"
+                      className="w-full bg-gray-50 text-xs text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-600 focus:outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Ulangi *</label>
+                    <input type="password" required value={regUlang} onChange={(e) => setRegUlang(e.target.value)} placeholder="Ulangi password"
+                      className="w-full bg-gray-50 text-xs text-gray-900 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-600 focus:outline-none" />
+                  </div>
+                </div>
+                <button type="submit" disabled={regKirim}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:opacity-50 text-white font-bold text-xs tracking-wider uppercase transition-all shadow-sm">
+                  {regKirim ? 'Mengirim…' : 'Kirim Pendaftaran'}
+                </button>
+              </form>
+            ))}
 
             <div className="mt-6 pt-4 border-t border-gray-100 text-[10px] text-gray-500 text-center leading-relaxed">
-              Belum memiliki akun pengurus? <br />
-              <span className="text-gray-700 font-medium">Silakan hubungi Admin Kwartir Cabang Kabupaten Tasikmalaya.</span>
+              {authMode === 'daftar' ? (
+                <button type="button" onClick={() => { setAuthMode('login'); setLoginError(''); setRegSukses(''); }} className="text-green-700 font-bold hover:underline">
+                  ← Kembali ke halaman masuk
+                </button>
+              ) : profil?.registrasi_terbuka ? (
+                <>
+                  Pengurus Kwartir Ranting belum punya akun? <br />
+                  <button type="button" onClick={() => { setAuthMode('daftar'); setLoginError(''); }} className="text-green-700 font-bold hover:underline">
+                    Daftar sebagai Admin Kwarran
+                  </button>
+                </>
+              ) : (
+                <>
+                  Belum memiliki akun pengurus? <br />
+                  <span className="text-gray-700 font-medium">Silakan hubungi Admin Kwartir Cabang Kabupaten Tasikmalaya.</span>
+                </>
+              )}
             </div>
           </div>
         </div>

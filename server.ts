@@ -537,6 +537,11 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     return;
   }
 
+  if (user.status === 'pending') {
+    res.status(403).json({ error: 'Pendaftaran Anda masih menunggu persetujuan Admin Kwarcab. Anda akan bisa masuk setelah disetujui.' });
+    return;
+  }
+
   const token = generateToken(user);
   res.json({
     token,
@@ -550,6 +555,68 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       foto: user.foto || ''
     }
   });
+});
+
+// Pendaftaran mandiri Admin Kwarran (hanya saat dibuka oleh Kwarcab; akun menunggu persetujuan)
+app.post('/api/auth/register', async (req: Request, res: Response) => {
+  if (!db.getProfil().registrasi_terbuka) {
+    res.status(403).json({ error: 'Pendaftaran mandiri sedang ditutup. Silakan hubungi Admin Kwarcab.' });
+    return;
+  }
+  const { nama, email, password, kwarran_id } = req.body || {};
+  const namaBersih = String(nama || '').trim();
+  const emailBersih = String(email || '').trim().toLowerCase();
+  if (!namaBersih || namaBersih.length > 80) {
+    res.status(400).json({ error: 'Nama wajib diisi (maksimal 80 karakter)' });
+    return;
+  }
+  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(emailBersih) || emailBersih.length > 120) {
+    res.status(400).json({ error: 'Format email tidak valid' });
+    return;
+  }
+  if (typeof password !== 'string' || password.length < 6 || password.length > 100) {
+    res.status(400).json({ error: 'Password minimal 6 karakter' });
+    return;
+  }
+  if (!db.getKwarran().some(kw => kw.id === kwarran_id)) {
+    res.status(400).json({ error: 'Pilih Kwartir Ranting yang valid' });
+    return;
+  }
+  if (db.getUsers().some(u => u.email.toLowerCase() === emailBersih)) {
+    res.status(409).json({ error: 'Email sudah terdaftar. Silakan masuk, atau gunakan email lain.' });
+    return;
+  }
+  if (db.getUsers().filter(u => u.status === 'pending').length >= 30) {
+    res.status(429).json({ error: 'Terlalu banyak pendaftaran yang menunggu persetujuan. Coba lagi nanti.' });
+    return;
+  }
+
+  const baru: User = {
+    id: `u_${Date.now()}`,
+    nama: namaBersih,
+    email: emailBersih,
+    password_hash: `$2a$10$${password}hashsimulation`,
+    role: 'kwarran',
+    ref_id: kwarran_id,
+    permissions: [],
+    status: 'pending',
+    created_at: new Date().toISOString()
+  };
+  db.addUser(baru);
+
+  const kw = db.getKwarran().find(k => k.id === kwarran_id);
+  db.getUsers().filter(u => u.role === 'kwarcab').forEach(admin => {
+    db.addNotifikasi({
+      id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: admin.id,
+      tipe: 'pendaftaran_akun',
+      pesan: `${namaBersih} mendaftar sebagai Admin Kwarran ${kw?.nama_kecamatan || ''}. Buka menu Akun Pengguna untuk menyetujui atau menolak.`,
+      referensi_id: baru.id,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+  });
+  res.status(201).json({ message: 'Pendaftaran berhasil dikirim. Tunggu persetujuan Admin Kwarcab sebelum bisa masuk.' });
 });
 
 app.get('/api/auth/me', authenticate, (req: AuthRequest, res: Response) => {
@@ -1943,6 +2010,48 @@ app.put('/api/admin/users/:id', authenticate, authorize(['kwarcab', 'kwarran']),
   } catch (error: any) {
     res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
   }
+});
+
+// Buka/tutup pendaftaran mandiri Admin Kwarran
+app.put('/api/admin/registrasi', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+  const terbuka = req.body?.terbuka === true;
+  db.updateProfil({ registrasi_terbuka: terbuka });
+  res.json({ terbuka });
+});
+
+app.post('/api/admin/users/:id/approve', authenticate, authorize(['kwarcab']), async (req: AuthRequest, res: Response) => {
+  const current = db.getUsers().find(u => u.id === req.params.id);
+  if (!current || current.status !== 'pending') {
+    res.status(404).json({ error: 'Pendaftaran tidak ditemukan atau sudah diproses' });
+    return;
+  }
+  try {
+    const plain = /^$2a$10$([sS]*)hashsimulation$/.exec(current.password_hash)?.[1];
+    await syncSupabaseAuthUser(current, plain);
+    db.updateUser(current.id, { status: 'aktif' });
+    db.addNotifikasi({
+      id: `notif_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: current.id,
+      tipe: 'pendaftaran_disetujui',
+      pesan: 'Pendaftaran akun Anda telah disetujui. Selamat datang!',
+      referensi_id: current.id,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    res.json({ message: 'Pendaftaran disetujui' });
+  } catch (error: any) {
+    res.status(502).json({ error: `Gagal sinkron ke Supabase Auth: ${error.message}` });
+  }
+});
+
+app.post('/api/admin/users/:id/reject', authenticate, authorize(['kwarcab']), (req: AuthRequest, res: Response) => {
+  const current = db.getUsers().find(u => u.id === req.params.id);
+  if (!current || current.status !== 'pending') {
+    res.status(404).json({ error: 'Pendaftaran tidak ditemukan atau sudah diproses' });
+    return;
+  }
+  db.deleteUser(current.id);
+  res.json({ message: 'Pendaftaran ditolak' });
 });
 
 app.delete('/api/admin/users/:id', authenticate, authorize(['kwarcab', 'kwarran']), async (req: AuthRequest, res: Response) => {

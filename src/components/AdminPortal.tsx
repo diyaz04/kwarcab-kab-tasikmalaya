@@ -77,6 +77,7 @@ export default function AdminPortal({
   // Navigation inside Admin Dashboard
   const [activeTab, setActiveTab] = useState<string>('overview'); // overview, anggota, kwarran, gudep, saka, berita, agenda, config, users, notif
   const [showProfilSaya, setShowProfilSaya] = useState(false);
+  const [registrasiTerbuka, setRegistrasiTerbuka] = useState(false);
   const [stats, setStats] = useState<any>({
     totalAnggota: 0, siaga: 0, penggalang: 0, penegak: 0, pandega: 0, dewasa: 0, pendingBerita: 0, pendingSakaApproval: 0
   });
@@ -1935,6 +1936,49 @@ export default function AdminPortal({
       setErrorMsg(err.message);
     }
   };
+
+  // Pendaftaran mandiri Admin Kwarran: buka/tutup + setujui/tolak
+  const loadRegistrasi = async () => {
+    try {
+      const r = await fetch('/api/public/profil', { cache: 'no-store' });
+      if (r.ok) setRegistrasiTerbuka(Boolean((await r.json()).registrasi_terbuka));
+    } catch { /* abaikan */ }
+  };
+  const handleToggleRegistrasi = async () => {
+    const next = !registrasiTerbuka;
+    try {
+      const res = await fetch('/api/admin/registrasi', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ terbuka: next })
+      });
+      if (res.ok) {
+        setRegistrasiTerbuka(next);
+        showSuccess(next ? 'Pendaftaran mandiri DIBUKA' : 'Pendaftaran mandiri DITUTUP');
+      } else {
+        await reportApiError(res, 'Gagal mengubah pengaturan pendaftaran');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    }
+  };
+  const handlePendaftaran = async (u: UserType, aksi: 'approve' | 'reject') => {
+    if (aksi === 'reject' && !(await confirmDialog({ title: 'Tolak Pendaftaran', message: `Tolak dan hapus pendaftaran ${u.nama} (${u.email})?`, danger: true }))) return;
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}/${aksi}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        showSuccess(aksi === 'approve' ? `Pendaftaran ${u.nama} disetujui` : 'Pendaftaran ditolak');
+        loadDashboardData();
+      } else {
+        await reportApiError(res, 'Gagal memproses pendaftaran');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    }
+  };
+  useEffect(() => {
+    if (activeTab === 'users' && user.role === 'kwarcab') loadRegistrasi();
+  }, [activeTab]);
 
   const handleDeleteUser = async (id: string) => {
     if (id === user.id) {
@@ -5870,6 +5914,46 @@ export default function AdminPortal({
                     </button>
                   </div>
 
+                  {isKwarcabAdmin && (
+                    <div className="bg-white shadow-sm rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Pendaftaran mandiri Admin Kwarran</p>
+                        <p className="text-[11px] text-gray-500">
+                          {registrasiTerbuka
+                            ? 'DIBUKA — tombol "Daftar" tampil di halaman login. Setiap pendaftar harus Anda setujui dulu.'
+                            : 'DITUTUP — hanya Kwarcab yang bisa membuat akun.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleToggleRegistrasi}
+                        role="switch"
+                        aria-checked={registrasiTerbuka}
+                        className={`relative w-12 h-7 rounded-full transition flex-shrink-0 ${registrasiTerbuka ? 'bg-green-600' : 'bg-gray-300'}`}
+                      >
+                        <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${registrasiTerbuka ? 'left-[22px]' : 'left-0.5'}`} />
+                      </button>
+                    </div>
+                  )}
+
+                  {isKwarcabAdmin && userList.some(u => u.status === 'pending') && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                      <p className="text-sm font-bold text-amber-900">Menunggu persetujuan ({userList.filter(u => u.status === 'pending').length})</p>
+                      {userList.filter(u => u.status === 'pending').map(u => (
+                        <div key={u.id} className="bg-white rounded-xl border border-amber-100 p-3 flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-xs">
+                            <p className="font-bold text-gray-900 text-sm">{u.nama}</p>
+                            <p className="text-gray-500">{u.email} • Kwarran {allKwarran.find(k => k.id === u.ref_id)?.nama_kecamatan || '-'}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handlePendaftaran(u, 'approve')} className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold">Setujui</button>
+                            <button onClick={() => handlePendaftaran(u, 'reject')} className="px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold">Tolak</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -5884,6 +5968,7 @@ export default function AdminPortal({
                       <tbody className="divide-y divide-white/5">
                         {userList
                           .filter(u => {
+                            if (u.status === 'pending') return false;
                             if (isKwarcabAdmin) return true;
                             if (user.role === 'kwarran') {
                               return u.role === 'gudep' && gudepList.some(g => g.id === u.ref_id && g.kwartir_ranting_id === user.ref_id);

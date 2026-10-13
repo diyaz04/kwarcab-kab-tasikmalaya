@@ -99,13 +99,14 @@ const EXPECTED_COLUMNS: Record<string, Record<string, string>> = {
     ketua_harian_nama: "TEXT DEFAULT ''", ketua_harian_foto: "TEXT DEFAULT ''",
     sekretaris_nama: "TEXT DEFAULT ''", sekretaris_foto: "TEXT DEFAULT ''",
     bendahara_nama: "TEXT DEFAULT ''", bendahara_foto: "TEXT DEFAULT ''",
-    ketua_pusdatin_nama: "TEXT DEFAULT ''", ketua_pusdatin_foto: "TEXT DEFAULT ''"
+    ketua_pusdatin_nama: "TEXT DEFAULT ''", ketua_pusdatin_foto: "TEXT DEFAULT ''",
+    registrasi_terbuka: 'BOOLEAN DEFAULT FALSE'
   },
   pimpinan_kwarcab: { kategori: "TEXT DEFAULT 'pengurus'" },
   kwartir_ranting: { sosmed: "JSONB DEFAULT '{}'::jsonb", masa_khidmat: "TEXT DEFAULT ''" },
   kampung_pramuka: { status: "TEXT DEFAULT 'aktif'" },
   anggota: { is_pelatih: 'BOOLEAN DEFAULT FALSE', peran: "JSONB DEFAULT '[]'::jsonb", jenis_kelamin: 'TEXT' },
-  users: { permissions: "JSONB DEFAULT '[]'::jsonb", foto: "TEXT DEFAULT ''" }
+  users: { permissions: "JSONB DEFAULT '[]'::jsonb", foto: "TEXT DEFAULT ''", status: "TEXT DEFAULT 'aktif'" }
 };
 
 const DEFAULT_KTA_CONFIG: KtaConfig = {
