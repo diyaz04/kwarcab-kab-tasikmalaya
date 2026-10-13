@@ -190,6 +190,9 @@ export default function AdminPortal({
   const [uPassword, setUPassword] = useState('');
   const [uRole, setURole] = useState<UserRole>('gudep');
   const [uRefId, setURefId] = useState('');
+  // Untuk akun Gudep: Kwarran induk, dan nama Gugus Depan baru bila belum ada di daftar
+  const [uKwarranId, setUKwarranId] = useState('');
+  const [uNewGudep, setUNewGudep] = useState('');
   const [uPermissions, setUPermissions] = useState<AdminPermission[]>([]);
 
   // Kwarran Form Fields
@@ -1883,6 +1886,18 @@ export default function AdminPortal({
       return;
     }
     try {
+      // Akun Gudep dengan Gugus Depan baru: buat Gugus Depan-nya lebih dulu, lalu pakai ID-nya sebagai referensi akun.
+      let refIdFinal = uRefId;
+      if (uRole === 'gudep' && uRefId === '__new__') {
+        const gRes = await fetch('/api/admin/gudep', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ nama_pangkalan: uNewGudep.trim(), kwartir_ranting_id: uKwarranId })
+        });
+        const gData = await gRes.json().catch(() => ({}));
+        if (!gRes.ok || !gData.id) throw new Error(gData.error || 'Gagal membuat Gugus Depan baru');
+        refIdFinal = gData.id;
+      }
       const method = formMode === 'add' ? 'POST' : 'PUT';
       const url = formMode === 'add' ? '/api/admin/users' : `/api/admin/users/${selectedItem.id}`;
       const res = await fetch(url, {
@@ -1896,7 +1911,7 @@ export default function AdminPortal({
           email: uEmail,
           password: uPassword,
           role: uRole,
-          ref_id: uRole === 'staff_kwarcab' ? null : (uRefId || null),
+          ref_id: uRole === 'staff_kwarcab' ? null : (refIdFinal || null),
           permissions: uRole === 'staff_kwarcab' ? uPermissions : []
         })
       });
@@ -5763,6 +5778,8 @@ export default function AdminPortal({
                         setUPassword('');
                         setURole('gudep');
                         setURefId('');
+                        setUKwarranId(user.role === 'kwarran' ? (user.ref_id || '') : '');
+                        setUNewGudep('');
                         setUPermissions([]);
                       }}
                       className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition"
@@ -5825,6 +5842,10 @@ export default function AdminPortal({
                                   setUPassword('');
                                   setURole(u.role);
                                   setURefId(u.ref_id || '');
+                                  setUKwarranId(u.role === 'gudep'
+                                    ? (gudepList.find(g => g.id === u.ref_id)?.kwartir_ranting_id || (user.role === 'kwarran' ? (user.ref_id || '') : ''))
+                                    : '');
+                                  setUNewGudep('');
                                   setUPermissions(u.permissions || []);
                                 }}
                                 className="p-1.5 bg-white border border-gray-100 shadow-sm text-gray-600 hover:text-gray-900 rounded-lg transition border border-gray-200"
@@ -5890,9 +5911,10 @@ export default function AdminPortal({
                         onChange={(e) => {
                           const nextRole = e.target.value as UserRole;
                           setURole(nextRole);
-                          if (nextRole === 'staff_kwarcab') {
-                            setURefId('');
-                          } else {
+                          setURefId('');
+                          setUNewGudep('');
+                          setUKwarranId(nextRole === 'gudep' && user.role === 'kwarran' ? (user.ref_id || '') : '');
+                          if (nextRole !== 'staff_kwarcab') {
                             setUPermissions([]);
                           }
                         }}
@@ -5905,7 +5927,54 @@ export default function AdminPortal({
                       </select>
                     </div>
 
-                    {uRole !== 'staff_kwarcab' && (
+                    {uRole === 'gudep' && (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-gray-600">Kwartir Ranting (Induk) *</label>
+                          <select
+                            required
+                            disabled={user.role === 'kwarran'}
+                            value={uKwarranId}
+                            onChange={(e) => { setUKwarranId(e.target.value); setURefId(''); setUNewGudep(''); }}
+                            className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 disabled:bg-gray-100"
+                          >
+                            <option value="">-- Pilih Kwartir Ranting --</option>
+                            {allKwarran.map(kw => <option key={kw.id} value={kw.id}>Kwarran Kecamatan {kw.nama_kecamatan}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-gray-600">Gugus Depan *</label>
+                          <select
+                            required
+                            disabled={!uKwarranId}
+                            value={uRefId}
+                            onChange={(e) => { setURefId(e.target.value); if (e.target.value !== '__new__') setUNewGudep(''); }}
+                            className="w-full bg-gray-50 text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 disabled:bg-gray-100"
+                          >
+                            <option value="">{uKwarranId ? '-- Pilih Gugus Depan --' : 'Pilih Kwartir Ranting dulu'}</option>
+                            {gudepList.filter(gd => gd.kwartir_ranting_id === uKwarranId).map(gd => <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>)}
+                            {uKwarranId && <option value="__new__">+ Buat Gugus Depan baru…</option>}
+                          </select>
+                          {uKwarranId && gudepList.filter(gd => gd.kwartir_ranting_id === uKwarranId).length === 0 && (
+                            <p className="text-[11px] text-amber-700">Belum ada Gugus Depan di kecamatan ini. Pilih "+ Buat Gugus Depan baru…" untuk membuatnya sekarang.</p>
+                          )}
+                        </div>
+                        {uRefId === '__new__' && (
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <label className="text-xs text-gray-600">Nama Gugus Depan / Pangkalan Baru *</label>
+                            <input
+                              required
+                              value={uNewGudep}
+                              onChange={(e) => setUNewGudep(e.target.value)}
+                              placeholder="Contoh: SMAN 1 Singaparna"
+                              className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {uRole !== 'staff_kwarcab' && uRole !== 'gudep' && (
                       <div className="space-y-1.5">
                         <label className="text-xs text-gray-600">Ref ID Organisasi Induk *</label>
                         <select
