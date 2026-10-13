@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, User, Compass, Calendar, BookOpen, Clock, ArrowUpRight, ArrowRight, Layers, MapPin, Award, Shield, 
   Trash2, Edit, Plus, Check, X, Bell, RefreshCw, CheckCircle2,
@@ -78,6 +78,8 @@ export default function AdminPortal({
   const [activeTab, setActiveTab] = useState<string>('overview'); // overview, anggota, kwarran, gudep, saka, berita, agenda, config, users, notif
   const [showProfilSaya, setShowProfilSaya] = useState(false);
   const [registrasiTerbuka, setRegistrasiTerbuka] = useState(false);
+  const [showNotifPopup, setShowNotifPopup] = useState(false);
+  const notifWrapRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<any>({
     totalAnggota: 0, siaga: 0, penggalang: 0, penegak: 0, pandega: 0, dewasa: 0, pendingBerita: 0, pendingSakaApproval: 0
   });
@@ -114,6 +116,7 @@ export default function AdminPortal({
   const [kpLatitude, setKpLatitude] = useState('');
   const [kpLongitude, setKpLongitude] = useState('');
   const [kpFoto, setKpFoto] = useState('');
+  const [kpUploading, setKpUploading] = useState(false);
   const [kpSejarah, setKpSejarah] = useState('');
   const [kpKeunggulan, setKpKeunggulan] = useState('');
 
@@ -2035,9 +2038,32 @@ export default function AdminPortal({
     }
   };
 
+  // Foto Kampung Pramuka: kumpulan URL dipisah koma; bisa unggah beberapa foto sekaligus
+  const kpFotoList = kpFoto.split(',').map(x => x.trim()).filter(Boolean);
+  const handleUploadFotoKP = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    setKpUploading(true);
+    try {
+      for (const file of files) {
+        await uploadCompressedImage(file, (url) => {
+          setKpFoto(prev => [...prev.split(',').map(x => x.trim()).filter(Boolean), url].join(','));
+        }, { maxDimension: 1200, quality: 0.7, filenamePrefix: 'kp_', successMessage: 'Foto berhasil diunggah' });
+      }
+    } catch (err: any) {
+      setErrorMsg('Error upload: ' + err.message);
+    } finally {
+      setKpUploading(false);
+    }
+  };
+  const handleHapusFotoKP = (idx: number) => setKpFoto(kpFotoList.filter((_, i) => i !== idx).join(','));
+
   // --- ACTIONS: KAMPUNG PRAMUKA CRUD (KWARCAB) ---
   const handleSaveKampungPramuka = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (kpUploading) { setErrorMsg('Foto masih diunggah, tunggu sampai selesai.'); return; }
+    if (kpFotoList.length === 0) { setErrorMsg('Unggah minimal satu foto Kampung Pramuka.'); return; }
     try {
       const method = formMode === 'add' ? 'POST' : 'PUT';
       const url = formMode === 'add' ? '/api/admin/kampung-pramuka' : `/api/admin/kampung-pramuka/${selectedItem.id}`;
@@ -2226,6 +2252,24 @@ export default function AdminPortal({
   };
 
   // --- READ NOTIF ---
+  // Popup lonceng di header: tutup saat klik di luar / tekan Esc
+  useEffect(() => {
+    if (!showNotifPopup) return;
+    const onDown = (e: MouseEvent) => { if (notifWrapRef.current && !notifWrapRef.current.contains(e.target as Node)) setShowNotifPopup(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowNotifPopup(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [showNotifPopup]);
+
+  const handleMarkAllNotifRead = async () => {
+    const unread = notifList.filter(n => !n.is_read);
+    try {
+      await Promise.all(unread.map(n => fetch(`/api/admin/notifikasi/${n.id}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })));
+      loadDashboardData();
+    } catch (e) {}
+  };
+
   const handleMarkNotifRead = async (id: string) => {
     try {
       await fetch(`/api/admin/notifikasi/${id}/read`, {
@@ -2612,10 +2656,68 @@ export default function AdminPortal({
               <div className="hidden sm:block h-8 w-px bg-gray-200"></div>
 
               {/* Bell notification */}
-              <button type="button" className="relative p-2 rounded-full text-gray-500 hover:text-green-700 transition-colors hover:bg-gray-50">
-                <Bell className="w-5 h-5 sm:w-4 sm:h-4" />
-                <span className="absolute top-1 right-1 sm:top-2 sm:right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <div ref={notifWrapRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowNotifPopup(v => !v)}
+                  aria-label="Notifikasi"
+                  aria-expanded={showNotifPopup}
+                  title="Notifikasi"
+                  className="relative p-2 rounded-full text-gray-500 hover:text-green-700 transition-colors hover:bg-gray-50"
+                >
+                  <Bell className="w-5 h-5 sm:w-4 sm:h-4" />
+                  {notifList.some(n => !n.is_read) && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-white flex items-center justify-center leading-none">
+                      {Math.min(notifList.filter(n => !n.is_read).length, 99)}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifPopup && (
+                  <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white rounded-2xl border border-gray-200 shadow-2xl z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <span className="text-sm font-bold text-gray-900">Notifikasi</span>
+                      {notifList.some(n => !n.is_read) && (
+                        <button type="button" onClick={handleMarkAllNotifRead} className="text-[11px] font-bold text-green-700 hover:underline">
+                          Tandai semua dibaca
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto divide-y divide-gray-50">
+                      {notifList.length === 0 ? (
+                        <p className="p-6 text-center text-xs text-gray-400">Belum ada notifikasi.</p>
+                      ) : (
+                        [...notifList]
+                          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                          .slice(0, 8)
+                          .map(n => (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => { if (!n.is_read) handleMarkNotifRead(n.id); }}
+                              className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition ${n.is_read ? '' : 'bg-green-50/60'}`}
+                            >
+                              <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${n.is_read ? 'bg-gray-200' : 'bg-green-600'}`} />
+                              <span className="min-w-0">
+                                <span className={`block text-xs leading-relaxed ${n.is_read ? 'text-gray-500' : 'text-gray-900 font-medium'}`}>{n.pesan}</span>
+                                <span className="block text-[10px] text-gray-400 mt-0.5">
+                                  {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {new Date(n.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </span>
+                            </button>
+                          ))
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNotifPopup(false); setActiveTab('notif'); }}
+                      className="w-full py-2.5 text-xs font-bold text-green-700 hover:bg-green-50 border-t border-gray-100"
+                    >
+                      Lihat semua notifikasi
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* User info */}
               <button
@@ -6397,16 +6499,23 @@ export default function AdminPortal({
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Foto Kampung Pramuka (URLs, pisahkan dengan koma) *</label>
-                      <input
-                        type="text"
-                        required
-                        value={kpFoto}
-                        onChange={(e) => setKpFoto(e.target.value)}
-                        className="w-full bg-white text-sm text-gray-900 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
-                        placeholder="https://images.unsplash.com/...,https://images.unsplash.com/..."
-                      />
-                      <span className="text-[10px] text-gray-400 block">Sediakan minimal satu atau dua URL foto pemandangan kampung yang representatif.</span>
+                      <label className="text-xs text-gray-600 font-semibold uppercase tracking-wider block">Foto Kampung Pramuka *</label>
+                      <div className="flex flex-wrap gap-3">
+                        {kpFotoList.map((url, i) => (
+                          <div key={url + i} className="relative w-28 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                            <img src={fotoOrDefault(url)} onError={onFotoError} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => handleHapusFotoKP(i)} title="Hapus foto" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <label className={`w-28 h-20 rounded-xl border-2 border-dashed border-green-300 bg-green-50 text-green-700 flex flex-col items-center justify-center text-[11px] font-bold cursor-pointer hover:bg-green-100 ${kpUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <Plus className="w-5 h-5" />
+                          {kpUploading ? 'Mengunggah…' : 'Upload foto'}
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={handleUploadFotoKP} />
+                        </label>
+                      </div>
+                      <span className="text-[10px] text-gray-400 block">Klik "Upload foto" (boleh pilih beberapa sekaligus). Foto pertama jadi foto utama.</span>
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">

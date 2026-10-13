@@ -624,6 +624,7 @@ export class DatabaseSim {
     includeKta = true
   ): Promise<void> {
     if (!supabase) return;
+    if (mode === 'bootstrap') this.lastFullPullAt = Date.now();
 
     const remote = {} as Record<ArrayTableName, any[]>;
     const [results, ktaResult] = await Promise.all([
@@ -713,6 +714,10 @@ export class DatabaseSim {
   }
 
   private lastRefreshAt = 0;
+  // Data yang diisi/diubah langsung di Supabase (SQL editor, Table Editor) tidak menaikkan versi di sync_state,
+  // jadi mode hemat tidak pernah melihatnya. Tarik ulang semua tabel secara berkala sebagai jaring pengaman.
+  private lastFullPullAt = 0;
+  private static readonly FULL_PULL_INTERVAL_MS = 2 * 60 * 1000;
   private refreshing: Promise<void> | null = null;
 
   // Serverless (Vercel): tiap instance punya memori sendiri & bisa basi. Sebelum melayani
@@ -725,7 +730,8 @@ export class DatabaseSim {
     this.refreshing = (async () => {
       try {
         const remoteV = await this.readRemoteVersions();
-        if (remoteV && this.versionBaseline) {
+        const fullPullDue = Date.now() - this.lastFullPullAt > DatabaseSim.FULL_PULL_INTERVAL_MS;
+        if (remoteV && this.versionBaseline && !fullPullDue) {
           // Mode hemat: hanya tarik tabel yang versinya berubah sejak terakhir dimuat.
           const staleNames = [...ARRAY_TABLES as string[], 'kta_config']
             .filter(n => (remoteV[n] || '') !== (this.tableVersion[n] || ''));
@@ -740,6 +746,7 @@ export class DatabaseSim {
         } else {
           // Cara lama (sync_state belum ada) atau pertama kali versi tersedia: tarik semua sebagai dasar.
           await this.pullFromSupabase('refresh');
+          this.lastFullPullAt = Date.now();
           if (remoteV) {
             this.tableVersion = { ...remoteV };
             this.versionBaseline = true;
