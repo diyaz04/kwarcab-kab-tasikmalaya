@@ -15,9 +15,23 @@ export default function LandingAgenda({ agenda }: LandingAgendaProps) {
     setCurrentPage(1);
   }, [activeCategory, pageSize]);
 
-  const filtered = agenda.filter((a) => {
-    return activeCategory === 'all' || a.kategori === activeCategory;
-  });
+  // Urutan: yang sedang/akan berlangsung dulu (terdekat di atas), lalu yang sudah lewat (terbaru di atas),
+  // supaya agenda yang baru diinput tidak tenggelam di halaman belakang di bawah agenda lama.
+  const today = new Date().toISOString().slice(0, 10);
+  const selesaiTgl = (a: Agenda) => (a.tanggal_selesai || a.tanggal_mulai || '').slice(0, 10);
+  const isSelesai = (a: Agenda) => selesaiTgl(a) < today;
+  const filtered = agenda
+    .filter((a) => activeCategory === 'all' || a.kategori === activeCategory)
+    .sort((a, b) => {
+      const sa = isSelesai(a), sb = isSelesai(b);
+      if (sa !== sb) return sa ? 1 : -1;
+      const cmp = (a.tanggal_mulai || '').localeCompare(b.tanggal_mulai || '');
+      return sa ? -cmp : cmp;
+    });
+  const fmtTgl = (t: string) => {
+    const d = new Date((t || '').slice(0, 10) + 'T00:00:00');
+    return isNaN(d.getTime()) ? t : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize));
   const activePage = Math.min(currentPage, totalPages);
@@ -140,12 +154,16 @@ export default function LandingAgenda({ agenda }: LandingAgendaProps) {
                 <span className="flex items-center space-x-1.5 font-light">
                   <Clock className="w-4 h-4 text-green-600" />
                   <span>
-                    {ag.tanggal_mulai} s/d {ag.tanggal_selesai}
+                    {fmtTgl(ag.tanggal_mulai)} s/d {fmtTgl(ag.tanggal_selesai)}
                   </span>
                 </span>
-                <span className="text-[10px] text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded border border-green-200">
-                  Kab. Tasikmalaya
-                </span>
+                {isSelesai(ag) ? (
+                  <span className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">Selesai</span>
+                ) : (
+                  <span className="text-[10px] text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded border border-green-200">
+                    {(ag.tanggal_mulai || '').slice(0, 10) <= today ? 'Berlangsung' : 'Akan datang'}
+                  </span>
+                )}
               </div>
             </div>
           ))}
