@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DatabaseSim, isSupabaseConfigured, supabase, getSupabaseInitError } from './server_db';
 import { User, UserRole, GolonganPramuka, AdminPermission } from './src/types';
 import { sanitizeSosmed } from './src/utils/sosmed';
-import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, normalizeTingkatan, isPelatihEligible, sanitizePeran, normalizeJenisKelamin } from './src/utils/tingkatan';
+import { TINGKATAN_MAP, GOLONGAN_ORDER, GOLONGAN_LABEL, PERAN_DEWASA, normalizeTingkatan, isPelatihEligible, sanitizePeran, normalizeJenisKelamin } from './src/utils/tingkatan';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -1086,6 +1086,154 @@ app.post('/api/admin/anggota', authenticate, authorizeWithKwarcabPermission(['kw
   }
 
   res.status(201).json(newAnggota);
+});
+
+// Impor anggota dari Excel (baris sudah dibaca di browser). dry_run=true hanya memeriksa, tidak menyimpan.
+const IMPORT_MAX_ROWS = 1000;
+const normWilayah = (v: unknown) => normNama(v).replace(/\b(kwarran|kwartir ranting|kecamatan|kec|gudep|gugus depan)\b/g, ' ').replace(/\s+/g, ' ').trim();
+const parseTanggalImport = (raw: unknown): string | null => {
+  const v = String(raw ?? '').trim();
+  let y: number, m: number, d: number;
+  let mt = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v);
+  if (mt) { y = +mt[1]; m = +mt[2]; d = +mt[3]; }
+  else if ((mt = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(v))) { d = +mt[1]; m = +mt[2]; y = +mt[3]; }
+  else return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  if (y < 1900 || dt.getTime() > Date.now()) return null;
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+};
+
+app.post('/api/admin/anggota/import', authenticate, authorizeWithKwarcabPermission(['kwarran', 'gudep'], 'anggota'), (req: AuthRequest, res: Response) => {
+  const user = req.user!;
+  const rows = req.body?.rows;
+  const dryRun = req.body?.dry_run === true;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: 'Tidak ada baris data untuk diimpor.' });
+    return;
+  }
+  if (rows.length > IMPORT_MAX_ROWS) {
+    res.status(400).json({ error: `Maksimal ${IMPORT_MAX_ROWS} baris per impor. File Anda berisi ${rows.length} baris, pecah menjadi beberapa file.` });
+    return;
+  }
+
+  const allKwarran = db.getKwarran();
+  const allGudep = db.getGudep();
+  const ownGudep = user.role === 'gudep' ? allGudep.find(g => g.id === user.ref_id) : undefined;
+  const existing = db.getAnggota();
+  const keyOf = (nama: string, tgl: string, kw: string) => `${kw}|${normNama(nama)}|${tgl}`;
+  const seen = new Set(existing.map(a => keyOf(a.nama_lengkap, a.tanggal_lahir, a.kwartir_ranting_id)));
+
+  const results: { baris: number; status: 'ok' | 'error' | 'duplikat'; pesan: string }[] = [];
+  const toAdd: any[] = [];
+  const stamp = Date.now();
+
+  rows.forEach((r: any, i: number) => {
+    const baris = Number(r?.baris) || i + 2;
+    const fail = (pesan: string) => results.push({ baris, status: 'error', pesan });
+    const str = (v: unknown) => String(v ?? '').trim();
+
+    const nama = str(r?.nama_lengkap).replace(/\s+/g, ' ');
+    if (!nama) return fail('Nama Lengkap wajib diisi');
+    if (nama.length > 120) return fail('Nama Lengkap terlalu panjang (maks. 120 karakter)');
+
+    const jk = normalizeJenisKelamin(str(r?.jenis_kelamin));
+    if (!jk) return fail('Jenis Kelamin wajib diisi: Laki-laki atau Perempuan');
+
+    const tempat = str(r?.tempat_lahir);
+    if (!tempat) return fail('Tempat Lahir wajib diisi');
+    const tanggal = parseTanggalImport(r?.tanggal_lahir);
+    if (!tanggal) return fail('Tanggal Lahir tidak valid (pakai format 2012-05-23 atau 23/05/2012, dan tidak boleh di masa depan)');
+
+    const golRaw = str(r?.golongan).toLowerCase().replace(/[_\s]+/g, ' ');
+    const golongan = GOLONGAN_ORDER.find(g => GOLONGAN_LABEL[g].toLowerCase() === golRaw || g.replace(/_/g, ' ') === golRaw);
+    if (!golongan) return fail('Golongan tidak dikenal. Pilihan: ' + GOLONGAN_ORDER.map(g => GOLONGAN_LABEL[g]).join(', '));
+    const tk = checkTingkatan(golongan, str(r?.tingkatan));
+    if (tk.error) return fail(tk.error);
+
+    // Wilayah: Kwarran & Gudep mengikuti akun yang mengimpor
+    let kwarran = undefined as (typeof allKwarran)[number] | undefined;
+    let gudep = undefined as (typeof allGudep)[number] | undefined;
+    const kwNama = str(r?.kwarran);
+    const gdNama = str(r?.gudep);
+    if (user.role === 'gudep') {
+      if (!ownGudep) return fail('Akun Gudep Anda belum terhubung ke Gugus Depan');
+      gudep = ownGudep;
+      kwarran = allKwarran.find(k => k.id === ownGudep.kwartir_ranting_id);
+    } else if (user.role === 'kwarran') {
+      kwarran = allKwarran.find(k => k.id === user.ref_id);
+      if (kwNama && kwarran && normWilayah(kwNama) !== normWilayah(kwarran.nama_kecamatan)) {
+        return fail(`Kwarran "${kwNama}" bukan wilayah Anda (Kwarran ${kwarran.nama_kecamatan}). Kosongkan kolom Kwarran atau isi dengan wilayah Anda.`);
+      }
+    } else {
+      if (!kwNama) return fail('Kwarran wajib diisi');
+      kwarran = allKwarran.find(k => normWilayah(k.nama_kecamatan) === normWilayah(kwNama));
+    }
+    if (!kwarran) return fail(user.role === 'kwarran' ? 'Akun Anda belum terhubung ke Kwartir Ranting' : `Kwarran "${kwNama}" tidak ditemukan`);
+    if (user.role !== 'gudep' && gdNama) {
+      gudep = allGudep.find(g => g.kwartir_ranting_id === kwarran!.id && normWilayah(g.nama_pangkalan) === normWilayah(gdNama));
+      if (!gudep) return fail(`Gugus Depan "${gdNama}" tidak ditemukan di Kwarran ${kwarran.nama_kecamatan}. Tambahkan dulu di menu Gugus Depan.`);
+    }
+
+    const key = keyOf(nama, tanggal, kwarran.id);
+    if (seen.has(key)) {
+      results.push({ baris, status: 'duplikat', pesan: 'Sudah ada anggota dengan nama dan tanggal lahir yang sama (dilewati)' });
+      return;
+    }
+
+    // Pelatih (hanya Dewasa KPD/KPL) & Peran (hanya Dewasa)
+    let isPelatih: boolean | undefined;
+    const pelRaw = str(r?.pelatih).toLowerCase();
+    if (isPelatihEligible(golongan, tk.value) && pelRaw) {
+      if (['ya', 'y', 'iya', 'true', '1'].includes(pelRaw)) isPelatih = true;
+      else if (['tidak', 'tdk', 't', 'no', 'n', 'false', '0'].includes(pelRaw)) isPelatih = false;
+      else return fail('Kolom Pelatih diisi Ya atau Tidak');
+    }
+    let peran: string[] = [];
+    const peranRaw = str(r?.peran);
+    if (golongan === 'dewasa' && peranRaw) {
+      const tokens = peranRaw.split(/[,;\n]+/).map(t => t.trim()).filter(Boolean);
+      const ids: string[] = [];
+      for (const t of tokens) {
+        const norm = t.toLowerCase().replace(/[_\s]+/g, ' ');
+        const found = PERAN_DEWASA.find(p => p.label.toLowerCase() === norm || p.id.replace(/_/g, ' ') === norm);
+        if (!found) return fail(`Peran "${t}" tidak dikenal. Pilihan: ${PERAN_DEWASA.map(p => p.label).join(', ')}`);
+        ids.push(found.id);
+      }
+      peran = sanitizePeran(ids);
+    }
+
+    seen.add(key);
+    results.push({ baris, status: 'ok', pesan: '' });
+    toAdd.push({
+      id: `ang_${stamp}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+      nama_lengkap: nama,
+      tempat_lahir: tempat,
+      tanggal_lahir: tanggal,
+      golongan: golongan as GolonganPramuka,
+      tingkatan: tk.value as string,
+      alamat_asal: str(r?.alamat_asal),
+      pangkalan: gudep ? gudep.nama_pangkalan : '',
+      kwartir_ranting_id: kwarran.id,
+      gudep_id: gudep ? gudep.id : null,
+      foto: '',
+      ...(isPelatih !== undefined ? { is_pelatih: isPelatih } : {}),
+      jenis_kelamin: jk,
+      ...(peran.length > 0 ? { peran } : {}),
+      created_by: user.id,
+      created_at: new Date().toISOString()
+    });
+  });
+
+  if (!dryRun) db.addAnggotaBatch(toAdd);
+  res.json({
+    dry_run: dryRun,
+    total: rows.length,
+    berhasil: toAdd.length,
+    duplikat: results.filter(x => x.status === 'duplikat').length,
+    gagal: results.filter(x => x.status === 'error').length,
+    results
+  });
 });
 
 // Update Anggota

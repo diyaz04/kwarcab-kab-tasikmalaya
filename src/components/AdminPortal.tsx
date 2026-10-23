@@ -3,7 +3,7 @@ import {
   Users, User, Compass, Calendar, BookOpen, Clock, ArrowUpRight, ArrowRight, Layers, MapPin, Award, Shield, 
   Trash2, Edit, Plus, Check, X, Bell, RefreshCw, CheckCircle2,
   AlertCircle, AlertTriangle, Key, Building, Eye, ChevronRight, FileText,
-  Download, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles, LogOut, Home, MoreHorizontal
+  Download, Upload, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles, LogOut, Home, MoreHorizontal
 } from 'lucide-react';
 import { 
   User as UserType, UserRole, KwartirRanting, GugusDepan, SatuanKarya,
@@ -15,6 +15,7 @@ import TingkatanStats from './TingkatanStats';
 import PimpinanManager from './PimpinanManager';
 import ProfilKwarranPanel from './ProfilKwarranPanel';
 import ProfilSayaModal from './ProfilSayaModal';
+import ImportAnggotaModal from './ImportAnggotaModal';
 import RekapGudepList, { GolonganChips } from './RekapGudep';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel, countJk, normalizeJenisKelamin, JK_LABEL, pelatihList } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
@@ -79,6 +80,7 @@ export default function AdminPortal({
   const [showProfilSaya, setShowProfilSaya] = useState(false);
   const [registrasiTerbuka, setRegistrasiTerbuka] = useState(false);
   const [showNotifPopup, setShowNotifPopup] = useState(false);
+  const [showImportAnggota, setShowImportAnggota] = useState(false);
   const notifWrapRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<any>({
     totalAnggota: 0, siaga: 0, penggalang: 0, penegak: 0, pandega: 0, dewasa: 0, pendingBerita: 0, pendingSakaApproval: 0
@@ -3121,6 +3123,16 @@ export default function AdminPortal({
                         <span>Ekspor Data</span>
                       </button>
 
+                      {user.role !== 'saka' && (
+                        <button
+                          onClick={() => setShowImportAnggota(true)}
+                          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-white hover:bg-green-600 hover:text-white text-green-700 border border-green-300 text-xs font-bold tracking-wide uppercase active:scale-95 transition-all duration-200"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Impor Excel</span>
+                        </button>
+                      )}
+
                       {user.role === 'saka' ? (
                         <button
                           onClick={handleBase64Upload && handleOpenPullModal}
@@ -3410,21 +3422,25 @@ export default function AdminPortal({
                               className="w-full bg-white border border-gray-200 hover:border-gray-300 text-gray-900 text-xs rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400/50 focus:border-green-400 transition cursor-pointer"
                             >
                               <option value="all">Semua Pangkalan</option>
-                              {gudepList
-                                .filter((g) => {
-                                  if (canManage('anggota') && filterKwarran !== 'all') {
-                                    return g.kwartir_ranting_id === filterKwarran;
-                                  }
-                                  if (user.role === 'kwarran') {
-                                    return g.kwartir_ranting_id === user.ref_id;
-                                  }
-                                  return true;
-                                })
-                                .map((gd) => (
-                                  <option key={gd.id} value={gd.id}>
-                                    {gd.nama_pangkalan}
-                                  </option>
-                                ))}
+                              {canManage('anggota') && filterKwarran === 'all'
+                                ? allKwarran
+                                    .filter(kw => gudepList.some(g => g.kwartir_ranting_id === kw.id))
+                                    .map(kw => (
+                                      <optgroup key={kw.id} label={`Kwarran ${kw.nama_kecamatan}`}>
+                                        {gudepList.filter(g => g.kwartir_ranting_id === kw.id).map(gd => (
+                                          <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>
+                                        ))}
+                                      </optgroup>
+                                    ))
+                                : gudepList
+                                    .filter((g) => {
+                                      if (canManage('anggota')) return g.kwartir_ranting_id === filterKwarran;
+                                      if (user.role === 'kwarran') return g.kwartir_ranting_id === user.ref_id;
+                                      return true;
+                                    })
+                                    .map((gd) => (
+                                      <option key={gd.id} value={gd.id}>{gd.nama_pangkalan}</option>
+                                    ))}
                             </select>
                           </div>
                         </div>
@@ -6803,6 +6819,17 @@ export default function AdminPortal({
         </button>
       </div>
       
+
+      {showImportAnggota && (
+        <ImportAnggotaModal
+          user={user}
+          token={token}
+          allKwarran={allKwarran}
+          gudepList={gudepList}
+          onClose={() => setShowImportAnggota(false)}
+          onDone={() => { loadDashboardData(); onRefreshData(); }}
+        />
+      )}
 
       {/* Change Password Modal (Self) */}
       {isChangePasswordOpen && (

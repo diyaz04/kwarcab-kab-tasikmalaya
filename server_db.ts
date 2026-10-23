@@ -1020,6 +1020,7 @@ export class DatabaseSim {
   // Anggota CRUD
   public getAnggota(): Anggota[] { return this.state.anggota; }
   public addAnggota(a: Anggota): void { this.state.anggota.push(a); this.save(); }
+  public addAnggotaBatch(list: Anggota[]): void { if (list.length === 0) return; this.state.anggota.push(...list); this.save(); }
   public updateAnggota(id: string, updates: Partial<Anggota>): void {
     this.state.anggota = this.state.anggota.map(a => a.id === id ? { ...a, ...updates } : a);
     this.save();
