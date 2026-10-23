@@ -15,6 +15,8 @@ import LandingProfil from './components/LandingProfil';
 import LandingBerita from './components/LandingBerita';
 import LandingKwarranSaka from './components/LandingKwarranSaka';
 import LandingAgenda from './components/LandingAgenda';
+import LandingLT3, { Lt3BannerPopup } from './components/LandingLT3';
+import { normalizeLt3 } from './utils/lt3';
 import LandingMap from './components/LandingMap';
 import LandingKampungPramukaDetail from './components/LandingKampungPramukaDetail';
 import AdminPortal from './components/AdminPortal';
@@ -291,6 +293,8 @@ export default function App() {
   };
 
   const approvedNews = berita.filter(b => b.status === 'approved');
+  const lt3Data = normalizeLt3(profil?.lt3);
+  const lt3Aktif = lt3Data.aktif;
 
   // Kilasan di hero: berita sorotan (admin) lebih dulu, lalu berita terbaru. Maks. 5.
   const heroNews = [
@@ -325,6 +329,7 @@ export default function App() {
           onOpenNotif={() => setCurrentTab('admin')} 
           theme={theme}
           onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+          showLt3={lt3Aktif}
         />
       )}
 
@@ -508,6 +513,13 @@ export default function App() {
           </div>
         )}
 
+        {/* --- PORTAL LANDING: INFO LT III --- */}
+        {currentTab === 'lt3' && lt3Aktif && (
+          <div className="animate-fade-in">
+            <LandingLT3 lt3={lt3Data} />
+          </div>
+        )}
+
         {/* --- PORTAL LANDING: KAMPUNG PRAMUKA DETAIL --- */}
         {currentTab === 'kampung-pramuka' && selectedKp && (
           <div className="animate-fade-in">
@@ -642,6 +654,11 @@ export default function App() {
           </div>
         </div>
       </footer>
+      )}
+
+      {/* Popup banner promosi LT III (masa aktif diatur admin) */}
+      {currentTab !== 'admin' && currentTab !== 'validasi' && (
+        <Lt3BannerPopup lt3={profil?.lt3 ? lt3Data : null} onOpenInfo={() => { setSelectedKp(null); setCurrentTab('lt3'); window.scrollTo({ top: 0 }); }} />
       )}
 
       {/* --- SECURE AUTH LOGIN MODAL (Glassmorphism modal) --- */}

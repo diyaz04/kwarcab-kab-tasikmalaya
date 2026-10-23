@@ -3,7 +3,7 @@ import {
   Users, User, Compass, Calendar, BookOpen, Clock, ArrowUpRight, ArrowRight, Layers, MapPin, Award, Shield, 
   Trash2, Edit, Plus, Check, X, Bell, RefreshCw, CheckCircle2,
   AlertCircle, AlertTriangle, Key, Building, Eye, ChevronRight, FileText,
-  Download, Upload, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles, LogOut, Home, MoreHorizontal
+  Download, Upload, Trophy, Printer, CreditCard, IdCard, Search, Menu, Globe, Sparkles, LogOut, Home, MoreHorizontal
 } from 'lucide-react';
 import { 
   User as UserType, UserRole, KwartirRanting, GugusDepan, SatuanKarya,
@@ -16,6 +16,7 @@ import PimpinanManager from './PimpinanManager';
 import ProfilKwarranPanel from './ProfilKwarranPanel';
 import ProfilSayaModal from './ProfilSayaModal';
 import ImportAnggotaModal from './ImportAnggotaModal';
+import Lt3Manager from './Lt3Manager';
 import RekapGudepList, { GolonganChips } from './RekapGudep';
 import { TINGKATAN_MAP, GOLONGAN_ORDER, normalizeTingkatan, isPelatihEligible, countPelatih, golonganLabel, PERAN_DEWASA, peranLabel, countJk, normalizeJenisKelamin, JK_LABEL, pelatihList } from '../utils/tingkatan';
 import { fotoOrDefault, onFotoError } from '../utils/foto';
@@ -2344,6 +2345,7 @@ export default function AdminPortal({
     { id: 'berita', label: 'Sinergi Berita', icon: Shield, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[], permission: 'berita' as AdminPermission },
     { id: 'agenda', label: 'Agenda Kegiatan', icon: Calendar, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'saka'] as UserRole[], permission: 'agenda' as AdminPermission },
     { id: 'config', label: 'Profil Kwarcab', icon: BookOpen, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'config' as AdminPermission },
+    { id: 'lt3', label: 'Info LT III', icon: Trophy, roles: ['kwarcab', 'staff_kwarcab'] as UserRole[], permission: 'config' as AdminPermission },
     { id: 'users', label: 'Akun Pengguna', icon: Key, roles: ['kwarcab', 'kwarran'] as UserRole[] },
     { id: 'notif', label: 'Notifikasi', icon: Bell, badge: notifList.filter(n => !n.is_read).length, roles: ['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'] as UserRole[] },
   ];
@@ -5990,6 +5992,16 @@ export default function AdminPortal({
                 </p>
               )}
             </form>
+          )}
+
+          {/* --- TAB CONTENT: INFO LT III --- */}
+          {activeTab === 'lt3' && (isKwarcabAdmin || canManage('config')) && (
+            <Lt3Manager
+              token={token}
+              allKwarran={allKwarran}
+              onSaved={onRefreshData}
+              onUploadImage={(e, setUrl) => handleBase64Upload(e, setUrl, { maxDimension: 1100, quality: 0.8, filenamePrefix: 'lt3_', successMessage: 'Banner berhasil diunggah. Klik Simpan untuk menerapkan.' })}
+            />
           )}
 
           {/* --- TAB CONTENT: NOTIFICATIONS PANEL --- */}

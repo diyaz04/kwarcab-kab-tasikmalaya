@@ -168,6 +168,33 @@ export interface ProfilKwarcab {
   ketua_pusdatin_foto?: string;
   /** Pendaftaran mandiri Admin Kwarran dibuka (true) atau ditutup (false/kosong). */
   registrasi_terbuka?: boolean;
+  /** Info LT III (pengumuman, banner popup, juknis, klasemen). Kosong = belum pernah diatur. */
+  lt3?: Lt3Data;
+}
+
+export type Lt3Jenis = 'putra' | 'putri';
+export type Lt3Kelompok = 'utama' | 'penunjang' | 'tambahan';
+/** diumumkan = juara 1-3 lomba ini ditampilkan di bagian Pengumuman Kejuaraan (publik). */
+export interface Lt3Lomba { id: string; nama: string; kelompok: Lt3Kelompok; diumumkan?: boolean }
+/** Poin yang diperoleh untuk masing-masing medali pada satu kelompok lomba. */
+export interface Lt3PoinMedali { emas: number; perak: number; perunggu: number }
+export type Lt3Poin = Record<Lt3Kelompok, Lt3PoinMedali>;
+/** kwarran = nama Kwartir Ranting yang diwakili regu; asal = pangkalan/sekolah (opsional). */
+export interface Lt3Regu { id: string; nama: string; kwarran: string; asal: string; jenis: Lt3Jenis }
+export interface Lt3Data {
+  /** Menu "Info LT III" tampil di landing page atau tidak. */
+  aktif: boolean;
+  judul: string;
+  pengumuman: string;
+  pengumuman_tanggal: string;
+  banner: { url: string; judul: string; tampil: boolean; mulai: string; selesai: string };
+  juknis: { url: string; nama: string };
+  /** Poin medali per kelompok lomba (Utama, Penunjang, Tambahan). */
+  poin: Lt3Poin;
+  lomba: Lt3Lomba[];
+  regu: Lt3Regu[];
+  /** nilai[lombaId][reguId] */
+  nilai: Record<string, Record<string, number>>;
 }
 
 export interface KampungPramuka {

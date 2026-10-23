@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, BookOpen, Compass, Calendar, MapPin, Users, Award, Bell, Menu, X, ChevronDown, Globe, User as UserIcon } from 'lucide-react';
+import { Shield, BookOpen, Compass, Calendar, MapPin, Users, Award, Bell, Menu, X, ChevronDown, Globe, Trophy, User as UserIcon } from 'lucide-react';
 import type { User } from '../types';
 
 interface NavbarProps {
@@ -12,6 +12,8 @@ interface NavbarProps {
   onOpenNotif: () => void;
   theme?: 'dark' | 'light';
   onToggleTheme?: () => void;
+  /** Menu "Info LT III" ditampilkan bila diaktifkan admin. */
+  showLt3?: boolean;
 }
 
 export default function Navbar({
@@ -21,7 +23,8 @@ export default function Navbar({
   onLogout,
   onOpenLogin,
   unreadCount,
-  onOpenNotif
+  onOpenNotif,
+  showLt3
 }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -31,6 +34,7 @@ export default function Navbar({
     { id: 'profil', label: 'Profil', icon: BookOpen },
     { id: 'berita', label: 'Berita', icon: Shield },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
+    ...(showLt3 ? [{ id: 'lt3', label: 'Info LT III', icon: Trophy }] : []),
     { id: 'kampung_pramuka', label: 'Sebaran KP', icon: Globe },
   ];
 
@@ -240,6 +244,7 @@ export default function Navbar({
                 { id: 'profil', label: 'Profil', icon: BookOpen },
                 { id: 'berita', label: 'Berita', icon: Shield },
                 { id: 'agenda', label: 'Agenda', icon: Calendar },
+                ...(showLt3 ? [{ id: 'lt3', label: 'Info LT III', icon: Trophy }] : []),
                 { id: 'kampung_pramuka', label: 'Sebaran KP', icon: Globe },
                 { id: 'kwarran', label: 'Kwarran', icon: MapPin },
                 { id: 'saka', label: 'Saka', icon: Award },

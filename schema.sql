@@ -18,6 +18,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb
 ALTER TABLE users ADD COLUMN IF NOT EXISTS foto TEXT DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aktif';
 ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS registrasi_terbuka BOOLEAN DEFAULT FALSE;
+ALTER TABLE profil_kwarcab ADD COLUMN IF NOT EXISTS lt3 JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'));
 

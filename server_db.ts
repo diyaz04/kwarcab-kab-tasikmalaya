@@ -100,7 +100,8 @@ const EXPECTED_COLUMNS: Record<string, Record<string, string>> = {
     sekretaris_nama: "TEXT DEFAULT ''", sekretaris_foto: "TEXT DEFAULT ''",
     bendahara_nama: "TEXT DEFAULT ''", bendahara_foto: "TEXT DEFAULT ''",
     ketua_pusdatin_nama: "TEXT DEFAULT ''", ketua_pusdatin_foto: "TEXT DEFAULT ''",
-    registrasi_terbuka: 'BOOLEAN DEFAULT FALSE'
+    registrasi_terbuka: 'BOOLEAN DEFAULT FALSE',
+    lt3: "JSONB DEFAULT '{}'::jsonb"
   },
   pimpinan_kwarcab: { kategori: "TEXT DEFAULT 'pengurus'" },
   kwartir_ranting: { sosmed: "JSONB DEFAULT '{}'::jsonb", masa_khidmat: "TEXT DEFAULT ''" },

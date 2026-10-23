@@ -1997,6 +1997,92 @@ app.put('/api/admin/profil-kwarcab', authenticate, authorizeKwarcab('config'), (
   res.json({ message: 'Profil Kwarcab berhasil diperbarui' });
 });
 
+// --- INFO LT III (pengumuman, banner popup, juknis, klasemen) ---
+const lt3Str = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
+const lt3Url = (v: unknown) => {
+  const u = lt3Str(v, 600);
+  return /^(https?:\/\/|\/)/i.test(u) ? u : '';
+};
+const lt3Date = (v: unknown) => {
+  const d = lt3Str(v, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '';
+};
+const lt3Id = (v: unknown, prefix: string) => {
+  const id = lt3Str(v, 40);
+  return /^[A-Za-z0-9_-]+$/.test(id) ? id : `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
+};
+
+const sanitizeLt3 = (raw: any) => {
+  const b = raw?.banner || {};
+  const lomba: { id: string; nama: string; kelompok: 'utama' | 'penunjang' | 'tambahan'; diumumkan: boolean }[] = [];
+  const lombaIds = new Set<string>();
+  (Array.isArray(raw?.lomba) ? raw.lomba : []).slice(0, 30).forEach((l: any) => {
+    const nama = lt3Str(l?.nama, 80);
+    if (!nama) return;
+    let id = lt3Id(l?.id, 'lb');
+    while (lombaIds.has(id)) id = lt3Id('', 'lb');
+    lombaIds.add(id);
+    lomba.push({ id, nama, kelompok: ['utama', 'penunjang', 'tambahan'].includes(l?.kelompok) ? l.kelompok : 'utama', diumumkan: l?.diumumkan === true });
+  });
+  const regu: { id: string; nama: string; kwarran: string; asal: string; jenis: 'putra' | 'putri' }[] = [];
+  const reguIds = new Set<string>();
+  (Array.isArray(raw?.regu) ? raw.regu : []).slice(0, 300).forEach((r: any) => {
+    const nama = lt3Str(r?.nama, 80);
+    if (!nama) return;
+    let id = lt3Id(r?.id, 'rg');
+    while (reguIds.has(id)) id = lt3Id('', 'rg');
+    reguIds.add(id);
+    const kw = db.getKwarran().find(k => k.nama_kecamatan.toLowerCase() === lt3Str(r?.kwarran, 80).replace(/^kwarran\s+/i, '').toLowerCase());
+    regu.push({ id, nama, kwarran: kw ? kw.nama_kecamatan : '', asal: lt3Str(r?.asal, 120), jenis: r?.jenis === 'putri' ? 'putri' : 'putra' });
+  });
+  const nilai: Record<string, Record<string, number>> = {};
+  lombaIds.forEach(lid => {
+    const src = raw?.nilai?.[lid];
+    if (!src || typeof src !== 'object') return;
+    reguIds.forEach(rid => {
+      const n = Number(src[rid]);
+      if (src[rid] !== '' && src[rid] !== null && src[rid] !== undefined && Number.isFinite(n) && n >= 0 && n <= 100000) {
+        (nilai[lid] ||= {})[rid] = Math.round(n * 100) / 100;
+      }
+    });
+  });
+  const poinAwal: Record<string, Record<string, number>> = { utama: { emas: 10, perak: 6, perunggu: 3 }, penunjang: { emas: 6, perak: 4, perunggu: 2 }, tambahan: { emas: 3, perak: 2, perunggu: 1 } };
+  const poin: any = {};
+  Object.keys(poinAwal).forEach(k => {
+    poin[k] = {};
+    ['emas', 'perak', 'perunggu'].forEach(m => {
+      const v = Number(raw?.poin?.[k]?.[m]);
+      poin[k][m] = raw?.poin?.[k]?.[m] !== undefined && raw?.poin?.[k]?.[m] !== '' && Number.isFinite(v) && v >= 0 && v <= 1000 ? Math.round(v * 100) / 100 : poinAwal[k][m];
+    });
+  });
+  return {
+    aktif: raw?.aktif === true,
+    judul: lt3Str(raw?.judul, 120) || 'Lomba Tingkat III',
+    poin,
+    pengumuman: lt3Str(raw?.pengumuman, 5000),
+    pengumuman_tanggal: lt3Date(raw?.pengumuman_tanggal),
+    banner: { url: lt3Url(b.url), judul: lt3Str(b.judul, 120), tampil: b.tampil === true, mulai: lt3Date(b.mulai), selesai: lt3Date(b.selesai) },
+    juknis: { url: lt3Url(raw?.juknis?.url), nama: lt3Str(raw?.juknis?.nama, 120) },
+    lomba,
+    regu,
+    nilai
+  };
+};
+
+app.get('/api/public/lt3', (req: Request, res: Response) => {
+  res.json(db.getProfil().lt3 || null);
+});
+
+app.put('/api/admin/lt3', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
+  const data = sanitizeLt3(req.body);
+  if (data.banner.mulai && data.banner.selesai && data.banner.mulai > data.banner.selesai) {
+    res.status(400).json({ error: 'Tanggal mulai banner tidak boleh setelah tanggal selesai.' });
+    return;
+  }
+  db.updateProfil({ lt3: data });
+  res.json(data);
+});
+
 // Pimpinan Kwarcab CRUD (Kwarcab only)
 app.get('/api/admin/pimpinan', authenticate, authorizeKwarcab('config'), (req: Request, res: Response) => {
   res.json(db.getPimpinan());
