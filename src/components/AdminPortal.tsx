@@ -81,6 +81,8 @@ export default function AdminPortal({
   const [registrasiTerbuka, setRegistrasiTerbuka] = useState(false);
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [showImportAnggota, setShowImportAnggota] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
   const notifWrapRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<any>({
     totalAnggota: 0, siaga: 0, penggalang: 0, penegak: 0, pandega: 0, dewasa: 0, pendingBerita: 0, pendingSakaApproval: 0
@@ -2301,6 +2303,33 @@ export default function AdminPortal({
       default: return role;
     }
   };
+  // Akun yang boleh dilihat peran ini (tanpa yang masih menunggu persetujuan), lalu disaring pencarian/peran
+  const visibleUsers = userList.filter(u => {
+    if (u.status === 'pending') return false;
+    if (isKwarcabAdmin) return true;
+    if (user.role === 'kwarran') {
+      return u.role === 'gudep' && gudepList.some(g => g.id === u.ref_id && g.kwartir_ranting_id === user.ref_id);
+    }
+    return false;
+  });
+  const userRefNama = (u: UserType): string => {
+    if (u.role === 'kwarran') return allKwarran.find(k => k.id === u.ref_id)?.nama_kecamatan || '';
+    if (u.role === 'gudep') {
+      const gd = gudepList.find(g => g.id === u.ref_id);
+      return [gd?.nama_pangkalan, allKwarran.find(k => k.id === gd?.kwartir_ranting_id)?.nama_kecamatan].filter(Boolean).join(' ');
+    }
+    if (u.role === 'saka') return allSaka.find(sk => sk.id === u.ref_id)?.nama_saka || '';
+    return '';
+  };
+  const filteredUsers = (() => {
+    const q = userSearch.trim().toLowerCase();
+    return visibleUsers.filter(u => {
+      if (userRoleFilter !== 'all' && u.role !== userRoleFilter) return false;
+      if (!q) return true;
+      return [u.nama, u.email, getRoleLabel(u.role), userRefNama(u)].some(t => (t || '').toLowerCase().includes(q));
+    });
+  })();
+
   const getPermissionLabel = (permission: AdminPermission) => {
     return KWARCAB_ACCESS_OPTIONS.find(option => option.id === permission)?.label || permission;
   };
@@ -6072,6 +6101,32 @@ export default function AdminPortal({
                     </div>
                   )}
 
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[220px]">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="search"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="Cari nama, email, peran, Kwarran, atau Gugus Depan…"
+                        className="w-full bg-white text-xs text-gray-900 pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-400/40"
+                      />
+                    </div>
+                    {isKwarcabAdmin && (
+                      <select
+                        value={userRoleFilter}
+                        onChange={(e) => setUserRoleFilter(e.target.value)}
+                        className="bg-white text-xs text-gray-900 px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 cursor-pointer"
+                      >
+                        <option value="all">Semua Peran</option>
+                        {['kwarcab', 'staff_kwarcab', 'kwarran', 'gudep', 'saka'].map(r => <option key={r} value={r}>{getRoleLabel(r)}</option>)}
+                      </select>
+                    )}
+                    <span className="text-[11px] text-gray-500">
+                      {filteredUsers.length === visibleUsers.length ? `${visibleUsers.length} akun` : `${filteredUsers.length} dari ${visibleUsers.length} akun`}
+                    </span>
+                  </div>
+
                   <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -6084,15 +6139,14 @@ export default function AdminPortal({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {userList
-                          .filter(u => {
-                            if (u.status === 'pending') return false;
-                            if (isKwarcabAdmin) return true;
-                            if (user.role === 'kwarran') {
-                              return u.role === 'gudep' && gudepList.some(g => g.id === u.ref_id && g.kwartir_ranting_id === user.ref_id);
-                            }
-                            return false;
-                          })
+                        {filteredUsers.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-gray-400 text-xs">
+                              {visibleUsers.length === 0 ? 'Belum ada akun.' : 'Tidak ada akun yang cocok dengan pencarian.'}
+                            </td>
+                          </tr>
+                        )}
+                        {filteredUsers
                           .map((u) => (
                           <tr key={u.id} className="hover:bg-white/[0.01]">
                             <td className="p-4 font-bold text-gray-900 text-sm">{u.nama}</td>
